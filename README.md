@@ -12,7 +12,7 @@ follows) plus any supporting scripts, references, or assets it needs.
 From any project (or your home directory for a global install), run:
 
 ```
-npx skills@latest add rice-business/skills
+npx skills@latest add kerryback/skills
 ```
 
 That's it — no login or GitHub account needed. This is a public repo, so the
@@ -26,9 +26,6 @@ the skills you want, and `enter` to confirm. Selected skills are copied into:
   from inside that project)
 
 Start a new Claude Code session and the skills appear automatically.
-
-> Note: `rice-business/skills` is a placeholder — replace it with the actual
-> `org/repo` once this is pushed to GitHub, in this command and below.
 
 ## Using a skill
 
