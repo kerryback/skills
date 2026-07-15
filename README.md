@@ -7,18 +7,6 @@ workflows, deck production, and teaching agents.
 Each folder in this repo is one skill: a `SKILL.md` file (instructions Claude
 follows) plus any supporting scripts, references, or assets it needs.
 
-## Prerequisites
-
-This is a **private** repo in the Rice GitHub organization. Before installing,
-make sure you're authenticated to GitHub so the installer can clone it:
-
-```
-gh auth login          # or have SSH keys / a git credential helper configured
-```
-
-If `npx skills add` fails with a permission or authentication error, this is
-almost always the cause.
-
 ## Install
 
 From any project (or your home directory for a global install), run:
@@ -26,6 +14,9 @@ From any project (or your home directory for a global install), run:
 ```
 npx skills@latest add rice-business/skills
 ```
+
+That's it — no login or GitHub account needed. This is a public repo, so the
+command works for anyone.
 
 You'll get an interactive menu. Use the arrow keys to move, `space` to select
 the skills you want, and `enter` to confirm. Selected skills are copied into:
@@ -37,7 +28,7 @@ the skills you want, and `enter` to confirm. Selected skills are copied into:
 Start a new Claude Code session and the skills appear automatically.
 
 > Note: `rice-business/skills` is a placeholder — replace it with the actual
-> `org/repo` once this is pushed to GitHub.
+> `org/repo` once this is pushed to GitHub, in this command and below.
 
 ## Using a skill
 
