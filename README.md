@@ -1,8 +1,8 @@
-# Rice Business Skills
+# Skills
 
-A shared collection of [Claude Code](https://claude.com/claude-code) skills for
-Rice Business faculty — reusable building blocks for course materials, data
-workflows, deck production, and teaching agents.
+A collection of [Claude Code](https://claude.com/claude-code) skills — reusable
+building blocks for course materials, data workflows, deck production, and
+teaching agents.
 
 Each folder in this repo is one skill: a `SKILL.md` file (instructions Claude
 follows) plus any supporting scripts, references, or assets it needs.
