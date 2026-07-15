@@ -34,7 +34,7 @@ Start a new Claude Code session and the skills appear automatically.
 
 - **Automatically** — just describe your task. Claude loads any installed skill
   whose description matches what you're doing.
-- **Explicitly** — type `/<skill-name>` (e.g. `/create_deck`) to invoke it on
+- **Explicitly** — type `/<skill-name>` (e.g. `/qmd-deck`) to invoke it on
   demand.
 
 ## Available skills
