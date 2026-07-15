@@ -1,6 +1,6 @@
 ---
 name: critique
-description: Critique and revise work produced by Claude. Spawns parallel reviewer agents that examine the work from different angles, then synthesizes findings and applies revisions.
+description: Critique and revise work produced by Claude. Spawns parallel reviewer agents that examine the work from different angles, then synthesizes findings and applies revisions. This is a heavyweight skill — it fans out multiple subagents, so it uses more time and tokens than a typical one-shot skill.
 argument-hint: [file-or-description]
 ---
 

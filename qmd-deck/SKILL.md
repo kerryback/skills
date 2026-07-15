@@ -1,5 +1,5 @@
 ---
-name: slide-deck
+name: qmd-deck
 description: >-
   Build a polished slide deck as a Quarto reveal.js presentation — HTML slides
   you render, present in a browser, and export to PDF, PowerPoint, or PNG
