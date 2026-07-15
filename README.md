@@ -51,7 +51,9 @@ Start a new Claude Code session and the skills appear automatically.
 | Skill | What it does |
 |-------|--------------|
 | [`create_deck`](./create_deck) | Build a PowerPoint bar-chart deck of Northwind revenue by country. |
+| [`critique`](./critique) | Spawn parallel reviewer agents to critique work from different angles, then synthesize and apply revisions. |
 | [`finance-data`](./finance-data) | Fetch free market/economic data (prices, fundamentals, FRED, factors) and save as CSV. |
+| [`slide-deck`](./slide-deck) | Build a polished Quarto reveal.js deck — HTML slides you render and export to PDF, PPTX, or PNG. |
 
 ## Contributing a skill
 

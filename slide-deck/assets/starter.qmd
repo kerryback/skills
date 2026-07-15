@@ -1,0 +1,81 @@
+---
+title: "Your Talk Title"
+subtitle: "A short, plain subtitle"
+author: "Your Name<br>Your Affiliation"
+format:
+  revealjs:
+    theme: [default, revealjs-style.scss]
+    highlight-style: monokai
+    slide-number: 'c/t'
+    transition: fade
+    navigation-mode: linear
+    width: 1920
+    height: 1080
+    margin: 0.05
+    center: true
+    auto-stretch: false
+---
+
+## Overview {.section-divider}
+
+## What this talk covers
+
+::: {.three-cards}
+::: {.card .card-blue}
+[The question]{.card-title}
+
+- what we set out to answer
+:::
+::: {.card .card-amber}
+[The approach]{.card-title}
+
+- how we went about it
+:::
+::: {.card .card-teal}
+[The takeaway]{.card-title}
+
+- what you should remember
+:::
+:::
+
+::: {.explainer}
+Edit this deck: each `##` heading is a new slide. Keep bullets short, and reach
+for cards (above) instead of long or nested lists.
+:::
+
+## A single point that must land
+
+::: {.highlight-box}
+State the one idea for this slide here — one or two lines, no more.
+:::
+
+## By the numbers
+
+::: {.stat-cards}
+::: {.stat-card}
+[42%]{.stat-number}
+[Metric one]{.stat-label}
+:::
+::: {.stat-card}
+[3.1×]{.stat-number}
+[Metric two]{.stat-label}
+:::
+::: {.stat-card}
+[$8M]{.stat-number}
+[Metric three]{.stat-label}
+:::
+:::
+
+## A figure
+
+![](images/your_chart.svg)
+
+::: {.notes}
+Spoken narration for this slide goes here. Add notes on slides you will present
+or narrate — they also power the tutorbot-builder skill if you later want a
+self-paced, narrated version.
+:::
+
+## Thank you {.centered-statement}
+
+your.email@example.edu

@@ -1,0 +1,1187 @@
+/*-- scss:defaults --*/
+
+// Color palette
+$dark-navy: #0f172a;
+$slate: #334155;
+$bright-blue: #3b82f6;
+$amber: #f59e0b;
+$off-white: #f8fafc;
+$light-blue-tint: #eff6ff;
+
+// Fonts
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+$font-family-sans-serif: 'Inter', system-ui, -apple-system, sans-serif;
+$presentation-font-size-root: 44px;
+$presentation-line-height: 1.5;
+$presentation-h1-font-size: 1.8em;
+$presentation-h2-font-size: 1.5em;
+
+$body-color: $slate;
+$presentation-heading-color: $dark-navy;
+$link-color: tomato;
+$body-bg: $off-white;
+
+/*-- scss:rules --*/
+
+// Inline shell command styling (white on black)
+.shell-cmd {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+// Hide empty h2 (no-title slides)
+.reveal .slides section h2:empty {
+  display: none;
+}
+
+// No-title class: hide h2 and reclaim space
+.no-title h2 {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 0 !important;
+}
+
+// ── Global slide styling ──
+// Vertically center all slide content.
+// Only apply flex layout to the active (.present) slide.
+// Non-active slides must be fully hidden to prevent ghost bleed-through.
+.reveal .slides section {
+  text-align: left;
+  height: 100% !important;
+  padding: 0.5em 0;
+  background: $off-white;
+}
+
+.reveal .slides section.present {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+// Hide non-active slides completely to prevent ghost text
+.reveal .slides section:not(.present) {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.reveal .slide-number {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.5em;
+  color: rgba($slate, 0.5);
+}
+
+.reveal h2 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-top: 0;
+  margin-bottom: 0.4em;
+  border-bottom: 3px solid $bright-blue;
+  padding-bottom: 0.15em;
+  display: inline-block;
+}
+
+// ── Title slide ──
+#title-slide {
+  background: $dark-navy !important;
+  text-align: left !important;
+  padding: 3em 2em !important;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    display: none;
+  }
+
+  h1.title {
+    color: #fff !important;
+    font-size: 2.4em !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.03em;
+    border: none !important;
+    margin-bottom: 0.2em;
+  }
+
+  .subtitle {
+    color: $bright-blue !important;
+    font-size: 1.1em !important;
+    font-weight: 400;
+  }
+
+  .author,
+  .quarto-title-authors {
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 1.1em !important;
+    font-weight: 400;
+    margin-top: 1.5em;
+    text-align: left !important;
+  }
+
+  .quarto-title-author-name {
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 1em !important;
+    font-weight: 400;
+  }
+
+  .date {
+    display: none;
+  }
+}
+
+// ── Quote slides ──
+.quote-slide {
+  h2 {
+    color: rgba(255, 255, 255, 0.9) !important;
+    border-bottom-color: $amber !important;
+    font-size: 1.2em;
+  }
+
+  background: $dark-navy !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+
+  .quote-text {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 1.15em;
+    line-height: 1.65;
+    max-width: 88%;
+
+    .amber {
+      color: $amber;
+      font-weight: 600;
+      font-style: normal;
+    }
+  }
+
+  .quote-source {
+    margin-top: 1.5em;
+    font-family: 'Inter', sans-serif;
+    font-style: normal;
+    font-size: 0.7em;
+    color: rgba(255, 255, 255, 0.45);
+  }
+}
+
+// ── Stat cards ──
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1em;
+  margin-top: 0.5em;
+
+  .stat-card {
+    background: $light-blue-tint;
+    border-radius: 12px;
+    padding: 1em 1.2em;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    text-align: center;
+
+    .stat-number {
+      font-size: 2.4em;
+      font-weight: 900;
+      color: $bright-blue;
+      line-height: 1.1;
+    }
+
+    .stat-label {
+      font-size: 0.65em;
+      color: $slate;
+      margin-top: 0.3em;
+      line-height: 1.3;
+    }
+  }
+}
+
+.stat-cards .bottom-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1em;
+}
+
+// ── Base card styling (applies everywhere .card is used) ──
+.card {
+  border-radius: 22px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+// ── Color card variants (equal visual weight, no emphasis) ──
+$card-blue-bg: #dbeafe;
+$card-blue-title: #2563eb;
+$card-amber-bg: #fef3c7;
+$card-amber-title: #d97706;
+$card-teal-bg: #ccfbf1;
+$card-teal-title: #0d9488;
+$card-purple-bg: #e9d5ff;
+$card-purple-title: #7c3aed;
+
+.card-dark {
+  background: $dark-navy;
+  color: #fff;
+  border-radius: 22px;
+  padding: 1.2em 1.5em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  .card-title { color: $amber; }
+  .accent { color: $amber; font-weight: 700; }
+}
+
+.card-blue {
+  background: $card-blue-bg;
+  color: $slate;
+  border-radius: 22px;
+  padding: 1.2em 1.5em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  .card-title { color: $card-blue-title; }
+  .accent { color: #1d4ed8; font-weight: 700; }
+}
+
+.card-amber {
+  background: $card-amber-bg;
+  color: $slate;
+  border-radius: 22px;
+  padding: 1.2em 1.5em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  .card-title { color: $card-amber-title; }
+  .accent { color: #b45309; font-weight: 700; }
+}
+
+.card-teal {
+  background: $card-teal-bg;
+  color: $slate;
+  border-radius: 22px;
+  padding: 1.2em 1.5em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  .card-title { color: $card-teal-title; }
+  .accent { color: #0f766e; font-weight: 700; }
+}
+
+.card-purple {
+  background: $card-purple-bg;
+  color: $slate;
+  border-radius: 22px;
+  padding: 1.2em 1.5em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  .card-title { color: $card-purple-title; }
+  .accent { color: #6d28d9; font-weight: 700; }
+}
+
+.card-red {
+  background: #fee2e2;
+  color: $slate;
+  border-radius: 22px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  .card-title { color: #dc2626; }
+  .accent { color: #b91c1c; font-weight: 700; }
+}
+
+// ── Info card (standalone) ──
+.info-card {
+  background: $light-blue-tint;
+  color: $slate;
+  border-radius: 10px;
+  padding: 0.8em 1.2em;
+  font-size: 0.75em;
+  line-height: 1.6;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  margin-top: 0.5em;
+
+  ul {
+    margin: 0.3em 0 0 1.2em;
+    padding: 0;
+  }
+}
+
+// ── Two cards (problem / solution) ──
+.two-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5em;
+  margin-top: 0.4em;
+
+  .card {
+    border-radius: 22px;
+    padding: 1.2em 1.5em;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+
+    .card-title {
+      display: block;
+      font-size: 0.9em;
+      font-weight: 700;
+      margin-bottom: 0.5em;
+    }
+
+    ul {
+      font-size: 0.78em;
+      line-height: 1.5;
+      margin: 0;
+      padding-left: 1.2em;
+    }
+  }
+
+  .card-dark {
+    background: $dark-navy;
+    color: #fff;
+
+    .card-title { color: $amber; }
+  }
+
+  .card-light {
+    background: $light-blue-tint;
+    color: $slate;
+
+    .card-title { color: $bright-blue; }
+
+    .metric {
+      font-weight: 800;
+      color: $bright-blue;
+    }
+  }
+}
+
+.case-quote {
+  text-align: center;
+  margin-top: 0.8em;
+  font-size: 0.75em;
+  font-style: italic;
+  color: $slate;
+
+  .amber {
+    color: $amber;
+    font-weight: 700;
+    font-style: normal;
+  }
+}
+
+.case-source {
+  text-align: center;
+  font-size: 0.6em;
+  color: rgba($slate, 0.6);
+  margin-top: 0.3em;
+}
+
+// ── Section divider ──
+.section-divider {
+  background: $dark-navy !important;
+  text-align: center !important;
+  align-items: center !important;
+
+  h2 {
+    color: #fff !important;
+    font-size: 2.2em !important;
+    border-bottom-color: $amber !important;
+  }
+}
+
+// ── Step flow ──
+.step-flow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.2em;
+  margin-top: 0.8em;
+
+  .step-card {
+    background: $light-blue-tint;
+    border-radius: 12px;
+    padding: 1.2em 1em;
+    text-align: center;
+    position: relative;
+
+    .step-icon {
+      font-size: 2em;
+      margin-bottom: 0.2em;
+    }
+
+    .step-title {
+      font-size: 0.8em;
+      font-weight: 800;
+      color: $dark-navy;
+      margin-bottom: 0.2em;
+    }
+
+    .step-desc {
+      font-size: 0.6em;
+      color: $slate;
+      line-height: 1.4;
+    }
+
+    &::after {
+      content: "\2192";
+      position: absolute;
+      right: -0.8em;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.4em;
+      color: $bright-blue;
+      font-weight: 700;
+    }
+
+    &:last-child::after {
+      display: none;
+    }
+  }
+}
+
+// ── Tool grid ──
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1.2em;
+  margin-top: 1em;
+
+  .tool-card {
+    background: $light-blue-tint;
+    border-radius: 12px;
+    padding: 1.5em 1em;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+
+    .tool-icon {
+      font-size: 2.5em;
+      margin-bottom: 0.3em;
+    }
+
+    .tool-label {
+      font-size: 0.75em;
+      font-weight: 600;
+      color: $dark-navy;
+    }
+  }
+}
+
+// ── Mermaid diagrams ──
+.reveal .mermaid svg {
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.reveal .mermaid {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  transform: scale(3.5);
+  transform-origin: top left;
+  margin-bottom: 14em;
+}
+
+.reveal .mermaid .nodeLabel {
+  font-weight: 700 !important;
+  font-size: 1.1em !important;
+}
+
+.reveal .mermaid .edgeLabel {
+  font-weight: 600 !important;
+}
+
+// ── Links ──
+.reveal a {
+  color: tomato;
+}
+
+// ── Inline code ──
+.reveal code {
+  color: $dark-navy;
+}
+
+// Standalone card styles (outside card grid containers)
+.reveal section .card-dark:not(.card) {
+  background: $dark-navy;
+  color: #fff;
+  border-radius: 12px;
+  padding: 1.2em 1.5em;
+  margin: 0.5em 0;
+  font-size: 0.85em;
+  line-height: 1.5;
+
+  .card-title { color: $amber; }
+}
+
+.reveal section .card-light:not(.card) {
+  background: $light-blue-tint;
+  color: $slate;
+  border-radius: 12px;
+  padding: 1.2em 1.5em;
+  margin: 0.5em 0;
+  font-size: 0.85em;
+  line-height: 1.5;
+
+  .card-title { color: $bright-blue; }
+}
+
+// Inline code on dark backgrounds
+.card-dark code,
+.code-box code,
+.section-divider code {
+  color: #93c5fd;
+}
+
+// ── Code blocks ──
+.reveal pre {
+  background: #1e293b;
+  border-radius: 10px;
+  padding: 1.2em 1.5em;
+  font-size: 0.75em;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.reveal pre code {
+  color: #e2e8f0;
+  background: transparent;
+  max-height: none;
+  overflow: visible;
+}
+
+// ── Explainer text ──
+.explainer {
+  font-size: 0.82em;
+  line-height: 1.55;
+  color: $slate;
+  margin-top: 0.8em;
+}
+
+// ── Agent components list ──
+.agent-components {
+  font-size: 0.82em;
+
+  li {
+    margin-bottom: 0.6em;
+  }
+}
+
+// ── Image slide ──
+.image-slide {
+  text-align: center;
+  align-items: center;
+
+  h2 {
+    display: inline-block;
+    margin-bottom: 0.2em;
+  }
+
+  h3 {
+    font-size: 1em;
+    margin-top: 0;
+    margin-bottom: 0.2em;
+  }
+
+  img {
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// ── Fix images in flex-column slide layout ──
+// auto-stretch is disabled in YAML to prevent Reveal.js r-stretch from
+// collapsing images to height:0 in the flex-column layout.
+.reveal .slides section img {
+  flex-shrink: 0;
+  display: block;
+  margin: auto;
+}
+
+.reveal .slides section.image-slide img {
+  max-height: none;
+  max-width: none;
+}
+
+// Contained images: respect max-height/max-width inside a wrapper div
+.reveal .slides section .img-contain img {
+  flex-shrink: 1 !important;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+// ── Inline text classes ──
+.amber {
+  color: $amber;
+  font-weight: 600;
+}
+
+.accent {
+  color: $bright-blue;
+  font-weight: 600;
+}
+
+// ── Info box ──
+.info-box {
+  background: $light-blue-tint;
+  border-radius: 12px;
+  padding: 1em 1.3em;
+  margin-top: 0.4em;
+  margin-bottom: 0.4em;
+  font-size: 0.82em;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+
+  .box-title {
+    display: block;
+    font-size: 1.05em;
+    font-weight: 700;
+    color: $bright-blue;
+    margin-bottom: 0.4em;
+  }
+
+  ul, ol {
+    margin: 0;
+    padding-left: 1.2em;
+    line-height: 1.5;
+  }
+}
+
+// ── Highlight box ──
+.highlight-box {
+  background: rgba($bright-blue, 0.06);
+  border-left: 4px solid $bright-blue;
+  border-radius: 0 12px 12px 0;
+  padding: 0.8em 1.2em;
+  margin-top: 0.4em;
+  margin-bottom: 0.4em;
+  font-size: 0.82em;
+}
+
+// ── Two-column text layout ──
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5em;
+  margin-top: 0.4em;
+  font-size: 0.82em;
+}
+
+// ── Three cards ──
+.three-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.2em;
+  margin-top: 0.4em;
+
+  .card {
+    border-radius: 22px;
+    padding: 1em 1.2em;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+
+    .card-title {
+      display: block;
+      font-size: 0.9em;
+      font-weight: 700;
+      margin-bottom: 0.4em;
+    }
+
+    ul, ol {
+      font-size: 0.78em;
+      line-height: 1.5;
+      margin: 0;
+      padding-left: 1.2em;
+    }
+  }
+
+  .card-dark {
+    background: $dark-navy;
+    color: #fff;
+    .card-title { color: $amber; }
+  }
+
+  .card-light {
+    background: $light-blue-tint;
+    color: $slate;
+    .card-title { color: $bright-blue; }
+  }
+}
+
+// ── Six cards (3×2 grid) ──
+.six-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.2em;
+  margin-top: 0.6em;
+
+  .card {
+    border-radius: 12px;
+    padding: 1.2em 1.5em;
+    text-align: center;
+    font-size: 0.9em;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  }
+}
+
+// ── Four cards ──
+.four-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1em;
+  margin-top: 0.4em;
+
+  .card {
+    border-radius: 22px;
+    padding: 0.8em 1em;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+
+    .card-title {
+      display: block;
+      font-size: 0.85em;
+      font-weight: 700;
+      margin-bottom: 0.3em;
+    }
+
+    ul, ol {
+      font-size: 0.72em;
+      line-height: 1.4;
+      margin: 0;
+      padding-left: 1.1em;
+    }
+  }
+
+  .card-dark {
+    background: $dark-navy;
+    color: #fff;
+    .card-title { color: $amber; }
+  }
+
+  .card-light {
+    background: $light-blue-tint;
+    color: $slate;
+    .card-title { color: $bright-blue; }
+  }
+}
+
+// ── Code box ──
+.code-box {
+  background: $dark-navy;
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 1.2em 1.5em;
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.72em;
+  line-height: 1.6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 0.5em;
+
+  .box-title {
+    display: block;
+    color: $bright-blue;
+    font-weight: 700;
+    margin-bottom: 0.5em;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.1em;
+  }
+}
+
+// ── Prompt box (user message — blue tint) ──
+.prompt-box {
+  background: #dbeafe;
+  color: $dark-navy;
+  border-radius: 10px;
+  padding: 1.2em 1.5em;
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.72em;
+  line-height: 1.6;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  margin-top: 0.5em;
+
+  .box-title {
+    display: block;
+    color: $card-blue-title;
+    font-weight: 700;
+    margin-bottom: 0.5em;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.1em;
+  }
+}
+
+// ── Response box (Claude's reply — light gray) ──
+.response-box {
+  background: #e8eaed;
+  color: $dark-navy;
+  border-radius: 10px;
+  padding: 1.2em 1.5em;
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.72em;
+  line-height: 1.6;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  margin-top: 0.5em;
+
+  .box-title {
+    display: block;
+    color: $slate;
+    font-weight: 700;
+    margin-bottom: 0.5em;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.1em;
+  }
+}
+
+// ── Comparison table ──
+.comparison-table {
+  margin-top: 0.5em;
+  font-size: 0.78em;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th {
+      background: $dark-navy;
+      color: #fff;
+      padding: 0.6em 1em;
+      text-align: left;
+      font-weight: 700;
+    }
+
+    td {
+      padding: 0.5em 1em;
+      border-bottom: 1px solid rgba($slate, 0.15);
+    }
+
+    tr:nth-child(even) td {
+      background: $light-blue-tint;
+    }
+  }
+}
+
+// ── Timeline ──
+.timeline {
+  display: flex;
+  gap: 1em;
+  margin-top: 0.6em;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 1.5em;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: $bright-blue;
+    z-index: 0;
+  }
+
+  .timeline-item {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+
+    .timeline-dot {
+      width: 16px;
+      height: 16px;
+      background: $bright-blue;
+      border-radius: 50%;
+      margin: 0.8em auto 0.5em;
+      border: 3px solid $off-white;
+      box-shadow: 0 0 0 2px $bright-blue;
+    }
+
+    .timeline-label {
+      font-size: 0.7em;
+      font-weight: 700;
+      color: $dark-navy;
+    }
+
+    .timeline-desc {
+      font-size: 0.6em;
+      color: $slate;
+      margin-top: 0.2em;
+      line-height: 1.3;
+    }
+  }
+}
+
+// ── Centered statement slide ──
+.centered-statement {
+  text-align: center !important;
+  align-items: center !important;
+
+  h2 {
+    border: none !important;
+  }
+}
+
+// ── Shrink class for dense slides ──
+.shrink {
+  font-size: 0.9em;
+
+  h2 {
+    font-size: 1.3em;
+  }
+
+  ul, ol {
+    font-size: 0.92em;
+  }
+}
+
+// ── Styled tables ──
+.reveal table {
+  font-size: 0.78em;
+  border-collapse: collapse;
+  margin-top: 0.3em;
+
+  th {
+    background: $dark-navy;
+    color: #fff;
+    padding: 0.5em 0.8em;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  td {
+    padding: 0.4em 0.8em;
+    border-bottom: 1px solid rgba($slate, 0.15);
+  }
+
+  tr:nth-child(even) td {
+    background: $light-blue-tint;
+  }
+}
+
+// ── Agent architecture diagram ──
+.agent-architecture {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  grid-template-rows: auto auto auto auto auto;
+  gap: 0;
+  margin-top: 0.8em;
+  align-items: center;
+  justify-items: center;
+
+  .arch-box {
+    border-radius: 12px;
+    padding: 0.9em 2em;
+    text-align: center;
+    font-size: 0.9em;
+    font-weight: 700;
+    min-width: 7em;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+
+  .arch-dark {
+    background: $dark-navy;
+    color: #fff;
+  }
+
+  .arch-light {
+    background: $light-blue-tint;
+    color: $dark-navy;
+  }
+
+  .arch-accent {
+    background: $bright-blue;
+    color: #fff;
+  }
+
+  // Grid placement — row 1: database, row 2: arrow down, row 3: user-agent-LLM, row 4: arrow up, row 5: tools
+  .arch-database { grid-column: 3; grid-row: 1; }
+  .arch-arrow-down { grid-column: 3; grid-row: 2; }
+  .arch-user   { grid-column: 1; grid-row: 3; }
+  .arch-h1     { grid-column: 2; grid-row: 3; }
+  .arch-agent  { grid-column: 3; grid-row: 3; }
+  .arch-h2     { grid-column: 4; grid-row: 3; }
+  .arch-llm    { grid-column: 5; grid-row: 3; }
+  .arch-arrow-up { grid-column: 3; grid-row: 4; }
+  .arch-tools  { grid-column: 3; grid-row: 5; }
+
+  // Horizontal arrows
+  .arch-arrow-h {
+    font-size: 1.6em;
+    font-weight: 700;
+    color: $bright-blue;
+    padding: 0 0.3em;
+  }
+
+  // Vertical arrows
+  .arch-arrow-v {
+    font-size: 1.6em;
+    font-weight: 700;
+    color: $bright-blue;
+    line-height: 1;
+    padding: 0.1em 0;
+  }
+}
+
+// ── Chatbot architecture diagram ──
+.chatbot-architecture {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 0;
+  margin-top: 0.8em;
+  align-items: center;
+  justify-items: center;
+
+  .chat-box {
+    border-radius: 12px;
+    padding: 0.9em 2em;
+    text-align: center;
+    font-size: 0.9em;
+    font-weight: 700;
+    min-width: 7em;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+
+  .chat-user {
+    grid-column: 1; grid-row: 1;
+    background: $dark-navy;
+    color: #fff;
+  }
+
+  .chat-chatbot {
+    grid-column: 3; grid-row: 1;
+    background: $bright-blue;
+    color: #fff;
+  }
+
+  .chat-llm {
+    grid-column: 5; grid-row: 1;
+    background: $dark-navy;
+    color: #fff;
+  }
+
+  .chat-arrow {
+    font-size: 1.6em;
+    font-weight: 700;
+    color: $bright-blue;
+    padding: 0 0.3em;
+  }
+
+  .chat-a1 { grid-column: 2; grid-row: 1; }
+  .chat-a2 { grid-column: 4; grid-row: 1; }
+
+  .chat-label {
+    grid-column: 4;
+    grid-row: 1 / 3;
+    align-self: center;
+    font-size: 0.6em;
+    color: $slate;
+    text-align: left;
+    padding: 0.8em 1em;
+    line-height: 1.6;
+    background: $light-blue-tint;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  }
+}
+
+// ── Step flow variants ──
+.step-flow-5 {
+  @extend .step-flow;
+  grid-template-columns: repeat(5, 1fr);
+
+  .step-card {
+    padding: 1em 0.8em;
+
+    .step-icon { font-size: 1.6em; }
+    .step-title { font-size: 1em; }
+    .step-desc { font-size: 0.82em; }
+  }
+}
+
+.step-flow-6 {
+  @extend .step-flow;
+  grid-template-columns: repeat(6, 1fr);
+
+  .step-card {
+    padding: 0.8em 0.6em;
+
+    .step-icon { font-size: 1.4em; }
+    .step-title { font-size: 0.68em; }
+    .step-desc { font-size: 0.5em; }
+  }
+}
+
+// ── Speaker notes (shown in presenter view) ──
+.reveal aside.notes {
+  font-size: 0.6em;
+  line-height: 1.4;
+}
+
+// ── Top-aligned slide ──
+.top-aligned {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding-top: 0.5em !important;
+
+  h2 {
+    margin-bottom: 0.3em;
+    font-size: 1.4em;
+  }
+
+  .quarto-figure {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+
+    img {
+      max-height: 78vh;
+      width: auto;
+      object-fit: contain;
+    }
+  }
+}
+
+// ── API access table ──
+.api-access-columns {
+  display: flex;
+  gap: 3em;
+  justify-content: center;
+}
+
+.api-access-table {
+
+  table {
+    width: auto;
+    border-collapse: collapse;
+    font-size: 0.65em;
+
+    th {
+      background: $dark-navy;
+      color: #fff;
+      padding: 0.3em 1.2em;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    td {
+      padding: 0.25em 1.2em;
+      border-bottom: 1px solid rgba($slate, 0.15);
+    }
+  }
+}
+
+.api-green {
+  background: #22c55e;
+  color: #fff;
+  padding: 0.15em 0.6em;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+.api-yellow {
+  background: #eab308;
+  color: #fff;
+  padding: 0.15em 0.6em;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.95em;
+}
+
+.api-red {
+  background: #ef4444;
+  color: #fff;
+  padding: 0.15em 0.6em;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.95em;
+}
