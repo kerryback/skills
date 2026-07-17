@@ -41,7 +41,21 @@ FRONTEND = REPO / "frontend"
 # updating the skill never wipes projects, and (b) the package source stays clean
 # for repackaging. Override the data location with DATA_DIR in the environment.
 # The Python environment is shared and built once, in the user's home.
-VENV_DIR = Path(os.environ.get("VOICEOVER_HOME", Path.home() / ".voiceover")) / "venv"
+HOME_DIR = Path(os.environ.get("VOICEOVER_HOME", Path.home() / ".voiceover"))
+VENV_DIR = HOME_DIR / "venv"
+
+
+def _open_in_studio() -> bool:
+    """True when we're running inside Academic Studio AND its bundled extension is
+    active and will open the app in an in-editor Simple Browser tab. In that case
+    we skip the external browser. Requires BOTH signals so that an older Studio
+    build (no in-app extension yet) still falls back to the external browser."""
+    if os.environ.get("VOICEOVER_NO_BROWSER"):
+        return True
+    ident = os.environ.get("__CFBundleIdentifier", "")
+    ipc = os.environ.get("VSCODE_IPC_HOOK", "").lower()
+    in_studio = ident == "com.academicstudio.app" or "academic studio" in ipc
+    return in_studio and (HOME_DIR / "inapp").exists()
 
 
 def log(msg):
@@ -174,7 +188,17 @@ def main():
         else:
             url = base
             log("No deck given — opening the home screen (pick a deck or upload one).")
-        webbrowser.open(url)
+        # Publish the URL so Academic Studio's extension can open it in an in-editor
+        # Simple Browser tab; harmless everywhere else.
+        try:
+            HOME_DIR.mkdir(parents=True, exist_ok=True)
+            (HOME_DIR / "app-url").write_text(url, encoding="utf-8")
+        except OSError:
+            pass
+        if _open_in_studio():
+            log("Opening inside Academic Studio (Simple Browser)…")
+        else:
+            webbrowser.open(url)
         log(f"Open: {url}")
         log(f"Finished MP4 + transcript will be saved to: {output_dir}")
         log("Leave this running while you work. Press Ctrl-C to stop the app.")
