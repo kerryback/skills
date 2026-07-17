@@ -84,19 +84,28 @@ absolute path. `<port>` defaults to 8010.
 
 4. Draft (or revise) the narration yourself. This is the heart of the skill — do
    not wait for the instructor and do not expect the app to draft anything.
-   - Read the PDF directly (you can see each slide) to understand the deck.
-   - Confirm the slide list once the deck has converted:
+   - Work from the extracted slide text, not the PDF images. Once the deck has
+     converted, get the slides:
      `GET http://127.0.0.1:<port>/api/projects/<deck>/narration` returns
-     `{ "slides": [ { "index": 0, "title": "…", "narration": "…" }, … ] }` (indexes
-     0-based, one per PDF page). Poll until slides appear if it is still converting.
+     `{ "slides": [ { "index": 0, "title": "…", "slide_text": "…", "narration": "…" }, … ] }`
+     (indexes 0-based, one per PDF page; poll until slides appear if it is still
+     converting). Each slide's `slide_text` is the page's text — draft from that.
+     This is far faster than rendering the whole PDF as images; do NOT read the
+     whole PDF up front.
+   - Only when a slide's `slide_text` is empty or clearly missing the visual
+     content (a chart, diagram, or all-image slide) read just that one page's
+     image — the app serves it at
+     `GET http://127.0.0.1:<port>/api/projects/<deck>/slides/slide-<NNN>.png`
+     (NNN is the 1-based, zero-padded page number, e.g. slide-003.png), or read
+     that single page of the PDF. Don't render pages whose text is enough.
    - If narration is already present (a reopened deck), leave it unless the
      instructor asks for changes. If it is empty (a new deck), write spoken
-     narration for every slide following the style rules below.
-   - Save a full draft in one call:
+     narration for every slide following the style rules below — in one pass.
+   - Save the whole draft in one call (don't PUT slide by slide):
      `PUT http://127.0.0.1:<port>/api/projects/<deck>/narration` with body
      `{ "slides": [ { "index": 0, "narration": "…" }, … ] }`.
      It appears in the instructor's browser within a few seconds (the Narration
-     step polls). To revise a single slide, PUT
+     step polls). To revise a single slide later, PUT
      `/api/projects/<deck>/narration/<index>` with `{ "narration": "…" }`.
 
 5. Hand off to the instructor:

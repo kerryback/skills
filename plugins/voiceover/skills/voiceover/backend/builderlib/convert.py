@@ -58,6 +58,35 @@ def _deck_name(source_path: Path) -> str:
     return stem
 
 
+def _extract_pdf_text(source_path: Path, n: int) -> list:
+    """Per-page {title, slide_text} from the PDF, so Claude Code can draft narration
+    from lightweight text instead of rendering every page as an image (which is slow
+    and token-heavy for a big deck). Pages with no extractable text — e.g. scanned or
+    all-graphic slides — come back empty, and the agent falls back to the page image
+    for just those slides."""
+    try:
+        import fitz  # PyMuPDF
+    except Exception:  # pragma: no cover - dependency guaranteed at runtime
+        try:
+            import pymupdf as fitz
+        except Exception:
+            return [{"title": "", "slide_text": ""} for _ in range(n)]
+    out = []
+    try:
+        with fitz.open(source_path) as doc:
+            for page in doc:
+                raw = page.get_text("text") or ""
+                lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+                title = lines[0][:80] if lines else ""
+                text = re.sub(r"\s+", " ", raw).strip()
+                out.append({"title": title, "slide_text": text})
+    except Exception:
+        return [{"title": "", "slide_text": ""} for _ in range(n)]
+    if len(out) < n:
+        out += [{"title": "", "slide_text": ""} for _ in range(n - len(out))]
+    return out[:n]
+
+
 def convert(project_id: str, source_path: Path, source_type: str) -> dict:
     """Run conversion; return {"deck_name", "slides":[...]}.
 
@@ -77,7 +106,9 @@ def convert(project_id: str, source_path: Path, source_type: str) -> dict:
         pdfconv.write_scss(deck_dir)
         pdfconv.build_qmd(deck_slides, out_qmd)
         _copy_slide_images(deck_dir, slides_dir)
-        slides = [{"index": i, "title": "", "slide_text": "", "narration": ""}
+        text = _extract_pdf_text(source_path, len(images))
+        slides = [{"index": i, "title": text[i]["title"],
+                   "slide_text": text[i]["slide_text"], "narration": ""}
                   for i in range(len(images))]
         return {"deck_name": name, "slides": slides}
 
