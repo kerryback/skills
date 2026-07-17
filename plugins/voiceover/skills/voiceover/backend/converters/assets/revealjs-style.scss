@@ -1,0 +1,29 @@
+/*-- scss:defaults --*/
+// Full-bleed image-per-slide deck (used by pdf_to_revealjs.py).
+// Each slide is a single background image (background-size: contain) letterboxed
+// on black; speaker notes carry the narration. Slides have empty headings, so
+// hide them to keep the image edge-to-edge.
+
+$body-bg: #000000;
+
+/*-- scss:rules --*/
+
+// Hide the empty per-slide headings the image deck emits.
+.reveal .slides section h1:empty,
+.reveal .slides section h2:empty {
+  display: none;
+  margin: 0;
+  padding: 0;
+  height: 0;
+}
+
+.reveal .slides section {
+  height: 100%;
+  padding: 0;
+}
+
+// Speaker notes styling (only visible in presenter view; used as narration).
+.reveal aside.notes {
+  font-size: 0.6em;
+  line-height: 1.4;
+}

@@ -1,0 +1,26 @@
+{
+  "name": "academic-studio",
+  "owner": { "name": "Kerry Back" },
+  "plugins": [
+    {
+      "name": "voiceover",
+      "source": "./plugins/voiceover",
+      "description": "Turn a PDF slide deck into a narrated MP4 video plus a transcript. Claude Code writes the per-slide narration; ElevenLabs voices it. Requires quarto and an ElevenLabs API key."
+    },
+    {
+      "name": "slides",
+      "source": "./plugins/slides",
+      "description": "Build a polished slide deck as a Quarto reveal.js presentation — HTML slides you render, present in a browser, and export to PDF, PowerPoint, or PNG."
+    },
+    {
+      "name": "finance-data",
+      "source": "./plugins/finance-data",
+      "description": "Fetch free financial, market, and economic data (prices, fundamentals, SEC filings, macro series, asset-pricing factors) from Yahoo, Stooq, SEC EDGAR, FRED, Ken French, FinnHub, FMP, and US Treasury, and save it as CSV."
+    },
+    {
+      "name": "critique",
+      "source": "./plugins/critique",
+      "description": "Critique and revise work produced by Claude. Spawns parallel reviewer agents, synthesizes findings, and applies revisions. Heavyweight — fans out multiple subagents."
+    }
+  ]
+}

@@ -1,76 +1,74 @@
 # Skills
 
-A collection of [Claude Code](https://claude.com/claude-code) skills — reusable
-building blocks for course materials, data workflows, deck production, and
-teaching agents.
+A [Claude Code](https://claude.com/claude-code) plugin marketplace of
+authoring/teaching skills — reusable building blocks for course materials, data
+workflows, deck production, and reviewing work.
 
-Each folder in this repo is one skill: a `SKILL.md` file (instructions Claude
-follows) plus any supporting scripts, references, or assets it needs.
+This repo is a plugin marketplace: each skill is packaged as a plugin under
+`plugins/<name>/`. It installs either with Claude Code's built-in plugin commands
+or with the `npx skills` CLI — both read the same manifest.
 
 ## Install
 
-From any project (or your home directory for a global install), run:
+### Claude Code plugins (built-in)
+
+```
+/plugin marketplace add kerryback/skills
+/plugin install voiceover@academic-studio
+```
+
+Non-interactively:
+
+```
+claude plugin marketplace add kerryback/skills
+claude plugin install voiceover@academic-studio
+```
+
+Swap `voiceover` for `slides`, `finance-data`, or `critique`.
+
+### npx skills CLI
 
 ```
 npx skills@latest add kerryback/skills
 ```
 
-That's it — no login or GitHub account needed. This is a public repo, so the
-command works for anyone.
+Pick skills from the interactive menu (or `--list` to preview). They install to
+`~/.claude/skills/<name>/` (global) or `<project>/.claude/skills/<name>/` (add
+`--project`). No login needed — this is a public repo.
 
-You'll get an interactive menu. Use the arrow keys to move, `space` to select
-the skills you want, and `enter` to confirm. Selected skills are copied into:
-
-- `~/.claude/skills/<name>/` — available in **every** project, or
-- `<project>/.claude/skills/<name>/` — scoped to one project (run the command
-  from inside that project)
-
-Start a new Claude Code session and the skills appear automatically.
-
-## Using a skill
-
-- **Automatically** — just describe your task. Claude loads any installed skill
-  whose description matches what you're doing.
-- **Explicitly** — type `/<skill-name>` (e.g. `/qmd-deck`) to invoke it on
-  demand.
+Installing copies the skill files only. External tools and API keys are each
+skill's own prerequisites — see the skill's README (the voiceover skill, for
+example, checks for `quarto` and `ELEVENLABS_API_KEY` and offers to set them up).
 
 ## Available skills
 
 | Skill | What it does |
 |-------|--------------|
-| [`critique`](./critique) | Spawn parallel reviewer agents to critique work from different angles, then synthesize and apply revisions. Heavyweight — fans out subagents. |
-| [`finance-data`](./finance-data) | Fetch free market/economic data (prices, fundamentals, FRED, factors) and save as CSV. |
-| [`qmd-deck`](./qmd-deck) | Build a polished Quarto reveal.js deck — HTML slides you render and export to PDF, PPTX, or PNG. |
+| [`voiceover`](./plugins/voiceover/skills/voiceover) | PDF slide deck → narrated MP4 + transcript. Claude Code writes the narration; ElevenLabs voices it. Needs `quarto` + `ELEVENLABS_API_KEY`. |
+| [`slides`](./plugins/slides/skills/slides) | Build a polished Quarto reveal.js deck — HTML slides you render and export to PDF, PPTX, or PNG. |
+| [`finance-data`](./plugins/finance-data/skills/finance-data) | Fetch free market/economic data (prices, fundamentals, FRED, factors) and save as CSV. |
+| [`critique`](./plugins/critique/skills/critique) | Spawn parallel reviewer agents to critique work from different angles, then synthesize and apply revisions. Heavyweight — fans out subagents. |
+
+## Layout
+
+```
+.claude-plugin/marketplace.json      the marketplace manifest (lists the plugins)
+plugins/<name>/
+  .claude-plugin/plugin.json         the plugin manifest
+  skills/<name>/                     the skill: SKILL.md + its scripts/references/assets
+```
 
 ## Contributing a skill
 
-1. Create a folder named after your skill (kebab- or snake-case).
-2. Add a `SKILL.md` with YAML frontmatter:
+1. Create `plugins/<name>/` with a `.claude-plugin/plugin.json` (`name`,
+   `description`, `version`).
+2. Put the skill at `plugins/<name>/skills/<name>/SKILL.md`, with YAML
+   frontmatter (`name`, `description`) plus any `scripts/`, `references/`, or
+   `assets/` it needs. Use relative paths inside the skill so it works wherever
+   it installs.
+3. Add the plugin to `.claude-plugin/marketplace.json` and a row to the table
+   above.
+4. Open a PR.
 
-   ```
-   ---
-   name: my-skill
-   description: >-
-     One or two sentences. Lead with what it does, then the trigger phrases
-     ("Use this whenever the user wants to ..."). This text is what Claude
-     matches against, so make it specific.
-   ---
-
-   Instructions for Claude go here. Reference supporting files with relative
-   links like [helper.py](./scripts/helper.py) — they load on demand, not up
-   front, so keep the frontmatter lean and push detail into linked files.
-   ```
-
-3. Put any scripts/data/assets in subfolders (`scripts/`, `references/`,
-   `assets/`) and link to them from `SKILL.md`.
-4. Add a row to the table above.
-5. Open a PR.
-
-### Tips
-
-- Keep the `description` sharp — it's the only part always in context, and it's
-  what decides whether the skill triggers.
-- Use **relative paths** everywhere inside the skill so it works regardless of
-  where it's installed.
-- Test locally by copying your folder into `~/.claude/skills/` and starting a
-  fresh session before you push.
+Keep the `description` sharp — it's the part always in context, and it's what
+decides whether the skill triggers.

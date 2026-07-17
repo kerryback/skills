@@ -1,3 +1,17 @@
-.DS_Store
-__pycache__/
+# Secrets — never commit
+**/.env
+**/.env.*
+!**/.env.example
+
+# Runtime app data + envs (never in the repo)
+**/.venv/
+**/venv/
+**/data/
+**/__pycache__/
 *.pyc
+
+# Node deps (but NOT frontend/dist — the prebuilt UI ships via git)
+**/node_modules/
+
+.DS_Store
+*.swp
