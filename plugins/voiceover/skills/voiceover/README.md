@@ -2,38 +2,62 @@
 
 Turn a PDF slide deck into a narrated MP4 video plus a narration transcript.
 
-Two roles, kept separate:
+## Requirements
+
+Two things you provide; everything else is handled for you.
+
+- Quarto on your PATH — renders the deck for the video. Install from
+  https://quarto.org/docs/get-started/. (Needed for the Generate step; you can
+  draft narration without it.)
+- An ElevenLabs API key in `ELEVENLABS_API_KEY` — the text-to-speech voice. Get a
+  free key at https://elevenlabs.io and export it in your shell. (Needed for the
+  Generate step.)
+
+Handled for you: Python (the first launch builds a small virtual environment),
+ffmpeg (ships with the Python dependencies), and the web UI (ships prebuilt, so
+Node is not required). No Anthropic API key is needed — the narration is written
+by Claude Code, not by the app.
+
+## Two roles
 
 - Instructor — runs this app locally (a Claude Code skill) to author the video.
-  Claude Code writes the narration; the instructor reviews it, picks a voice, and
-  generates. The app, the port, the ElevenLabs key, and quarto all live here, on
-  the instructor's machine.
-- Students — run nothing. They receive two files, `<name>.mp4` (the narrated
-  video) and `<name>.txt` (the transcript), and view them like any other course
-  material. No app, no server, no localhost, no login.
+  Claude Code writes the per-slide narration; the instructor reviews it, picks a
+  voice, and generates. The app opens at http://127.0.0.1:8010.
+- Students — run nothing. They receive `<name>.mp4` (the narrated video) and
+  `<name>.txt` (the transcript) and view them like any other course material.
 
-The instructor invokes the skill on a PDF; the app opens at http://127.0.0.1:8010
-on the Narration step. Claude Code — the agent that launched the skill — reads the
-deck and writes the per-slide narration through the app's API; it appears in the
-browser live. The instructor reviews it (and asks Claude Code for revisions, or
-edits any slide directly), picks a voice, and generates. There is no login, no
-in-app upload, and no in-app download — on each build the finished `<name>.mp4` and
-`<name>.txt` are written to the instructor's working directory, and the instructor
-shares them with students however they normally distribute course materials.
+The instructor invokes the skill on a PDF; the app opens on the Narration step,
+where Claude Code's draft appears live. The instructor reviews it (asking Claude
+Code for revisions or editing any slide directly), picks a voice, and generates.
+The finished files are written to the working folder. The app makes no LLM calls
+of its own.
 
-The app itself makes no LLM calls: all narration comes from Claude Code, so no
-Anthropic API key is involved. The only key it needs is ElevenLabs, for
-text-to-speech in the Generate step.
+## Install
 
-## Install (Academic Studio)
+From the kerryback/skills plugin marketplace:
 
-This ships as an Academic Studio package. Open Help → Run Setup… and install
-"Voiceover Builder"; that installs the skill into `~/.claude/skills/voiceover`
-and the prerequisites (Quarto, Python). Set `ELEVENLABS_API_KEY` in your
-environment (a free key from elevenlabs.io); Claude walks you through this on
-first use. The first launch sets up a small Python environment automatically.
+```
+/plugin marketplace add kerryback/skills
+/plugin install voiceover@kerryback-skills
+```
 
-## Run as a skill
+or with the `skills` CLI:
+
+```
+npx skills@latest add kerryback/skills
+```
+
+or manually — clone and symlink the skill into your Claude Code skills directory:
+
+```
+git clone https://github.com/kerryback/skills.git
+ln -s "$(pwd)/skills/plugins/voiceover/skills/voiceover" ~/.claude/skills/voiceover
+```
+
+Installing copies files only; provide Quarto and `ELEVENLABS_API_KEY` yourself
+(the skill checks for both on first use and offers to help set them up).
+
+## Run
 
 Invoke `/voiceover` on a PDF, or run the launcher directly:
 
@@ -41,49 +65,32 @@ Invoke `/voiceover` on a PDF, or run the launcher directly:
 python3 scripts/skill_launch.py /path/to/deck.pdf
 ```
 
-It sets up the app environment (first run only), starts the app on port 8010,
-creates the project from the PDF, waits for the deck to convert, and opens the
-browser on the Narration step. Stop it with Ctrl-C.
+It builds the app environment (first run only), starts the app on port 8010,
+ingests the PDF, and opens the browser on the Narration step. Launch with no file
+to open the home screen (pick an existing deck or upload one). If port 8010 is in
+use, pass `--port 8011`. Stop with Ctrl-C.
 
-If port 8010 is already in use, run with a different one: `--port 8011`. Students
-never see this — it only affects the local app.
+## Storage and outputs
 
-Storage is folder-based — there is no database. Each deck is a folder under
-`{project}/.voiceover/decks/<deck-name>`, named after the deck, holding its PDF
-copy, narration, slides, and working files. The app lists decks by reading those
-folder names, so relaunching the same deck (from the same project folder) reopens
-it, and deleting a deck is just deleting its folder. The finished MP4 and
-transcript are written to the project folder itself (`<deck-name>.mp4` /
-`<deck-name>.txt`) so they are easy to find. The shared Python environment lives
-once in `~/.voiceover/venv`.
+No database. Each deck is a folder under `{project}/.voiceover/decks/<deck-name>`,
+named after the deck, holding its PDF copy, narration, slides, and working files.
+The app lists decks by reading those folder names, so relaunching the same deck
+(from the same folder) reopens it; delete a deck by deleting its folder. The
+finished `<deck-name>.mp4` and `<deck-name>.txt` are written to the project folder
+itself, so they are easy to find. The shared Python environment lives once in
+`~/.voiceover/venv`.
 
 ## Structure
 
 ```
-SKILL.md            the Claude Code skill definition (this dir installs as /voiceover)
+SKILL.md            the Claude Code skill definition (installs as /voiceover)
 backend/            FastAPI backend + builderlib (jobs, audio, video, converters)
 frontend/           React + Vite + Tailwind SPA (four-step wizard); dist/ ships prebuilt
-scripts/            skill_launch.py — the per-file launcher
-Dockerfile          container image (bundles Quarto; ffmpeg via pip) — for a future deployable build
-CONTRACT.md         API & data contract (source of truth for backend + frontend)
-CLAUDE.md           orientation + design decisions
+scripts/            skill_launch.py — the launcher
+Dockerfile          container image (bundles Quarto; ffmpeg via pip)
+CONTRACT.md         API and data contract
+CLAUDE.md           orientation and design decisions
 ```
-
-## Wizard
-
-Upload → Narration → Generate → Preview. Launched with a PDF, the app opens that
-deck on Narration, where Claude Code's draft appears; launched with no file, it
-opens the home screen to pick an existing deck or upload one. Preview plays the
-finished video; the MP4 + transcript are written to the project folder on each
-build.
-
-## Prerequisites
-
-- `quarto` on PATH (deck render). ffmpeg is provided by the `imageio-ffmpeg` pip
-  package — no system install.
-- `ELEVENLABS_API_KEY` in the environment (TTS).
-- The frontend ships prebuilt (`frontend/dist`), so Node is not needed to run —
-  only to rebuild the UI from source.
 
 ## Environment
 
@@ -91,6 +98,6 @@ build.
 | --- | --- |
 | `ELEVENLABS_API_KEY` | ElevenLabs TTS — voiceover audio (account + cloned voices) |
 | `DATA_DIR` | Per-project deck folders + working files (launcher sets `{project}/.voiceover`) |
-| `TTS_CONCURRENCY` | Parallel TTS requests per build (default 5; keep at or below your ElevenLabs account's concurrency limit) |
+| `TTS_CONCURRENCY` | Parallel TTS requests per build (default 5; at or below your ElevenLabs account's limit) |
 | `VIDEO_CONCURRENCY` | Parallel ffmpeg segment encodes per build (default 4) |
-| `VOICEOVER_OUTPUT_DIR` | Where the finished MP4 + transcript are written (launcher sets it to the project folder / cwd) |
+| `VOICEOVER_OUTPUT_DIR` | Where the finished MP4 + transcript are written (launcher sets it to the project folder) |

@@ -1,6 +1,8 @@
 {
-  "name": "academic-studio",
-  "owner": { "name": "Kerry Back" },
+  "name": "kerryback-skills",
+  "owner": {
+    "name": "Kerry Back"
+  },
   "plugins": [
     {
       "name": "voiceover",

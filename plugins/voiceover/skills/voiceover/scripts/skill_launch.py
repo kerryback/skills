@@ -45,17 +45,23 @@ HOME_DIR = Path(os.environ.get("VOICEOVER_HOME", Path.home() / ".voiceover"))
 VENV_DIR = HOME_DIR / "venv"
 
 
-def _open_in_studio() -> bool:
-    """True when we're running inside Academic Studio AND its bundled extension is
-    active and will open the app in an in-editor Simple Browser tab. In that case
-    we skip the external browser. Requires BOTH signals so that an older Studio
-    build (no in-app extension yet) still falls back to the external browser."""
+def _open_in_editor() -> bool:
+    """True when an editor extension will open the app in an in-editor browser tab,
+    so we skip the external browser. The extension signals this by writing a
+    capability marker at ~/.voiceover/inapp containing its own process id; a stale
+    marker left by a closed editor is ignored (the process id is no longer alive).
+    Force with VOICEOVER_NO_BROWSER=1."""
     if os.environ.get("VOICEOVER_NO_BROWSER"):
         return True
-    ident = os.environ.get("__CFBundleIdentifier", "")
-    ipc = os.environ.get("VSCODE_IPC_HOOK", "").lower()
-    in_studio = ident == "com.academicstudio.app" or "academic studio" in ipc
-    return in_studio and (HOME_DIR / "inapp").exists()
+    try:
+        pid = int((HOME_DIR / "inapp").read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return False
+    try:
+        os.kill(pid, 0)   # editor process still alive → it will open the tab
+        return True
+    except OSError:
+        return False
 
 
 def log(msg):
@@ -91,9 +97,8 @@ def preflight():
     key — they're only needed for the Generate/video step."""
     if shutil.which("quarto") is None:
         log("WARNING: 'quarto' not found on PATH. The deck can't be rendered into a "
-            "video until Quarto is installed (https://quarto.org/docs/get-started/, "
-            "or Help -> Run Setup in Academic Studio). You can still draft and edit "
-            "narration now.")
+            "video until Quarto is installed (https://quarto.org/docs/get-started/). "
+            "You can still draft and edit narration now.")
     if not os.environ.get("ELEVENLABS_API_KEY"):
         log("WARNING: ELEVENLABS_API_KEY not found in the environment. The Generate "
             "step (text-to-speech) will fail until it is set (a free key from "
@@ -188,15 +193,15 @@ def main():
         else:
             url = base
             log("No deck given — opening the home screen (pick a deck or upload one).")
-        # Publish the URL so Academic Studio's extension can open it in an in-editor
-        # Simple Browser tab; harmless everywhere else.
+        # Publish the URL so an editor extension (if any) can open it in an in-editor
+        # browser tab; harmless everywhere else.
         try:
             HOME_DIR.mkdir(parents=True, exist_ok=True)
             (HOME_DIR / "app-url").write_text(url, encoding="utf-8")
         except OSError:
             pass
-        if _open_in_studio():
-            log("Opening inside Academic Studio (Simple Browser)…")
+        if _open_in_editor():
+            log("Opening in the editor (an extension will show it in a browser tab)…")
         else:
             webbrowser.open(url)
         log(f"Open: {url}")

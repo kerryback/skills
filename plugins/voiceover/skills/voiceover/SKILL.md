@@ -33,9 +33,8 @@ that's missing. Don't just launch and let it fail later.
 
 - Quarto (renders the deck for the video). Check with `command -v quarto` (or
   `quarto --version`). If it's missing, tell the instructor and offer to install
-  it — in Academic Studio via Help -> Run Setup…, or by installing it directly
-  (https://quarto.org/docs/get-started/); do the install if they agree. Narration
-  drafting works without Quarto, but the Generate step needs it.
+  it from https://quarto.org/docs/get-started/; do the install if they agree.
+  Narration drafting works without Quarto, but the Generate step needs it.
 - `ELEVENLABS_API_KEY` in the environment (text-to-speech, Generate step only).
   Check with `printenv ELEVENLABS_API_KEY`. If it's empty, offer to help set it:
   they create a free key at elevenlabs.io, then you help export
