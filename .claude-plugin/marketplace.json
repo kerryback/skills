@@ -24,5 +24,6 @@
       "source": "./plugins/critique",
       "description": "Critique and revise work produced by Claude. Spawns parallel reviewer agents, synthesizes findings, and applies revisions. Heavyweight — fans out multiple subagents."
     }
-  ]
+  ],
+  "description": "Authoring and teaching skills for Claude Code: narrated video from slide decks, Quarto slide decks, free financial/economic data, and adversarial work review."
 }

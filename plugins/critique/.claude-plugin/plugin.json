@@ -1,5 +1,8 @@
 {
   "name": "critique",
   "description": "Critique and revise work produced by Claude. Spawns parallel reviewer agents that examine the work from different angles, synthesizes findings, and applies revisions. Heavyweight — it fans out multiple subagents.",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "author": {
+    "name": "Kerry Back"
+  }
 }
