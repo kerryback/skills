@@ -1,5 +1,5 @@
 {
   "name": "voiceover",
   "description": "Turn a PDF slide deck into a narrated MP4 video plus a transcript. Claude Code writes the per-slide narration through a local app; the instructor picks an ElevenLabs voice and generates. The finished MP4 + transcript are saved to the project folder.",
-  "version": "1.2.1"
+  "version": "1.2.2"
 }

@@ -107,17 +107,28 @@ absolute path. `<port>` defaults to 8010.
      step polls). To revise a single slide later, PUT
      `/api/projects/<deck>/narration/<index>` with `{ "narration": "…" }`.
 
-5. Hand off to the instructor:
-   - Tell them the narration is visible at the URL on the Narration step; they can
-     read it, ask you for revisions, or edit any slide directly.
-   - When they're happy, they go to Generate to pick a voice (ElevenLabs; default
-     "Sarah") and build, then Preview to watch. Each build writes
-     `<deck-name>.mp4` and `<deck-name>.txt` to their project folder.
-   - Leave the launcher running while they work; stop it with Ctrl-C when done.
+5. Hand off with a clear invitation. Once the draft is in, tell the instructor —
+   in your own words, in plain language — how to work with it. Make sure they know
+   there are two ways to change the script and that both are welcome:
+   - Edit any slide's narration directly in the app (it autosaves), or
+   - Just tell you what to change — "tighten slide 3", "make slide 5 warmer",
+     "add a worked example on the Gordon-growth slide" — and you'll revise it.
+   Then describe the rest of the flow: when it reads well they go to Generate, pick
+   a voice (ElevenLabs; default "Sarah"), and build; then Preview to watch. Each
+   build writes `<deck-name>.mp4` and `<deck-name>.txt` to their project folder.
+   Leave the launcher running while they work; stop it with Ctrl-C when done.
+
+   For example, you might say: "I've drafted the narration — it's on the Narration
+   step at <url>. Read it over. You can edit any slide right in the app, or just
+   tell me what to change (e.g. 'tighten slide 3' or 'warmer tone on the intro')
+   and I'll do it. When it sounds right, open Generate, pick a voice, and click
+   build; Preview lets you watch it. The finished video and transcript save to this
+   folder."
 
 6. Revisions come to you, in chat. When the instructor asks for changes ("tighten
    slide 3", "warmer tone", "add a worked example on the terminal-value slide"),
-   edit the affected slides via the narration API. Keep the style rules.
+   edit the affected slides via the narration API. Keep the style rules. Invite
+   them to keep iterating — either way, by editing directly or by asking you.
 
 7. If the server does not come up (port already in use), rerun with a different
    port, e.g. `--port 8011`, and use that port in the API calls.
