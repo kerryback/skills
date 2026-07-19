@@ -5,7 +5,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BACKEND_DIR / ".env")
+ENV_FILE = BACKEND_DIR / ".env"
+load_dotenv(ENV_FILE)
 
 # DATA_DIR is the app's home (the launcher points it at ~/.voiceover). Each deck
 # lives in its own folder under DATA_DIR/decks, named after the deck, so relaunching
@@ -39,3 +40,31 @@ PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
 
 def project_dir(project_id: str) -> Path:
     return PROJECTS_DIR / project_id
+
+
+def _upsert_env(name: str, value: str) -> None:
+    """Set (or replace) `name=value` in backend/.env, preserving other lines."""
+    line = f"{name}={value}"
+    lines = []
+    found = False
+    if ENV_FILE.exists():
+        for raw in ENV_FILE.read_text(encoding="utf-8").splitlines():
+            stripped = raw.lstrip()
+            if stripped.startswith(f"{name}=") or stripped.startswith(f"{name} ="):
+                lines.append(line)
+                found = True
+            else:
+                lines.append(raw)
+    if not found:
+        lines.append(line)
+    ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def set_elevenlabs_key(key: str) -> None:
+    """Persist the ElevenLabs key to backend/.env and update the live value, so a
+    key pasted in the app takes effect immediately with no server restart."""
+    global ELEVENLABS_API_KEY
+    key = (key or "").strip()
+    ELEVENLABS_API_KEY = key
+    os.environ["ELEVENLABS_API_KEY"] = key
+    _upsert_env("ELEVENLABS_API_KEY", key)

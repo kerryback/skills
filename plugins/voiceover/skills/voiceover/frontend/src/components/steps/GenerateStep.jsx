@@ -90,6 +90,12 @@ export default function GenerateStep({ project, refresh, goTo }) {
 
   const generate = async () => {
     setError('')
+    if (!voicesConfigured) {
+      setError(
+        'Add your ElevenLabs API key (banner at the top of the page) before generating.'
+      )
+      return
+    }
     if (!password.trim()) {
       setError('Set a password viewers will use before generating.')
       return
@@ -157,8 +163,8 @@ export default function GenerateStep({ project, refresh, goTo }) {
               </div>
             ) : (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                Set <code>ELEVENLABS_API_KEY</code> in <code>backend/.env</code> to
-                load your account's voices, then reload.
+                Add your ElevenLabs API key in the banner at the top of the page
+                to load your account's voices.
               </div>
             )}
           </Field>
@@ -247,6 +253,7 @@ export default function GenerateStep({ project, refresh, goTo }) {
                 size="lg"
                 variant={built ? 'amber' : 'primary'}
                 onClick={generate}
+                disabled={!voicesConfigured}
               >
                 {built ? (
                   <>

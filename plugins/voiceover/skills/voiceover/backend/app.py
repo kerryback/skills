@@ -189,6 +189,39 @@ async def put_config(pid: str, body: ConfigBody):
     return {"ok": True, "config": merged}
 
 
+@app.get("/api/tts/status")
+async def tts_status():
+    """Whether an ElevenLabs key is configured. Cheap (no network call) so the
+    app-wide key banner can poll it without hitting ElevenLabs."""
+    return {"configured": bool(config.ELEVENLABS_API_KEY)}
+
+
+class KeyBody(BaseModel):
+    api_key: str
+
+
+@app.post("/api/tts/key")
+async def set_tts_key(body: KeyBody):
+    """Validate an ElevenLabs key against the API and, if good, persist it to
+    backend/.env and load it live — so the instructor never edits a file."""
+    key = (body.api_key or "").strip()
+    if not key:
+        raise HTTPException(400, "Enter your ElevenLabs API key.")
+    import httpx
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        try:
+            r = await client.get("https://api.elevenlabs.io/v1/user",
+                                  headers={"xi-api-key": key})
+        except httpx.HTTPError as e:
+            raise HTTPException(502, f"Could not reach ElevenLabs: {e}")
+    if r.status_code in (401, 403):
+        raise HTTPException(400, "ElevenLabs rejected that key. Check it and try again.")
+    if r.status_code != 200:
+        raise HTTPException(502, f"ElevenLabs error ({r.status_code}).")
+    config.set_elevenlabs_key(key)
+    return {"configured": True}
+
+
 @app.get("/api/tts/voices")
 async def tts_voices():
     """List the account's ElevenLabs voices (including cloned voices) for the

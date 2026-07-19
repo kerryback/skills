@@ -4,6 +4,7 @@ import { ToastProvider } from './components/Toast'
 import { Button } from './components/ui'
 import ProjectsView from './components/ProjectsView'
 import Wizard from './components/Wizard'
+import ApiKeyBanner from './components/ApiKeyBanner'
 
 // The skill launcher opens the app at /?project=<id>, so we deep-link straight
 // into that project's wizard (landing on Narration once the deck has converted).
@@ -17,6 +18,7 @@ function Shell() {
   return (
     <div className="min-h-full flex flex-col">
       <TopBar onHome={() => setOpenId(null)} inProject={openId != null} />
+      <ApiKeyBanner />
       <main className="flex-1">
         {openId == null ? (
           <ProjectsView onOpen={(id) => setOpenId(id)} onSessionExpired={noop} />

@@ -58,6 +58,11 @@ export const api = {
 
   // ---- ElevenLabs voices (account + cloned) for the Generate picker ----
   listVoices: () => request('api/tts/voices'),
+
+  // ---- ElevenLabs API key (paste-in-app; validated + persisted server-side) ----
+  ttsStatus: () => request('api/tts/status'),
+  setTtsKey: (api_key) =>
+    request('api/tts/key', { method: 'POST', body: { api_key } }),
 }
 
 // URL helpers (also relative)

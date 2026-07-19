@@ -129,6 +129,13 @@ slides, the source PDF is a 2-up handout — that is an input problem, not a bug
 - The app needs, at runtime (env, never baked in): `ELEVENLABS_API_KEY` (TTS).
   That is the only key — narration comes from Claude Code, so there is no
   `ANTHROPIC_API_KEY`. No auth secrets, no `KOYEB_TOKEN` — nothing is deployed.
+- The key is optional to start: the app boots without it (convert + narration
+  still work) and shows an app-wide banner (`ApiKeyBanner`) explaining that audio
+  can't be generated yet. The instructor pastes the key there; `POST /api/tts/key`
+  validates it against ElevenLabs, then `config.set_elevenlabs_key` persists it to
+  `backend/.env` and updates the live value so no restart is needed (a page reload
+  refreshes the voice picker). `GET /api/tts/status` backs the banner. Do not make
+  the key a hard startup requirement.
 
 ## Gotchas / operational notes
 
