@@ -5,6 +5,11 @@
   },
   "plugins": [
     {
+      "name": "litdb",
+      "source": { "source": "github", "repo": "kerryback/litdb" },
+      "description": "Personal literature + notes knowledge base: hybrid keyword+semantic search over your papers and notes, Zotero/Better BibTeX import, loose-PDF folder ingestion with full text, OpenAlex/Semantic Scholar discovery, and a citation graph. Local-first; the runtime installs into ~/.litdb on first use."
+    },
+    {
       "name": "voiceover",
       "source": "./plugins/voiceover",
       "description": "Turn a PDF slide deck into a narrated MP4 video plus a transcript. Claude Code writes the per-slide narration; ElevenLabs voices it. Requires quarto and an ElevenLabs API key."
