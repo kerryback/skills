@@ -12,22 +12,30 @@ shared server. Works on macOS and Windows.
 
 ## Setup
 
-Clone the repo (or download it), then from its directory:
+Recommended: install the plugin, and the skill self-bootstraps its runtime on
+first use.
 
 ```
+claude plugin marketplace add kerryback/skills
+claude plugin install litdb@kerryback-skills
+```
+
+From source (development), litdb is at `plugins/litdb` in the `kerryback/skills`
+repo:
+
+```
+git clone https://github.com/kerryback/skills && cd skills/plugins/litdb
 python3 scripts/setup.py --check     # report status
 python3 scripts/setup.py             # show the plan (changes nothing)
-python3 scripts/setup.py --yes       # install everything
+python3 scripts/setup.py --yes       # build the runtime
 ```
 
-litdb installs into a fixed per-user home, `~/.litdb`, independent of the repo.
-`--yes` creates `~/.litdb/.venv`, installs litdb (non-editable, so the clone is
-disposable afterward), initializes the database, and copies the skill into
-`~/.claude/skills/`. It never installs Python, uv, or Ollama for you.
+litdb installs into a fixed per-user home, `~/.litdb`, independent of any repo.
+`--yes` creates `~/.litdb/.venv`, installs litdb (non-editable), initializes the
+database, and verifies FTS5. It never installs Python, uv, or Ollama for you.
 
-To repair or update later, run the `litdb-setup` skill or re-run `setup.py --yes`
-— it reinstalls from `git+https://github.com/kerryback/litdb`, so you don't need
-a checkout.
+To repair later, run the `litdb-setup` skill (it rebuilds from the plugin's
+bundled source) or re-run `setup.py --yes` from a checkout.
 
 The managed interpreter is:
 

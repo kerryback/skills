@@ -1,6 +1,6 @@
 {
   "name": "litdb",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Personal literature + notes knowledge base: hybrid keyword+semantic search over your papers and notes, Zotero/Better BibTeX import, loose-PDF folder ingestion with full text, OpenAlex/Semantic Scholar discovery, and a citation graph. Local-first and private; the runtime installs into ~/.litdb on first use (run litdb-setup).",
   "author": {
     "name": "Kerry Back"

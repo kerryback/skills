@@ -29,9 +29,8 @@ Run it with `python3`.
    ```
    python3 SETUP
    ```
-   It will create `~/.litdb/.venv`, install the litdb package (from GitHub, or a
-   local checkout if you are running from one), verify FTS5, and initialize the
-   database.
+   It will create `~/.litdb/.venv`, install the litdb package from the plugin's
+   bundled source (or a dev checkout), verify FTS5, and initialize the database.
    - If Python < 3.10: offer to install a newer Python for them (with consent —
      macOS: `brew install python`; Windows: `winget install Python.Python.3.12`;
      or via `uv python install`). If they decline, give the command and stop.

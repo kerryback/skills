@@ -9,9 +9,9 @@ LITDB_HOME env var):
   ~/.litdb/preferences.json, ~/.litdb/.onboarded
 
 Because the home is fixed, nothing depends on a project/repo folder that a user
-might delete. The package is installed non-editable (copied into the venv) from a
-local checkout when present, otherwise straight from GitHub — so after install
-the source checkout is disposable.
+might delete. The package is installed non-editable (copied into the venv) from
+the plugin's bundled source (or a dev checkout) — so after install nothing else
+is needed at runtime.
 
 This handles only the RUNTIME. The skill itself is distributed as a Claude Code
 plugin (or copied into ~/.claude/skills); Claude Code discovers it and, on first
@@ -40,13 +40,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-GIT_URL = "git+https://github.com/kerryback/litdb"
 EXTRAS = "[embeddings,pdf]"
 
 THIS = Path(__file__).resolve()
-# Local source root = the checkout that contains pyproject.toml, if we're running
-# from one (scripts/setup.py -> parent is the root). None when running from the
-# copy bundled inside the installed skill.
+# Source root = the tree that contains pyproject.toml (scripts/setup.py -> parent
+# is the root). This is always present in practice: the plugin bundles the full
+# source, so setup.py runs from the plugin cache (or a dev checkout). It is None
+# only if setup.py is run in isolation, which is unsupported.
 _candidate = THIS.parents[1]
 SOURCE_ROOT = _candidate if (_candidate / "pyproject.toml").is_file() else None
 
@@ -90,18 +90,16 @@ def gather() -> dict:
         "venv_exists": venv_ok,
         "litdb_installed": installed,
         "fts5_ok": _fts5_ok(vpy) if venv_ok else False,
-        "source": "local checkout" if SOURCE_ROOT else "github",
+        "source": str(SOURCE_ROOT) if SOURCE_ROOT else "unavailable",
         "ready": bool(venv_ok and installed),
     }
 
 
 def install_spec(editable: bool) -> tuple[list[str], str]:
-    """Return (pip-args-for-source, human description)."""
-    if SOURCE_ROOT is not None:
-        if editable:
-            return (["-e", f"{SOURCE_ROOT}{EXTRAS}"], f"editable from {SOURCE_ROOT}")
-        return ([f"{SOURCE_ROOT}{EXTRAS}"], f"from {SOURCE_ROOT}")
-    return ([f"litdb{EXTRAS} @ {GIT_URL}"], f"from {GIT_URL}")
+    """Return (pip-args-for-source, human description). Requires SOURCE_ROOT."""
+    if editable:
+        return (["-e", f"{SOURCE_ROOT}{EXTRAS}"], f"editable from {SOURCE_ROOT}")
+    return ([f"{SOURCE_ROOT}{EXTRAS}"], f"from {SOURCE_ROOT}")
 
 
 def cmd_check(as_json: bool) -> int:
@@ -131,8 +129,12 @@ def cmd_runtime_path() -> int:
 
 def show_plan(editable: bool) -> int:
     st = gather()
-    _, desc = install_spec(editable)
     print("litdb setup — plan (dry run; nothing changed)")
+    if SOURCE_ROOT is None:
+        print("  ! Cannot find the litdb source (no pyproject.toml). Run this from")
+        print("    the installed plugin or a checkout of the source.")
+        return 2
+    _, desc = install_spec(editable)
     if sys.version_info[:2] < MIN_PY:
         print(f"  ! Python {MIN_PY[0]}.{MIN_PY[1]}+ required (found {st['python']}); install it first.")
     if st["ready"]:
@@ -147,6 +149,10 @@ def show_plan(editable: bool) -> int:
 
 
 def do_install(editable: bool) -> int:
+    if SOURCE_ROOT is None:
+        print("ERROR: cannot find the litdb source (no pyproject.toml). Run from the "
+              "installed plugin or a source checkout.", file=sys.stderr)
+        return 2
     if sys.version_info[:2] < MIN_PY:
         print(f"ERROR: Python {MIN_PY[0]}.{MIN_PY[1]}+ required (found {sys.version.split()[0]}).", file=sys.stderr)
         return 2

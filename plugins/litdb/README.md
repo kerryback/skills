@@ -54,10 +54,11 @@ the skill runs `litdb-setup`, which builds the runtime in a fixed per-user home,
 depends on any project or repo folder. To update: `claude plugin update
 litdb@kerryback-skills`.
 
-Install from source (development):
+Install from source (development). litdb lives in the `kerryback/skills`
+marketplace repo, under `plugins/litdb`:
 
 ```bash
-git clone https://github.com/kerryback/litdb && cd litdb
+git clone https://github.com/kerryback/skills && cd skills/plugins/litdb
 python3 scripts/setup.py --check     # report what's present/missing
 python3 scripts/setup.py             # dry-run plan (changes nothing)
 python3 scripts/setup.py --yes       # build the runtime into ~/.litdb
@@ -65,7 +66,6 @@ python3 scripts/setup.py --yes       # build the runtime into ~/.litdb
 
 `setup.py` only builds the runtime (venv + package, non-editable so the checkout
 is disposable; `--editable` for dev). It never installs system software for you.
-The skill can also be run from `~/.claude/skills/` if copied there manually.
 
 Optional pieces:
 
