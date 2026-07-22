@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "litdb",
-      "source": { "source": "git", "url": "https://github.com/kerryback/litdb.git" },
+      "source": "./plugins/litdb",
       "description": "Personal literature + notes knowledge base: hybrid keyword+semantic search over your papers and notes, Zotero/Better BibTeX import, loose-PDF folder ingestion with full text, OpenAlex/Semantic Scholar discovery, and a citation graph. Local-first; the runtime installs into ~/.litdb on first use."
     },
     {
