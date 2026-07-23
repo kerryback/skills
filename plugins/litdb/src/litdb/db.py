@@ -138,6 +138,16 @@ CREATE TABLE IF NOT EXISTS citation (
     PRIMARY KEY (citing_ext, cited_ext)
 );
 CREATE INDEX IF NOT EXISTS idx_citation_cited ON citation(cited_ext);
+
+-- Ledger of PDF files already ingested, keyed by content hash, so an inbox can be
+-- rescanned idempotently: a file whose bytes were seen before is skipped (even if
+-- renamed or moved), preventing duplicate records for DOI-less papers.
+CREATE TABLE IF NOT EXISTS ingested_file (
+    sha256      TEXT PRIMARY KEY,
+    path        TEXT,
+    paper_id    INTEGER,
+    ingested_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
@@ -186,6 +196,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(paper)").fetchall()}
     if "citation_key" not in cols:
         conn.execute("ALTER TABLE paper ADD COLUMN citation_key TEXT")
+    if "zotero_pushed_at" not in cols:
+        conn.execute("ALTER TABLE paper ADD COLUMN zotero_pushed_at TEXT")
     ccols = {r["name"] for r in conn.execute("PRAGMA table_info(chunk)").fetchall()}
     for col, ddl in (("kind", "kind TEXT NOT NULL DEFAULT 'abstract'"),
                      ("page", "page INTEGER"), ("section", "section TEXT")):
@@ -267,6 +279,19 @@ def has_fulltext(conn: sqlite3.Connection, paper_id: int) -> bool:
         "SELECT 1 FROM chunk WHERE owner_type='paper' AND owner_id=? AND kind='fulltext' LIMIT 1",
         (paper_id,),
     ).fetchone() is not None
+
+
+def ingested_hashes(conn: sqlite3.Connection) -> set[str]:
+    return {r[0] for r in conn.execute("SELECT sha256 FROM ingested_file").fetchall()}
+
+
+def record_ingested(conn: sqlite3.Connection, rows: list[tuple[str, str, int]]) -> None:
+    """rows: (sha256, path, paper_id). Idempotent on the hash."""
+    if rows:
+        conn.executemany(
+            "INSERT OR IGNORE INTO ingested_file(sha256, path, paper_id) VALUES (?,?,?)", rows
+        )
+        conn.commit()
 
 
 def add_citations(conn: sqlite3.Connection, edges: list[tuple[str, str]], source: str = "openalex") -> int:
@@ -409,6 +434,158 @@ def upsert_paper(conn: sqlite3.Connection, rec: dict) -> tuple[int, bool]:
     return pid, created
 
 
+# Metadata columns a user may patch via `update`. Reading/screening state has its
+# own command (`screen`); identity ids and descriptive fields live here.
+UPDATABLE_FIELDS = (
+    "doi", "zotero_key", "openalex_id", "s2_id", "citation_key",
+    "title", "authors", "year", "venue", "abstract", "extra",
+)
+_UNIQUE_FIELDS = ("doi", "zotero_key")
+
+
+def _normalize_field(col: str, value):
+    """Coerce an incoming metadata value the same way upsert_paper does."""
+    if value is None:
+        return None
+    if col == "year":
+        if value in ("", None):
+            return None
+        return int(value)
+    s = str(value).strip()
+    if col == "doi":
+        return s.lower() or None
+    if col in ("zotero_key", "openalex_id", "s2_id", "citation_key", "authors",
+               "venue", "abstract", "extra"):
+        return s or None
+    return s  # title
+
+
+def update_paper(conn: sqlite3.Connection, paper_id: int, fields: dict) -> dict | None:
+    """Patch a paper's metadata in place and re-index its abstract chunk.
+
+    Only keys in ``fields`` (intersected with UPDATABLE_FIELDS) are touched, so a
+    caller can set just the DOI without disturbing the rest. Full-text chunks and
+    embeddings are left alone; the abstract chunk is rebuilt from the new
+    title/abstract/keywords (its cached embedding is invalidated by the content
+    hash and recomputed on the next `embed`). ``title`` may not be blanked.
+    Returns the updated paper (as get_paper), or None if the id doesn't exist.
+    Raises ValueError if a unique id (doi/zotero_key) collides with another paper.
+    """
+    if conn.execute("SELECT 1 FROM paper WHERE id=?", (paper_id,)).fetchone() is None:
+        return None
+    updates = {}
+    for col in UPDATABLE_FIELDS:
+        if col not in fields:
+            continue
+        val = _normalize_field(col, fields[col])
+        if col == "title" and not val:
+            raise ValueError("title cannot be empty")
+        updates[col] = val
+
+    for col in _UNIQUE_FIELDS:
+        if updates.get(col):
+            clash = conn.execute(
+                f"SELECT id FROM paper WHERE {col}=? AND id<>?", (updates[col], paper_id)
+            ).fetchone()
+            if clash is not None:
+                raise ValueError(
+                    f"{col}={updates[col]!r} already belongs to paper {clash['id']}; "
+                    f"use `merge` to combine them"
+                )
+
+    if updates:
+        sets = ", ".join(f"{k}=?" for k in updates)
+        conn.execute(
+            f"UPDATE paper SET {sets}, updated_at=datetime('now') WHERE id=?",
+            (*updates.values(), paper_id),
+        )
+    row = conn.execute("SELECT title, abstract FROM paper WHERE id=?", (paper_id,)).fetchone()
+    terms = paper_keyword_terms(conn, paper_id)
+    reindex_owner(conn, "paper", paper_id, _paper_text(row["title"], row["abstract"], terms))
+    conn.commit()
+    return get_paper(conn, paper_id)
+
+
+def merge_papers(conn: sqlite3.Connection, keep_id: int, dupe_id: int) -> dict | None:
+    """Absorb ``dupe_id`` into ``keep_id`` and delete the duplicate.
+
+    Full-text chunks move to ``keep`` only if it has none of its own (embeddings
+    follow, since chunk ids are unchanged); note links and keywords are repointed;
+    ``keep``'s empty metadata fields are filled from the dupe (non-destructive, so
+    a metadata-rich stub enriches a full-text record and vice versa). Citation
+    edges need no move — they are keyed by external work id, not paper id.
+    Returns a summary dict, or None if either id is missing. keep_id != dupe_id.
+    """
+    if keep_id == dupe_id:
+        raise ValueError("keep and dupe must be different papers")
+    dupe = conn.execute("SELECT * FROM paper WHERE id=?", (dupe_id,)).fetchone()
+    keep = conn.execute("SELECT * FROM paper WHERE id=?", (keep_id,)).fetchone()
+    if dupe is None or keep is None:
+        return None
+
+    moved_fulltext = 0
+    if not has_fulltext(conn, keep_id):
+        cur = conn.execute(
+            "UPDATE chunk SET owner_id=? WHERE owner_type='paper' AND owner_id=? AND kind='fulltext'",
+            (keep_id, dupe_id),
+        )
+        moved_fulltext = cur.rowcount
+
+    conn.execute(
+        "INSERT OR IGNORE INTO note_paper(note_id, paper_id, relation) "
+        "SELECT note_id, ?, relation FROM note_paper WHERE paper_id=?",
+        (keep_id, dupe_id),
+    )
+    conn.execute(
+        "INSERT OR IGNORE INTO paper_keyword(paper_id, keyword_id, source) "
+        "SELECT ?, keyword_id, source FROM paper_keyword WHERE paper_id=?",
+        (keep_id, dupe_id),
+    )
+
+    # Delete the dupe (its remaining chunks first, so their embeddings cascade;
+    # this also frees any unique doi/zotero_key before we copy it onto keep).
+    conn.execute("DELETE FROM chunk WHERE owner_type='paper' AND owner_id=?", (dupe_id,))
+    conn.execute("DELETE FROM paper WHERE id=?", (dupe_id,))
+
+    # Enrich keep from dupe for any field keep is missing.
+    enriched = {}
+    for col in UPDATABLE_FIELDS:
+        if (keep[col] in (None, "")) and (dupe[col] not in (None, "")):
+            enriched[col] = dupe[col]
+    if enriched:
+        sets = ", ".join(f"{k}=?" for k in enriched)
+        conn.execute(
+            f"UPDATE paper SET {sets}, updated_at=datetime('now') WHERE id=?",
+            (*enriched.values(), keep_id),
+        )
+
+    row = conn.execute("SELECT title, abstract FROM paper WHERE id=?", (keep_id,)).fetchone()
+    terms = paper_keyword_terms(conn, keep_id)
+    reindex_owner(conn, "paper", keep_id, _paper_text(row["title"], row["abstract"], terms))
+    conn.commit()
+    return {
+        "kept": keep_id,
+        "deleted": dupe_id,
+        "moved_fulltext_chunks": moved_fulltext,
+        "enriched_fields": sorted(enriched),
+    }
+
+
+def delete_paper(conn: sqlite3.Connection, paper_id: int) -> bool:
+    """Delete a paper, its chunks (embeddings cascade), and its links.
+
+    chunk.owner_id is polymorphic (no FK), so chunks are removed explicitly;
+    paper_keyword and note_paper cascade via their FKs. Citation edges, keyed by
+    external work id, are left in place. Returns False if the id doesn't exist.
+    """
+    if conn.execute("SELECT 1 FROM paper WHERE id=?", (paper_id,)).fetchone() is None:
+        return False
+    conn.execute("DELETE FROM chunk WHERE owner_type='paper' AND owner_id=?", (paper_id,))
+    conn.execute("DELETE FROM paper WHERE id=?", (paper_id,))
+    conn.commit()
+    return True
+
+
 def screen_paper(
     conn: sqlite3.Connection,
     paper_id: int,
@@ -453,6 +630,51 @@ def list_papers(
     sql += " ORDER BY (priority IS NULL), priority, year DESC LIMIT ?"
     params.append(limit)
     return [{"type": "paper", **dict(r)} for r in conn.execute(sql, params).fetchall()]
+
+
+def papers_for_export(conn: sqlite3.Connection, *, ids=None,
+                      reading_status: str | None = None) -> list[dict]:
+    """Rows needed to emit BibTeX: id, citation_key, doi, title, authors, year, venue."""
+    sql = "SELECT id, citation_key, doi, title, authors, year, venue FROM paper"
+    clauses, params = [], []
+    if ids:
+        clauses.append(f"id IN ({','.join(['?'] * len(ids))})")
+        params += list(ids)
+    if reading_status:
+        clauses.append("reading_status=?")
+        params.append(reading_status)
+    if clauses:
+        sql += " WHERE " + " AND ".join(clauses)
+    sql += " ORDER BY (authors IS NULL), authors, year"
+    return [dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def papers_for_push(conn: sqlite3.Connection, *, ids=None,
+                    reading_status: str | None = None,
+                    include_pushed: bool = False) -> list[dict]:
+    """Papers to send to Zotero. By default skips those already pushed
+    (`zotero_pushed_at` set) so re-runs don't create duplicates."""
+    sql = ("SELECT id, citation_key, doi, title, authors, year, venue, zotero_pushed_at "
+           "FROM paper")
+    clauses, params = [], []
+    if ids:
+        clauses.append(f"id IN ({','.join(['?'] * len(ids))})")
+        params += list(ids)
+    if reading_status:
+        clauses.append("reading_status=?")
+        params.append(reading_status)
+    if not include_pushed:
+        clauses.append("zotero_pushed_at IS NULL")
+    if clauses:
+        sql += " WHERE " + " AND ".join(clauses)
+    sql += " ORDER BY (authors IS NULL), authors, year"
+    return [dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def mark_zotero_pushed(conn: sqlite3.Connection, ids: Iterable[int]) -> None:
+    conn.executemany("UPDATE paper SET zotero_pushed_at=datetime('now') WHERE id=?",
+                     [(int(i),) for i in ids])
+    conn.commit()
 
 
 def import_papers(conn: sqlite3.Connection, records: Iterable[dict]) -> dict:

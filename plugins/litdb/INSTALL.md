@@ -12,37 +12,29 @@ shared server. Works on macOS and Windows.
 
 ## Setup
 
-Recommended: install the plugin, and the skill self-bootstraps its runtime on
-first use.
+Clone the repo (or download it), then from its directory:
 
 ```
-claude plugin marketplace add kerryback/skills
-claude plugin install litdb@kerryback-skills
+python3 skills/litdb/setup.py --check     # report status
+python3 skills/litdb/setup.py             # show the plan (changes nothing)
+python3 skills/litdb/setup.py --yes       # install everything
 ```
 
-From source (development), litdb is at `plugins/litdb` in the `kerryback/skills`
-repo:
+litdb installs into a fixed per-user home, `~/.litdb`, independent of the repo.
+`--yes` creates `~/.litdb/.venv`, installs litdb (non-editable, so the clone is
+disposable afterward), initializes the database, and copies the skill into
+`~/.claude/skills/`. It never installs Python, uv, or Ollama for you.
 
-```
-git clone https://github.com/kerryback/skills && cd skills/plugins/litdb
-python3 scripts/setup.py --check     # report status
-python3 scripts/setup.py             # show the plan (changes nothing)
-python3 scripts/setup.py --yes       # build the runtime
-```
-
-litdb installs into a fixed per-user home, `~/.litdb`, independent of any repo.
-`--yes` creates `~/.litdb/.venv`, installs litdb (non-editable), initializes the
-database, and verifies FTS5. It never installs Python, uv, or Ollama for you.
-
-To repair later, run the `litdb-setup` skill (it rebuilds from the plugin's
-bundled source) or re-run `setup.py --yes` from a checkout.
+To repair or update later, follow the litdb skill's `setup.md` or re-run `setup.py --yes`
+— it reinstalls from `git+https://github.com/kerryback/skills#subdirectory=plugins/litdb`, so you don't need
+a checkout.
 
 The managed interpreter is:
 
 - macOS/Linux: `~/.litdb/.venv/bin/python`
 - Windows: `~/.litdb/.venv/Scripts/python.exe`
 
-Get it programmatically with `python3 scripts/setup.py --runtime-path`.
+Get it programmatically with `python3 skills/litdb/setup.py --runtime-path`.
 
 ## litdb home and data location
 

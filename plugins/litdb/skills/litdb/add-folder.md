@@ -6,22 +6,68 @@ papers so they become semantically searchable.
 
 ## A folder of loose PDFs on disk
 
-1. Get the folder path from the user.
-2. Run: `"$LITDB_PY" -m litdb scan-pdfs "<folder>" --embed`
-   - It walks the folder, reads each PDF's opening pages, finds the DOI, resolves
-     full metadata from OpenAlex, creates the paper (deduped on DOI), and ingests
-     the full text as searchable chunks. `--embed` embeds the new papers.
-3. Report the outcome from the JSON `summary`: how many `resolved`, how many
-   `unresolved`, any `errors`.
-4. Unresolved PDFs (no findable DOI — older scans, working papers) are listed but
-   NOT added. Recommend routing those through Zotero's "Retrieve Metadata for
-   PDF" (best for DOI-less/scanned files). Only if the user wants them searchable
-   right now, re-run with `--keep-unresolved` to add them as filename-titled
-   records they can fix later.
-5. Confirm with `status` and a sample `search`.
+Goal: every PDF ends up as one record with full text, embeddings, and proper
+OpenAlex metadata (title, authors, year, venue, DOI, `openalex_id`). Run the whole
+pipeline in the background so the user can keep chatting while it works: ask for
+the folder path synchronously, then hand every long step to a background command
+or subagent and let each stage's completion drive the next. Never block waiting —
+if the user says something mid-ingest, just answer; the pipeline advances on its
+own via completion notifications.
 
-Large folders take a while (one OpenAlex lookup per PDF); `--limit N` processes a
-first batch if the user wants a quick trial.
+DOIs embedded in PDFs are missing or wrong for most older/scanned papers, so do
+not rely on them; resolve metadata from OpenAlex by title/author with subagents
+that verify each match against the PDF.
+
+1. Ask for the folder path — the only synchronous step.
+
+2. Start ingestion in the background and return control to the user immediately.
+   Run as a background command:
+   `"$LITDB_PY" -m litdb scan-pdfs "<folder>" --keep-unresolved --embed`
+   Tell the user ingestion is running in the background and they can keep working;
+   you will report when it's done. Do not wait on it.
+   - It adds every PDF with full text (embedded), resolving metadata via OpenAlex
+     where a DOI is confidently found and adding the rest as filename-titled
+     stubs. Each `unresolved` entry in the JSON carries the stub's `paper_id` and
+     `file` — that list is the work for step 3.
+
+3. When scan-pdfs finishes (its completion re-invokes you), resolve the stubs with
+   background subagent(s). If there are no `unresolved` stubs, skip to step 4.
+   Otherwise split the stub list (`paper_id` + `file`) across one or more subagents
+   — parallelize for large folders; subagents run in the background, so the user
+   stays free. Give each this per-record protocol (use `"$LITDB_PY"` for litdb
+   calls):
+     a. Read the PDF's first 1–2 pages (the `file`) for the true title, authors,
+        and year — filenames and embedded years are often wrong.
+     b. `"$LITDB_PY" -m litdb external-search "<title> <first-author-surname>" --source openalex`.
+     c. Verify before trusting: publication year within ±1, at least one author
+        surname in common, and a close title match. Never accept the top hit
+        blindly.
+     d. If verified, patch the record in place (preserves the attached full text
+        and embeddings, no duplicate):
+        `"$LITDB_PY" -m litdb update <paper_id> --doi <doi> --openalex-id <oaid> --title "<title>" --authors "<authors>" --year <year> --venue "<venue>"`
+        (add `--citation-key <key>` when `uses_tex`).
+     e. No confident match (working papers, unindexed pieces): set a clean title
+        and flag it — `"$LITDB_PY" -m litdb update <paper_id> --title "<clean title>"`.
+     f. Return a per-file summary: resolved (title + DOI) or needs-review (reason).
+
+4. When the subagent(s) finish, rebuild the citation graph as a background command:
+   `"$LITDB_PY" -m litdb cite-fetch --all`.
+
+5. When that finishes, post the final report: counts resolved / needs-review, new
+   citation edges, and the needs-review list; then `"$LITDB_PY" -m litdb missing-refs`
+   for gaps. Confirm with `status` and a sample `search --human`.
+
+Notes:
+- If `source_of_truth=zotero`, add one more background step after step 3: push the
+  freshly resolved papers into Zotero with `push-zotero`, then re-run
+  `import-zotero` so Better BibTeX keys flow back into litdb. (In `litdb` mode,
+  skip this — litdb owns the records and `export-bib` owns the `.bib`.)
+- The subagents resolve what the DOI pass could not (usually the bulk of an older
+  collection). To verify every record including DOI-resolved ones, widen step 3 to
+  all `paper_id`s, at higher cost.
+- Semantic Scholar can supplement OpenAlex in step 3 (`--source s2`/`both`) when a
+  key is stored (`has_s2_api_key`); default to `openalex` (no key, no rate limit).
+- `--limit N` on `scan-pdfs` processes a first batch for a quick trial.
 
 ## An existing Zotero library
 

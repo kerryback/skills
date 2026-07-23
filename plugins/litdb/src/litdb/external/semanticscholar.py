@@ -40,7 +40,8 @@ def _normalize(p: dict) -> dict:
 
 def _headers() -> dict:
     h = {"Accept": "application/json", "User-Agent": "litdb/0.1 (research tool)"}
-    key = os.environ.get(os.environ.get("_LITDB_S2_KEY_ENV", "S2_API_KEY"))
+    from .. import config
+    key = config.get_s2_api_key()  # env var (configured name), then the key file
     if key:
         h["x-api-key"] = key
     return h

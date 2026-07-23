@@ -59,6 +59,9 @@ _DEFAULTS: dict = {
         # Better BibTeX JSON-RPC; preferred automatically when reachable (adds
         # citation keys). Requires Zotero running with the Better BibTeX add-on.
         "bbt_rpc": "http://localhost:23119/better-bibtex/json-rpc",
+        # Zotero connector server base (the endpoint the browser connector uses);
+        # `push-zotero` POSTs items to <connector>/connector/saveItems.
+        "connector": "http://localhost:23119",
     },
     "external": {
         # OpenAlex asks for an email in the "polite pool"; recommended, optional.
@@ -135,6 +138,74 @@ def set_pref(key: str, value) -> dict:
     prefs[key] = value
     save_prefs(prefs)
     return prefs
+
+
+# --------------------------------------------------------------------------- #
+# Semantic Scholar API key
+#
+# The key is resolved from (1) the configured environment variable
+# (``s2_api_key_env``, default ``S2_API_KEY``) so power users can inject it,
+# then (2) a litdb-owned file in the home. The file makes storage independent
+# of shell-profile inheritance, so the key set during onboarding is picked up by
+# every ``litdb`` subprocess without the user editing ``~/.zshrc``. It is a
+# local plaintext secret (0600), on the same footing as the local DB and PDFs.
+# --------------------------------------------------------------------------- #
+
+def s2_key_path() -> Path:
+    return data_dir() / "s2_api_key"
+
+
+def _s2_env_name() -> str:
+    return load_config()["external"].get("s2_api_key_env", "S2_API_KEY")
+
+
+def get_s2_api_key() -> str | None:
+    val = os.environ.get(_s2_env_name())
+    if val and val.strip():
+        return val.strip()
+    p = s2_key_path()
+    if p.is_file():
+        try:
+            txt = p.read_text(encoding="utf-8").strip()
+            if txt:
+                return txt
+        except OSError:
+            pass
+    return None
+
+
+def s2_api_key_source() -> str | None:
+    """Where the active key comes from: 'env', 'file', or None."""
+    val = os.environ.get(_s2_env_name())
+    if val and val.strip():
+        return "env"
+    p = s2_key_path()
+    if p.is_file() and p.read_text(encoding="utf-8").strip():
+        return "file"
+    return None
+
+
+def has_s2_api_key() -> bool:
+    return get_s2_api_key() is not None
+
+
+def set_s2_api_key(key: str) -> Path:
+    p = s2_key_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(key.strip() + "\n", encoding="utf-8")
+    try:
+        os.chmod(p, 0o600)
+    except OSError:
+        pass
+    return p
+
+
+def clear_s2_api_key() -> bool:
+    p = s2_key_path()
+    if p.is_file():
+        p.unlink()
+        return True
+    return False
 
 
 def onboarded_marker() -> Path:

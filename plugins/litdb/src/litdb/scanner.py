@@ -11,6 +11,7 @@ not turned into junk records unless ``keep_unresolved`` is set.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sqlite3
@@ -51,6 +52,7 @@ def scan_directory(
     limit: int | None = None,
     keep_unresolved: bool = False,
     head_pages: int = 3,
+    skip_hashes: set[str] | None = None,
 ) -> dict:
     root = Path(root).expanduser()
     if not root.is_dir():
@@ -63,8 +65,21 @@ def scan_directory(
     if limit:
         pdfs = pdfs[:limit]
 
-    resolved, unresolved, errors = [], [], []
+    skip_hashes = skip_hashes or set()
+    resolved, unresolved, errors, skipped = [], [], [], []
     for path in pdfs:
+        # Content hash first, so an already-ingested file (by bytes, even if
+        # renamed/moved) is skipped without re-reading or re-resolving it. This
+        # makes repeated scans of an inbox idempotent — no duplicate stubs.
+        try:
+            fhash = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError as exc:
+            errors.append({"file": str(path), "error": str(exc)[:120]})
+            continue
+        if fhash in skip_hashes:
+            skipped.append({"file": str(path), "hash": fhash})
+            continue
+
         try:
             pages = pdfmod.extract_pages(path)
         except Exception as exc:  # malformed/encrypted PDF
@@ -78,8 +93,9 @@ def scan_directory(
             pid, created = db.upsert_paper(conn, rec)
             n = db.set_fulltext_chunks(conn, pid, pdfmod.chunk_pages(pages))
             conn.commit()
-            resolved.append({"file": str(path), "paper_id": pid, "doi": rec.get("doi") or doi,
-                             "created": created, "chunks": n, "title": rec.get("title")})
+            resolved.append({"file": str(path), "hash": fhash, "paper_id": pid,
+                             "doi": rec.get("doi") or doi, "created": created,
+                             "chunks": n, "title": rec.get("title")})
         elif keep_unresolved:
             pid, created = db.upsert_paper(conn, {
                 "title": _title_from_filename(path),
@@ -87,18 +103,20 @@ def scan_directory(
             })
             n = db.set_fulltext_chunks(conn, pid, pdfmod.chunk_pages(pages))
             conn.commit()
-            unresolved.append({"file": str(path), "paper_id": pid, "added": True,
+            unresolved.append({"file": str(path), "hash": fhash, "paper_id": pid, "added": True,
                                "reason": "doi_found_but_unresolved" if doi else "no_doi"})
         else:
-            unresolved.append({"file": str(path), "added": False,
+            unresolved.append({"file": str(path), "hash": fhash, "added": False,
                                "reason": "doi_found_but_unresolved" if doi else "no_doi"})
 
     return {
         "scanned": len(pdfs),
         "resolved": resolved,
         "unresolved": unresolved,
+        "skipped": skipped,
         "errors": errors,
         "summary": {"resolved": len(resolved),
                     "unresolved": len(unresolved),
+                    "skipped": len(skipped),
                     "errors": len(errors)},
     }

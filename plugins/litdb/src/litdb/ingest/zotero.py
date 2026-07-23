@@ -24,6 +24,61 @@ from pathlib import Path
 from typing import Any
 
 
+def _push_item(rec: dict) -> dict:
+    """Map a litdb paper row to a Zotero connector (translator) item."""
+    creators = []
+    for a in (rec.get("authors") or "").split(";"):
+        a = a.strip()
+        if not a:
+            continue
+        parts = a.split()
+        if len(parts) == 1:
+            creators.append({"creatorType": "author", "lastName": parts[0], "firstName": ""})
+        else:
+            creators.append({"creatorType": "author",
+                             "firstName": " ".join(parts[:-1]), "lastName": parts[-1]})
+    item = {
+        "itemType": "journalArticle" if rec.get("venue") else "preprint",
+        "title": rec.get("title") or "Untitled",
+        "creators": creators,
+        "tags": [{"tag": "litdb"}],
+    }
+    if rec.get("venue"):
+        item["publicationTitle"] = rec["venue"]
+    if rec.get("year"):
+        item["date"] = str(rec["year"])
+    if rec.get("doi"):
+        item["DOI"] = rec["doi"]
+    return item
+
+
+def save_items(items: list[dict], *, connector: str = "http://localhost:23119",
+               session_id: str = "litdb", timeout: float = 30) -> tuple[int, str]:
+    """POST translator items to a running Zotero via the connector server.
+
+    Returns (http_status, body). 201 means the items were saved. Raises
+    ConnectionError if Zotero is not reachable (not running).
+    """
+    url = connector.rstrip("/") + "/connector/saveItems"
+    payload = {"sessionID": session_id, "uri": "http://litdb.local/push", "items": items}
+    data = json.dumps(payload).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json",
+        "X-Zotero-Connector-API-Version": "3",
+        "X-Zotero-Version": "6.0",
+    }
+    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.status, resp.read().decode("utf-8", "ignore")
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read().decode("utf-8", "ignore")
+    except urllib.error.URLError as exc:
+        raise ConnectionError(
+            f"Zotero connector not reachable at {connector} — is Zotero running?"
+        ) from exc
+
+
 def _authors_csl(item: dict) -> str | None:
     people = item.get("author") or []
     names = []

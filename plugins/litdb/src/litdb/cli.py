@@ -193,6 +193,56 @@ def cmd_paper(args) -> int:
     return 0
 
 
+def cmd_update(args) -> int:
+    conn = db.connect()
+    db.init_db(conn)
+    fields = {}
+    for col in db.UPDATABLE_FIELDS:
+        val = getattr(args, col, None)
+        if val is not None:
+            fields[col] = val
+    if not fields:
+        _out({"error": "provide at least one field to update (e.g. --doi, --citation-key, "
+                       "--title, --authors, --year, --venue, --openalex-id)"}, args.human)
+        return 1
+    try:
+        updated = db.update_paper(conn, args.id, fields)
+    except ValueError as exc:
+        _out({"error": str(exc), "id": args.id}, args.human)
+        return 1
+    if updated is None:
+        _out({"error": "not found", "id": args.id}, args.human)
+        return 1
+    _out(updated, args.human)
+    return 0
+
+
+def cmd_merge(args) -> int:
+    conn = db.connect()
+    db.init_db(conn)
+    try:
+        result = db.merge_papers(conn, args.keep, args.dupe)
+    except ValueError as exc:
+        _out({"error": str(exc)}, args.human)
+        return 1
+    if result is None:
+        _out({"error": "paper not found", "keep": args.keep, "dupe": args.dupe}, args.human)
+        return 1
+    _out(result, args.human)
+    return 0
+
+
+def cmd_delete(args) -> int:
+    conn = db.connect()
+    db.init_db(conn)
+    ok = db.delete_paper(conn, args.id)
+    if not ok:
+        _out({"error": "not found", "id": args.id}, args.human)
+        return 1
+    _out({"ok": True, "deleted": args.id}, args.human)
+    return 0
+
+
 def cmd_external_search(args) -> int:
     conn = db.connect()
     db.init_db(conn)
@@ -260,6 +310,28 @@ def _locate_pdf_auto(conn, cfg, paper_id):
     return None
 
 
+def _ingest_all(conn, cfg) -> dict:
+    """Ingest full text for every paper that has a citekey, lacks full text, and
+    whose PDF Better BibTeX can locate. Shared by `ingest-pdf --all` and sync."""
+    rows = conn.execute("SELECT id FROM paper WHERE citation_key IS NOT NULL").fetchall()
+    done, skipped, failed = [], 0, []
+    for r in rows:
+        pid = r["id"]
+        if db.has_fulltext(conn, pid):
+            skipped += 1
+            continue
+        path = _locate_pdf_auto(conn, cfg, pid)
+        if not path:
+            skipped += 1
+            continue
+        try:
+            n = _ingest_one_pdf(conn, cfg, pid, path)
+            done.append({"paper_id": pid, "chunks": n})
+        except (ImportError, RuntimeError, OSError) as exc:
+            failed.append({"paper_id": pid, "error": str(exc)[:120]})
+    return {"ingested": done, "skipped": skipped, "failed": failed}
+
+
 def cmd_ingest_pdf(args) -> int:
     conn = db.connect()
     db.init_db(conn)
@@ -269,24 +341,7 @@ def cmd_ingest_pdf(args) -> int:
         return 1
 
     if args.all:
-        # Bulk: every paper with a citekey, lacking full text, whose PDF we can find.
-        rows = conn.execute("SELECT id FROM paper WHERE citation_key IS NOT NULL").fetchall()
-        done, skipped, failed = [], 0, []
-        for r in rows:
-            pid = r["id"]
-            if db.has_fulltext(conn, pid):
-                skipped += 1
-                continue
-            path = _locate_pdf_auto(conn, cfg, pid)
-            if not path:
-                skipped += 1
-                continue
-            try:
-                n = _ingest_one_pdf(conn, cfg, pid, path)
-                done.append({"paper_id": pid, "chunks": n})
-            except (ImportError, RuntimeError, OSError) as exc:
-                failed.append({"paper_id": pid, "error": str(exc)[:120]})
-        _out({"ingested": done, "skipped": skipped, "failed": failed}, args.human)
+        _out(_ingest_all(conn, cfg), args.human)
         return 0
 
     if args.paper is None:
@@ -419,10 +474,258 @@ def cmd_onboarded(args) -> int:
     return 0
 
 
+def _mask_key(key: str) -> str:
+    return ("…" + key[-4:]) if key and len(key) > 4 else "set"
+
+
+def cmd_s2key(args) -> int:
+    action = args.action or "status"
+    if action == "status":
+        present = config.has_s2_api_key()
+        _out({"s2_api_key_present": present, "source": config.s2_api_key_source(),
+              "path": str(config.s2_key_path()),
+              "env_var": config.load_config()["external"].get("s2_api_key_env", "S2_API_KEY")},
+             args.human)
+        return 0
+    if action == "set":
+        key = args.key
+        if key == "-" or key is None:
+            key = sys.stdin.read().strip()
+        if not key:
+            _out({"error": "no key provided (pass the key, or '-' to read stdin)"}, args.human)
+            return 1
+        path = config.set_s2_api_key(key)
+        config.set_pref("has_s2_api_key", True)
+        _out({"ok": True, "stored": _mask_key(key), "path": str(path),
+              "has_s2_api_key": True}, args.human)
+        return 0
+    if action == "clear":
+        removed = config.clear_s2_api_key()
+        # Only claim "no key" if the environment isn't still supplying one.
+        config.set_pref("has_s2_api_key", config.has_s2_api_key())
+        _out({"ok": True, "removed_file": removed,
+              "has_s2_api_key": config.has_s2_api_key()}, args.human)
+        return 0
+    _out({"error": f"unknown action {action!r}; use status|set|clear"}, args.human)
+    return 1
+
+
+import re as _re
+
+
+def _fallback_citekey(rec: dict) -> str:
+    authors = (rec.get("authors") or "").split(";")
+    first = authors[0].strip() if authors and authors[0].strip() else "anon"
+    surname = _re.sub(r"[^a-z]", "", first.split()[-1].lower()) if first.split() else "anon"
+    yr = rec.get("year") or ""
+    words = _re.findall(r"[a-z]+", (rec.get("title") or "").lower())
+    kw = next((w for w in words if len(w) > 3), "")
+    return f"{surname}{yr}{kw}" or "ref"
+
+
+def _bibtex_entry(rec: dict, key: str) -> str:
+    authors = " and ".join(a.strip() for a in (rec.get("authors") or "").split(";") if a.strip())
+    etype = "article" if (rec.get("venue") and rec.get("year")) else "misc"
+    fields = []
+    if authors:
+        fields.append(("author", authors))
+    if rec.get("title"):
+        fields.append(("title", rec["title"]))
+    if rec.get("venue"):
+        fields.append(("journal", rec["venue"]))
+    if rec.get("year"):
+        fields.append(("year", str(rec["year"])))
+    if rec.get("doi"):
+        fields.append(("doi", rec["doi"]))
+    body = ",\n".join(f"  {k} = {{{v}}}" for k, v in fields)
+    return f"@{etype}{{{key},\n{body}\n}}"
+
+
+def cmd_export_bib(args) -> int:
+    conn = db.connect()
+    db.init_db(conn)
+    recs = db.papers_for_export(conn, ids=args.ids, reading_status=args.status)
+    # Resolve keys, disambiguating collisions with a/b/c suffixes so the .bib is valid.
+    base = [(r, r.get("citation_key") or _fallback_citekey(r)) for r in recs]
+    counts, seen, resolved = {}, {}, []
+    for _, k in base:
+        counts[k] = counts.get(k, 0) + 1
+    for r, k in base:
+        if counts[k] > 1:
+            i = seen.get(k, 0)
+            seen[k] = i + 1
+            k = k + chr(ord("a") + i)
+        resolved.append((r, k))
+    text = "\n\n".join(_bibtex_entry(r, k) for r, k in resolved) + ("\n" if resolved else "")
+    no_key = sum(1 for r in recs if not r.get("citation_key"))
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as f:
+            f.write(text)
+        out = {"ok": True, "written": len(resolved), "path": args.out}
+        if no_key:
+            out["generated_fallback_keys"] = no_key
+        if config.get_pref("source_of_truth", "litdb") == "zotero":
+            out["note"] = ("source_of_truth=zotero: Better BibTeX is authoritative for "
+                           "citation keys; this export mirrors litdb's copy.")
+        _out(out, args.human)
+    else:
+        sys.stdout.write(text)
+    return 0
+
+
+def _do_push(conn, cfg, recs) -> tuple[list, list]:
+    """Push records to Zotero in chunks; mark successes. Returns (pushed_ids, errors)."""
+    import uuid
+    connector = cfg["zotero"].get("connector", "http://localhost:23119")
+    pushed, errors, conn_err = [], [], None
+    for start in range(0, len(recs), 20):
+        chunk = recs[start:start + 20]
+        try:
+            code, body = zotero.save_items([zotero._push_item(r) for r in chunk],
+                                           connector=connector, session_id=uuid.uuid4().hex)
+        except ConnectionError as exc:
+            conn_err = str(exc)
+            break
+        if code in (200, 201):
+            pushed += [r["id"] for r in chunk]
+        else:
+            errors.append({"http": code, "body": body[:200]})
+    if pushed:
+        db.mark_zotero_pushed(conn, pushed)
+    if conn_err:
+        errors.append({"error": conn_err})
+    return pushed, errors
+
+
+def cmd_push_zotero(args) -> int:
+    conn = db.connect()
+    db.init_db(conn)
+    cfg = config.load_config()
+    recs = db.papers_for_push(conn, ids=args.ids, reading_status=args.status,
+                              include_pushed=args.force)
+    if not recs:
+        _out({"ok": True, "pushed": 0,
+              "note": "nothing to push (already pushed? use --force, or narrow with --ids/--status)"},
+             args.human)
+        return 0
+    if args.dry_run:
+        _out({"dry_run": True, "would_push": len(recs),
+              "sample": [zotero._push_item(r) for r in recs[:3]]}, args.human)
+        return 0
+    pushed, errors = _do_push(conn, cfg, recs)
+    out = {"ok": not errors, "pushed": len(pushed), "paper_ids": pushed}
+    if errors:
+        out["errors"] = errors
+    _out(out, args.human)
+    return 0 if not errors else 1
+
+
+def _zotero_records(cfg):
+    """Read the Zotero library (Better BibTeX when available/enabled, else the
+    local API). Returns (records, source). Mirrors `import-zotero --local`."""
+    bbt_url = cfg["zotero"]["bbt_rpc"]
+    pref_bbt = cfg["preferences"].get("use_better_bibtex")
+    use_bbt = (pref_bbt is not False) and betterbibtex.available(bbt_url) is not None
+    if use_bbt:
+        return betterbibtex.read_library(bbt_url), "better-bibtex"
+    return zotero.read_local_api(cfg["zotero"]["local_api"], limit=1000), "zotero-local-api"
+
+
+def cmd_sync_zotero(args) -> int:
+    """Pull new papers from Zotero into litdb: import metadata + citekeys, ingest
+    PDFs for anything new, embed. Incremental — safe to run every session."""
+    conn = db.connect()
+    db.init_db(conn)
+    cfg = config.load_config()
+    try:
+        records, source = _zotero_records(cfg)
+    except (ConnectionError, FileNotFoundError, ValueError, RuntimeError, OSError) as exc:
+        # Fail soft: the caller (session-start sync) should proceed with existing data.
+        _out({"synced": False,
+              "error": f"Zotero not reachable (is it running?): {str(exc)[:120]}"}, args.human)
+        return 1
+    imp = db.import_papers(conn, records)
+    imp.update(read=len(records), source=source)
+    result = {"synced": True, "import": imp}
+    if pdfmod.available():
+        result["ingest"] = _ingest_all(conn, cfg)
+    else:
+        result["ingest"] = {"skipped": "pypdf not installed"}
+    default = registry.build_default(cfg)
+    local = registry.build_local(cfg)
+    if local is not None and local.model_id == default.model_id:
+        local = None
+    result["embed"] = indexer.embed_corpus(conn, default, local_provider=local)
+    _out(result, args.human)
+    return 0
+
+
+def cmd_sync_inbox(args) -> int:
+    """Ingest new PDFs from the configured inbox folder. Idempotent by content
+    hash (already-ingested files are skipped), so it is safe to run every session.
+    Returns any new DOI-less stubs under `needs_resolution` for the agent to
+    resolve (read PDF -> OpenAlex -> update), mirroring add-folder.md step 3."""
+    from pathlib import Path
+    conn = db.connect()
+    db.init_db(conn)
+    cfg = config.load_config()
+    inbox = config.get_pref("inbox")
+    if not inbox:
+        _out({"error": "no inbox configured. Set one: litdb prefs set inbox <folder>"}, args.human)
+        return 1
+    if not Path(inbox).expanduser().is_dir():
+        _out({"error": f"inbox is not a directory: {inbox}"}, args.human)
+        return 1
+    if not pdfmod.available():
+        _out({"error": "PDF support not installed. Run: pip install 'litdb[pdf]' (pypdf)."}, args.human)
+        return 1
+    skip = db.ingested_hashes(conn)
+    result = scanner.scan_directory(conn, cfg, inbox, recursive=True,
+                                    keep_unresolved=True, skip_hashes=skip)
+    added = result["resolved"] + [u for u in result["unresolved"] if u.get("added")]
+    db.record_ingested(conn, [(e["hash"], e["file"], e["paper_id"]) for e in added])
+    if added:
+        default = registry.build_default(cfg)
+        local = registry.build_local(cfg)
+        if local is not None and local.model_id == default.model_id:
+            local = None
+        result["embed"] = indexer.embed_corpus(conn, default, local_provider=local)
+    result["needs_resolution"] = [{"paper_id": u["paper_id"], "file": u["file"]}
+                                  for u in result["unresolved"] if u.get("added")]
+    _out(result, args.human)
+    return 0
+
+
+def cmd_migrate_to_zotero(args) -> int:
+    conn = db.connect()
+    db.init_db(conn)
+    cfg = config.load_config()
+    recs = db.papers_for_push(conn, include_pushed=args.force)  # the whole corpus, minus already-pushed
+    if args.dry_run:
+        _out({"dry_run": True, "would_push": len(recs),
+              "would_set": {"source_of_truth": "zotero"}}, args.human)
+        return 0
+    pushed, errors = _do_push(conn, cfg, recs) if recs else ([], [])
+    if errors:
+        # Do NOT flip the source of truth on a partial migration — leave litdb authoritative.
+        _out({"ok": False, "pushed": len(pushed), "errors": errors,
+              "note": "source_of_truth left unchanged because the push had errors; "
+                      "fix Zotero (is it running?) and re-run"}, args.human)
+        return 1
+    config.set_pref("source_of_truth", "zotero")
+    _out({"ok": True, "migrated": len(pushed), "source_of_truth": "zotero",
+          "next": "run import-zotero to pull Better BibTeX citation keys back into litdb"},
+         args.human)
+    return 0
+
+
 def cmd_status(args) -> int:
     conn = db.connect()
     db.init_db(conn)
-    _out(db.status(conn), args.human)
+    st = db.status(conn)
+    st["s2_api_key_present"] = config.has_s2_api_key()
+    st["source_of_truth"] = config.get_pref("source_of_truth", "litdb")
+    _out(st, args.human)
     return 0
 
 
@@ -570,7 +873,69 @@ def build_parser() -> argparse.ArgumentParser:
     pp.add_argument("id", type=int)
     pp.set_defaults(func=cmd_paper)
 
+    up = add("update", help="patch a paper's metadata in place (doi, citekey, title, authors, year, ...)")
+    up.add_argument("id", type=int)
+    up.add_argument("--doi")
+    up.add_argument("--zotero-key", dest="zotero_key")
+    up.add_argument("--openalex-id", dest="openalex_id")
+    up.add_argument("--s2-id", dest="s2_id")
+    up.add_argument("--citation-key", dest="citation_key")
+    up.add_argument("--title")
+    up.add_argument("--authors")
+    up.add_argument("--year", type=int)
+    up.add_argument("--venue")
+    up.add_argument("--abstract")
+    up.add_argument("--extra")
+    up.set_defaults(func=cmd_update)
+
+    mg = add("merge", help="absorb one paper into another (move full text + links, then delete the dupe)")
+    mg.add_argument("--keep", type=int, required=True, help="paper id to keep")
+    mg.add_argument("--dupe", type=int, required=True, help="paper id to absorb and delete")
+    mg.set_defaults(func=cmd_merge)
+
+    dl = add("delete", help="delete a paper, its chunks/embeddings, and its links")
+    dl.add_argument("id", type=int)
+    dl.set_defaults(func=cmd_delete)
+
     add("status", help="show corpus statistics").set_defaults(func=cmd_status)
+
+    pz = add("push-zotero", help="add litdb papers to a running Zotero via the connector API")
+    pz.add_argument("--ids", type=int, nargs="*", help="only these paper ids")
+    pz.add_argument("--status", choices=list(db.READING_STATUSES),
+                    help="only papers with this reading status")
+    pz.add_argument("--force", action="store_true",
+                    help="include papers already pushed (may create duplicates)")
+    pz.add_argument("--dry-run", action="store_true",
+                    help="show what would be pushed without contacting Zotero")
+    pz.set_defaults(func=cmd_push_zotero)
+
+    add("sync-zotero",
+        help="pull new papers from Zotero into litdb (import + ingest PDFs + embed; incremental)"
+        ).set_defaults(func=cmd_sync_zotero)
+
+    add("sync-inbox",
+        help="ingest new PDFs from the configured inbox folder (idempotent by content hash)"
+        ).set_defaults(func=cmd_sync_inbox)
+
+    mz = add("migrate-to-zotero",
+             help="push the whole litdb corpus into Zotero and switch source_of_truth to zotero")
+    mz.add_argument("--force", action="store_true", help="include papers already pushed")
+    mz.add_argument("--dry-run", action="store_true",
+                    help="show what would happen without contacting Zotero or changing prefs")
+    mz.set_defaults(func=cmd_migrate_to_zotero)
+
+    xb = add("export-bib", help="export BibTeX for the corpus (or a subset) from stored citation keys")
+    xb.add_argument("--out", help="write to this file (default: stdout)")
+    xb.add_argument("--status", choices=list(db.READING_STATUSES),
+                    help="only papers with this reading status")
+    xb.add_argument("--ids", type=int, nargs="*", help="only these paper ids")
+    xb.set_defaults(func=cmd_export_bib)
+
+    sk = add("s2-key", help="store/check the Semantic Scholar API key (enables --source s2/both)")
+    sk.add_argument("action", nargs="?", choices=["status", "set", "clear"], default="status",
+                    help="status (default), set (store a key), or clear")
+    sk.add_argument("key", nargs="?", help="the API key for 'set' (or '-' to read stdin)")
+    sk.set_defaults(func=cmd_s2key)
 
     pr = add("prefs", help="get/set user preferences: 'prefs' lists all, "
                            "'prefs set KEY VALUE', 'prefs get KEY'")
