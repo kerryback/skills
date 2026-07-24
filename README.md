@@ -48,6 +48,7 @@ example, checks for `quarto` and `ELEVENLABS_API_KEY` and offers to set them up)
 | [`slides`](./plugins/slides/skills/slides) | Build a polished Quarto reveal.js deck — HTML slides you render and export to PDF, PPTX, or PNG. |
 | [`finance-data`](./plugins/finance-data/skills/finance-data) | Fetch free market/economic data (prices, fundamentals, FRED, factors) and save as CSV. |
 | [`critique`](./plugins/critique/skills/critique) | Spawn parallel reviewer agents to critique work from different angles, then synthesize and apply revisions. Heavyweight — fans out subagents. |
+| [`coauthor`](./plugins/coauthor/skills/coauthor) | Multi-agent empirical-research system: Claude Code coordinates a diverse OpenRouter debate panel, a litdb-backed Verifier, and WRDS/OpenAP Analyst + Replicator. Commands: `init`, `roster`, `round`, `autonomy`, `refresh`, `stop`. Needs litdb (+ WRDS for empirics), `OPENROUTER_API_KEY`. |
 
 ## Layout
 
