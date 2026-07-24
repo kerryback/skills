@@ -23,7 +23,9 @@ Run all code with the interpreter named in `.coauthor/python` (fallback `python3
 if that file is absent). Do NOT silently `pip install` into an unknown environment
 or create a venv — if a required package (wrds, pandas, numpy, statsmodels, OpenAP)
 is missing, report it to the Coordinator, who resolves the environment with the
-user.
+user. In particular, wrds runs fine on current pandas — NEVER downgrade pandas to
+satisfy a wrds version warning (its metadata pin is overly restrictive; a downgrade
+breaks numpy/statsmodels). See SKILL "Installing wrds" for the safe install.
 
 ## Data sources
 

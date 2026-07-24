@@ -70,6 +70,23 @@ coauthor's own plumbing (debate/roster/render) is stdlib and only needs `python3
 ≥ 3.11 — this resolution is specifically about the empirical packages the subagents
 need. If a needed package is missing, surface it; don't silently pip-install.
 
+### Installing wrds — do NOT let it downgrade pandas
+The `wrds` package pins an OLD pandas in its metadata; installed normally it
+uninstalls your current pandas and drops to that old version, which breaks numpy /
+statsmodels / much else. wrds actually runs fine on current pandas, so never accept
+the downgrade. Use the interpreter from `.coauthor/python`; pick one approach:
+- Clean install (preferred): install wrds alone, touching nothing else —
+  `<interp> -m pip install --no-deps wrds` — then, only if `import wrds` reports a
+  genuinely missing module (e.g. `psycopg2`, `sqlalchemy`, `mock`), install just
+  that one package. NEVER reinstall/downgrade pandas.
+- Snapshot + restore: `<interp> -m pip freeze > /tmp/env-before.txt` BEFORE
+  installing wrds; `pip install wrds`; then restore the downgraded packages to
+  their prior versions (`<interp> -m pip install -r /tmp/env-before.txt`). Ignore
+  pip's "wrds requires pandas==X" dependency-conflict warnings — they are harmless
+  here.
+Verify: `<interp> -c "import wrds, pandas; print(pandas.__version__)"` — pandas
+should be your CURRENT version and wrds should import.
+
 ## The roles you orchestrate
 - Proposer, Adversary (+ extra voices) — stateless OpenRouter voices, called via
   `python -m coauthor.debate`. The lineup lives in `.coauthor/config.toml` and is
