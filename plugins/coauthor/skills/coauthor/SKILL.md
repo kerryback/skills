@@ -88,12 +88,19 @@ Verify: `<interp> -c "import wrds, pandas; print(pandas.__version__)"` — panda
 should be your CURRENT version and wrds should import.
 
 ### Connecting to WRDS non-interactively (or an unattended run HANGS)
-`wrds.Connection()` still PROMPTS for a username even when `~/.pgpass` supplies the
-password. In a blanket/unattended round that prompt hangs forever. Always pass the
-username: `wrds.Connection(wrds_username=USER)`. USER is field 4 of the wrds line in
-`~/.pgpass` (`host:port:db:USERNAME:password`), or `$WRDS_USERNAME` — note it may
-differ from the OS user (e.g. `keback`, not `kerryback`). The Analyst reads it
-automatically; never leave the connection to prompt.
+`.pgpass` supplies the PASSWORD (robust — no secret in code), but the wrds library
+does NOT read the username from it, so you MUST pass the username or the connection
+prompts and an unattended run hangs forever. Verified working pattern (mirrors
+`~/repos/wrds/test_wrds.py`):
+```python
+import os, wrds
+conn = wrds.Connection(wrds_username=os.environ.get("WRDS_USER", "keback"))
+```
+Username from `$WRDS_USER` (default the WRDS id `keback`, which differs from the OS
+user `kerryback`); password auto-supplied by `~/.pgpass`. Prefer the CRSP v2 tables
+(`crsp.msf_v2`: `mthcaldt, mthret, mthprc, shrout, sharetype, securitytype,
+primaryexch`) — there `mthret` is a proper float; the older `crsp.msf` returns
+returns as strings (coerce with `pd.to_numeric` if you must use it).
 
 ## The roles you orchestrate
 - Proposer, Adversary (+ extra voices) — stateless OpenRouter voices, called via

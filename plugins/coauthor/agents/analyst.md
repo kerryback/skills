@@ -29,15 +29,18 @@ breaks numpy/statsmodels). See SKILL "Installing wrds" for the safe install.
 
 ## Data sources
 
-- WRDS / CRSP-Compustat via the `wrds` Python package. Credentials are in the
-  user's `.pgpass`. BUT `wrds.Connection()` still prompts for a USERNAME even with
-  `.pgpass` — which hangs an unattended run — so ALWAYS pass it explicitly:
-  `wrds.Connection(wrds_username=USER)`, where USER is field 4 of the wrds line in
-  `~/.pgpass` (or `$WRDS_USERNAME`); it may differ from the OS user. Use the CRSP
-  monthly stock file with delisting returns, and the CRSP-Compustat merged
-  linktable for accounting data. Respect standard screens (share codes 10/11,
-  exchange codes, price/microcap filters) and state them. Note CRSP `ret` may come
-  back as strings — coerce with `pd.to_numeric(errors="coerce")`.
+- WRDS / CRSP-Compustat via the `wrds` Python package. `~/.pgpass` supplies the
+  password, but the library does NOT read the username from it — so ALWAYS pass it
+  or the connection prompts and an unattended run hangs. Verified pattern (mirrors
+  `~/repos/wrds/test_wrds.py`):
+  `conn = wrds.Connection(wrds_username=os.environ.get("WRDS_USER", "keback"))`
+  (`$WRDS_USER`, default the WRDS id `keback` — differs from the OS user; password
+  from `~/.pgpass`). Prefer the CRSP v2 monthly file `crsp.msf_v2` (`mthcaldt,
+  mthret, mthprc, shrout, sharetype, securitytype, primaryexch`) — `mthret` is a
+  proper float there; the older `crsp.msf` returns returns as strings. Use
+  delisting returns and the CRSP-Compustat merged linktable for accounting data.
+  Respect standard screens (share codes 10/11, exchange codes, price/microcap
+  filters) and state them.
 - Open Source Asset Pricing (openassetpricing.com, Chen-Zimmermann): ~200
   documented predictor signals with code and portfolio returns, public and
   un-gated (download directly). Be explicit about which object you use — the
