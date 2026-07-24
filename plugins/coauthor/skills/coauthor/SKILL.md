@@ -53,6 +53,23 @@ Continue the existing project.
   rounds (Analyst/Replicator), not for debate/verify-only rounds.
 - `OPENROUTER_API_KEY` (debate voices) and `ANTHROPIC_API_KEY` (Claude subagents).
 
+## Python environment (for empirical work)
+The Analyst and Replicator run real Python (wrds, pandas, numpy, statsmodels,
+OpenAP). Resolve which interpreter they use ONCE and record it in
+`.coauthor/python`, before the first empirical run — never create or install into
+an environment without asking:
+1. If `.coauthor/python` already exists, use the interpreter it names.
+2. Else look for a venv in the project folder — `./.venv`, `./venv`, `./env` (first
+   match with a `bin/python`), or an active `$VIRTUAL_ENV` pointing inside the
+   project. If found, write its `bin/python` path to `.coauthor/python` and use it.
+3. Else ASK the user — do not guess: (a) use the default environment (the `python3`
+   already on PATH), or (b) set up a fresh project venv (`python3 -m venv .venv`,
+   then install the empirical stack). Write the chosen interpreter to
+   `.coauthor/python`.
+coauthor's own plumbing (debate/roster/render) is stdlib and only needs `python3`
+≥ 3.11 — this resolution is specifically about the empirical packages the subagents
+need. If a needed package is missing, surface it; don't silently pip-install.
+
 ## The roles you orchestrate
 - Proposer, Adversary (+ extra voices) — stateless OpenRouter voices, called via
   `python -m coauthor.debate`. The lineup lives in `.coauthor/config.toml` and is

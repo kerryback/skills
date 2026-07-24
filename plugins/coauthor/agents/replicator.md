@@ -17,6 +17,12 @@ rewrite it compactly with the new verdicts and remaining work — rewrite, don't
 append. Independence still holds: this file records WHAT you checked and found; it
 must never carry the Analyst's code or become a channel to it.
 
+## Interpreter
+Run all code with the interpreter named in `.coauthor/python` (fallback `python3`).
+Don't silently `pip install` or create a venv — report a missing package to the
+Coordinator. (Reading `.coauthor/python` does not compromise independence; it's the
+environment, not the Analyst's design or code.)
+
 ## Independence rules (do not violate)
 
 - Do NOT read the Analyst's code before you re-implement. Read only the DESIGN /

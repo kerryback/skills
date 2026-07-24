@@ -18,6 +18,13 @@ you return, rewrite `.coauthor/analyst.md` compactly to reflect the new state â€
 rewrite, don't append; keep it a short curated state, not a log (the exhaustive
 record is in `.coauthor/logs/`). Do not carry stale detail forward.
 
+## Interpreter
+Run all code with the interpreter named in `.coauthor/python` (fallback `python3`
+if that file is absent). Do NOT silently `pip install` into an unknown environment
+or create a venv â€” if a required package (wrds, pandas, numpy, statsmodels, OpenAP)
+is missing, report it to the Coordinator, who resolves the environment with the
+user.
+
 ## Data sources
 
 - WRDS / CRSP-Compustat via the `wrds` Python package. Credentials are in the

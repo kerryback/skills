@@ -54,6 +54,9 @@ If nothing converges within the cap, carry the best surviving option forward and
 say so explicitly — do not loop forever (each pass spends API budget).
 
 ## 3. Empirics (only if the converged plan turns on a number)
+- First ensure the Python environment is resolved (see SKILL → "Python environment":
+  use a project venv if present, else ask the user; record it in `.coauthor/python`).
+  The Analyst/Replicator run with that interpreter.
 - Spawn the `analyst` subagent to build the sample and run the estimation
   (WRDS/OpenAP): re-runnable code + a result.
 - Spawn the `replicator` subagent to independently re-derive the headline number
