@@ -87,6 +87,14 @@ the downgrade. Use the interpreter from `.coauthor/python`; pick one approach:
 Verify: `<interp> -c "import wrds, pandas; print(pandas.__version__)"` — pandas
 should be your CURRENT version and wrds should import.
 
+### Connecting to WRDS non-interactively (or an unattended run HANGS)
+`wrds.Connection()` still PROMPTS for a username even when `~/.pgpass` supplies the
+password. In a blanket/unattended round that prompt hangs forever. Always pass the
+username: `wrds.Connection(wrds_username=USER)`. USER is field 4 of the wrds line in
+`~/.pgpass` (`host:port:db:USERNAME:password`), or `$WRDS_USERNAME` — note it may
+differ from the OS user (e.g. `keback`, not `kerryback`). The Analyst reads it
+automatically; never leave the connection to prompt.
+
 ## The roles you orchestrate
 - Proposer, Adversary (+ extra voices) — stateless OpenRouter voices, called via
   `python -m coauthor.debate`. The lineup lives in `.coauthor/config.toml` and is

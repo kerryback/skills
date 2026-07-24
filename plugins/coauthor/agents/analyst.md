@@ -30,10 +30,14 @@ breaks numpy/statsmodels). See SKILL "Installing wrds" for the safe install.
 ## Data sources
 
 - WRDS / CRSP-Compustat via the `wrds` Python package. Credentials are in the
-  user's `.pgpass`, so `wrds.Connection()` connects non-interactively. Use the
-  CRSP monthly stock file with delisting returns, and the CRSP-Compustat merged
+  user's `.pgpass`. BUT `wrds.Connection()` still prompts for a USERNAME even with
+  `.pgpass` — which hangs an unattended run — so ALWAYS pass it explicitly:
+  `wrds.Connection(wrds_username=USER)`, where USER is field 4 of the wrds line in
+  `~/.pgpass` (or `$WRDS_USERNAME`); it may differ from the OS user. Use the CRSP
+  monthly stock file with delisting returns, and the CRSP-Compustat merged
   linktable for accounting data. Respect standard screens (share codes 10/11,
-  exchange codes, price/microcap filters) and state them.
+  exchange codes, price/microcap filters) and state them. Note CRSP `ret` may come
+  back as strings — coerce with `pd.to_numeric(errors="coerce")`.
 - Open Source Asset Pricing (openassetpricing.com, Chen-Zimmermann): ~200
   documented predictor signals with code and portfolio returns, public and
   un-gated (download directly). Be explicit about which object you use — the
