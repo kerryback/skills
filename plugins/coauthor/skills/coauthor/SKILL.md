@@ -90,17 +90,20 @@ should be your CURRENT version and wrds should import.
 ### Connecting to WRDS non-interactively (or an unattended run HANGS)
 `.pgpass` supplies the PASSWORD (robust — no secret in code), but the wrds library
 does NOT read the username from it, so you MUST pass the username or the connection
-prompts and an unattended run hangs forever. Verified working pattern (mirrors
-`~/repos/wrds/test_wrds.py`):
+prompts and an unattended run hangs forever. NEVER hardcode a username (the skill
+must work for anyone) — resolve it per user, first hit wins: `$WRDS_USER` → `~/.wrds`
+(a `WRDS_USER=<id>` or bare-username line) → `~/.pgpass` field 4 of the wrds line
+(zero setup — anyone with WRDS already has it). coauthor ships this resolver:
+`python -m coauthor.wrds_username` prints the resolved id. Pattern:
 ```python
-import os, wrds
-conn = wrds.Connection(wrds_username=os.environ.get("WRDS_USER", "keback"))
+import wrds
+from coauthor.wrds_username import wrds_username   # or embed the resolver inline
+conn = wrds.Connection(wrds_username=wrds_username())   # password from ~/.pgpass
 ```
-Username from `$WRDS_USER` (default the WRDS id `keback`, which differs from the OS
-user `kerryback`); password auto-supplied by `~/.pgpass`. Prefer the CRSP v2 tables
-(`crsp.msf_v2`: `mthcaldt, mthret, mthprc, shrout, sharetype, securitytype,
-primaryexch`) — there `mthret` is a proper float; the older `crsp.msf` returns
-returns as strings (coerce with `pd.to_numeric` if you must use it).
+In a re-runnable Analyst script, copy the small resolver in so the script doesn't
+depend on the plugin path. Prefer the CRSP v2 tables (`crsp.msf_v2`: `mthcaldt,
+mthret, mthprc, shrout, sharetype, securitytype, primaryexch`) — there `mthret` is a
+proper float; the older `crsp.msf` returns returns as strings.
 
 ## The roles you orchestrate
 - Proposer, Adversary (+ extra voices) — stateless OpenRouter voices, called via

@@ -31,16 +31,17 @@ breaks numpy/statsmodels). See SKILL "Installing wrds" for the safe install.
 
 - WRDS / CRSP-Compustat via the `wrds` Python package. `~/.pgpass` supplies the
   password, but the library does NOT read the username from it — so ALWAYS pass it
-  or the connection prompts and an unattended run hangs. Verified pattern (mirrors
-  `~/repos/wrds/test_wrds.py`):
-  `conn = wrds.Connection(wrds_username=os.environ.get("WRDS_USER", "keback"))`
-  (`$WRDS_USER`, default the WRDS id `keback` — differs from the OS user; password
-  from `~/.pgpass`). Prefer the CRSP v2 monthly file `crsp.msf_v2` (`mthcaldt,
-  mthret, mthprc, shrout, sharetype, securitytype, primaryexch`) — `mthret` is a
-  proper float there; the older `crsp.msf` returns returns as strings. Use
-  delisting returns and the CRSP-Compustat merged linktable for accounting data.
-  Respect standard screens (share codes 10/11, exchange codes, price/microcap
-  filters) and state them.
+  or the connection prompts and an unattended run hangs. NEVER hardcode the
+  username: resolve it per user (first hit wins) — `$WRDS_USER` → `~/.wrds` → field
+  4 of the wrds line in `~/.pgpass`. coauthor ships the resolver
+  (`python -m coauthor.wrds_username`); in your re-runnable script embed the same
+  small resolver so it stays standalone, then:
+  `conn = wrds.Connection(wrds_username=<resolved>)` (password from `~/.pgpass`).
+  Prefer the CRSP v2 monthly file `crsp.msf_v2` (`mthcaldt, mthret, mthprc, shrout,
+  sharetype, securitytype, primaryexch`) — `mthret` is a proper float there; the
+  older `crsp.msf` returns returns as strings. Use delisting returns and the
+  CRSP-Compustat merged linktable for accounting data. Respect standard screens
+  (share codes 10/11, exchange codes, price/microcap filters) and state them.
 - Open Source Asset Pricing (openassetpricing.com, Chen-Zimmermann): ~200
   documented predictor signals with code and portfolio returns, public and
   un-gated (download directly). Be explicit about which object you use — the

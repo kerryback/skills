@@ -48,7 +48,9 @@ analyst's code/data/results).
   drives `~/.litdb/.venv/bin/python -m litdb …`). Without it, verification — half
   of every round — does not work.
 - WRDS + Open Source Asset Pricing — required only for empirical rounds. The
-  Analyst/Replicator use the `wrds` Python package with `~/.pgpass`, plus OpenAP
+  Analyst/Replicator use the `wrds` Python package with `~/.pgpass` (password) and
+  a resolvable WRDS username — `$WRDS_USER`, a `~/.wrds` file, or field 4 of the
+  `.pgpass` wrds line (`python -m coauthor.wrds_username` prints it). Plus OpenAP
   (public). Debate-and-verify-only rounds don't need these.
 - Two API keys — see below.
 
