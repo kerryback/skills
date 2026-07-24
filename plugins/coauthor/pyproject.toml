@@ -1,0 +1,15 @@
+[project]
+name = "coauthor"
+version = "0.1.0"
+description = "Reusable multi-agent machinery for empirical research papers"
+requires-python = ">=3.11"
+# Zero runtime dependencies: the debate client uses stdlib urllib, and config
+# uses stdlib tomllib (3.11+). Nothing to install to run a round.
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/coauthor"]

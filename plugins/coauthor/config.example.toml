@@ -1,0 +1,37 @@
+# coauthor debate-voice roster (defaults). Copy to a project as `config.toml`
+# and edit per project. Roster is config, not code: add/swap a voice by editing
+# a seat here — no code change.
+#
+# IMPORTANT: model slugs change. Verify current ids at https://openrouter.ai/models
+# and pick genuinely DIFFERENT families for Proposer vs Adversary — that
+# cross-family diversity is the point (it breaks correlated errors a single base
+# model shares). Pin provider_order for open models so behavior is reproducible.
+
+[seats.proposer]
+model = "google/gemini-3.1-pro-preview"  # creative lead (Google) — latest Pro tier
+temperature = 0.9
+
+[seats.adversary]
+model = "openai/gpt-5.6-sol"             # different family (OpenAI)
+temperature = 0.4
+
+# Add more voices freely, e.g. a second adversary on yet another family. The
+# Coordinator calls each seat it knows about. Keep an odd number if you ever
+# majority-vote; diversity saturates around 3-4 families.
+#
+# A seat's name doubles as its charter file name (charters/<seat>.md). Extra
+# seats that reuse an existing role's charter must say so with `charter = "..."`,
+# otherwise the debate client fails looking for charters/<seat>.md.
+[seats.adversary_2]
+model = "moonshotai/kimi-k3"             # Kimi via OpenRouter — no Moonshot account needed
+charter = "adversary"                    # reuse the adversary charter on a different family
+temperature = 0.5
+# provider_order = ["moonshotai"]        # optional: pin the host for this open model
+                                          # (verify the exact provider slug on the model's
+                                          #  OpenRouter page before enabling)
+
+# Notes:
+# - Verifier, Analyst, Replicator are NOT here: they are tool-using Claude
+#   subagents (see agents/), not stateless OpenRouter voices.
+# - Set an OpenRouter data policy that excludes training/logging (unpublished
+#   research): https://openrouter.ai/settings/privacy

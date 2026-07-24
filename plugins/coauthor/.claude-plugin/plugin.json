@@ -1,0 +1,21 @@
+{
+  "name": "coauthor",
+  "version": "0.1.0",
+  "description": "A coordinated multi-agent system for empirical research papers. Claude Code is the coordinator you converse with; a diverse OpenRouter debate panel (Proposer, Adversary) generates and attacks ideas; tool-using Claude subagents ground the work in fact (Verifier over litdb), run the empirics (Analyst over WRDS/OpenAP), and independently re-derive results (Replicator). Each paper is its own repo; this plugin is the shared machinery.",
+  "author": {
+    "name": "Kerry Back"
+  },
+  "license": "MIT",
+  "keywords": [
+    "research",
+    "multi-agent",
+    "asset-pricing",
+    "empirical",
+    "debate",
+    "wrds"
+  ],
+  "skills": "./skills/",
+  "commands": "./commands/",
+  "agents": "./agents/",
+  "hooks": "./hooks/hooks.json"
+}

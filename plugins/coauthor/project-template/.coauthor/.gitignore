@@ -1,0 +1,4 @@
+# Commit the curated memory; ignore exhaustive logs + transient runtime state.
+logs/
+round
+autonomy
