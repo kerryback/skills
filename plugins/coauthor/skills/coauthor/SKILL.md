@@ -43,6 +43,16 @@ Continue the existing project.
    `/coauthor:roster` (browser picker over the live OpenRouter catalog, or "use
    most recent") to change it. If untouched, the existing roster stands.
 
+## Requirements (check early)
+- litdb is REQUIRED — the Verifier is corpus-first over it and every fact-check
+  routes through it. It must be installed (the Verifier drives
+  `~/.litdb/.venv/bin/python -m litdb …`). If litdb isn't present, say so plainly:
+  verification won't work, so debate is ungrounded — point the user at the litdb
+  plugin before real rounds.
+- WRDS (`~/.pgpass` + `wrds` package) + OpenAP are needed only for empirical
+  rounds (Analyst/Replicator), not for debate/verify-only rounds.
+- `OPENROUTER_API_KEY` (debate voices) and `ANTHROPIC_API_KEY` (Claude subagents).
+
 ## The roles you orchestrate
 - Proposer, Adversary (+ extra voices) — stateless OpenRouter voices, called via
   `python -m coauthor.debate`. The lineup lives in `.coauthor/config.toml` and is

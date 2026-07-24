@@ -30,6 +30,8 @@ code/data/results (which you chose to keep first-class at the root).
    and tell them to run `/coauthor:roster` before the first round.)
 
 6. Tell the user:
+   - litdb must be installed — the Verifier depends on it (corpus-first). If it's
+     not present, flag that verification won't work until it is.
    - Set `OPENROUTER_API_KEY` and `ANTHROPIC_API_KEY` in the environment (and
      `~/.pgpass` for WRDS before any empirical round).
    - Then converse to set the working angle — you seed `.coauthor/state.md` and run

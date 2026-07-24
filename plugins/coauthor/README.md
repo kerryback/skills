@@ -40,6 +40,18 @@ analyst's code/data/results).
 - Exhaustive + local: `.coauthor/logs/` (raw JSONL + rendered transcripts).
   Gitignored — never committed.
 
+## Requirements
+
+- litdb — REQUIRED. The Verifier is corpus-first over your litdb library, and
+  corpus-first is a core principle: every "known result" is checked against litdb
+  before any external source. Install the litdb plugin/skill first (the Verifier
+  drives `~/.litdb/.venv/bin/python -m litdb …`). Without it, verification — half
+  of every round — does not work.
+- WRDS + Open Source Asset Pricing — required only for empirical rounds. The
+  Analyst/Replicator use the `wrds` Python package with `~/.pgpass`, plus OpenAP
+  (public). Debate-and-verify-only rounds don't need these.
+- Two API keys — see below.
+
 ## Credentials (two secrets)
 
 - `ANTHROPIC_API_KEY` — Coordinator, Verifier, Analyst, Replicator (all Claude).
