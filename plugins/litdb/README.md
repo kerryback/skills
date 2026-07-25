@@ -137,7 +137,7 @@ Getting papers in
 
 | Command | Purpose |
 |---|---|
-| `scan-pdfs DIR [--keep-unresolved] [--embed]` | add a folder of PDFs (look up metadata, read full text) |
+| `scan-pdfs DIR [--project NAME] [--keep-unresolved] [--embed]` | add a folder of PDFs (look up metadata, read full text; tag with a project/topic) |
 | `sync-inbox` | add new PDFs from your inbox folder (skips ones already added) |
 | `import-doi DOI [--source]` | add one paper by DOI |
 | `import-zotero --file F \| --local \| --bbt` | import from Zotero |
@@ -147,7 +147,7 @@ Searching and reading
 
 | Command | Purpose |
 |---|---|
-| `search "Q" [--mode] [--type] [--status] [--year-min/max]` | search full text + abstracts by wording, meaning, or both |
+| `search "Q" [--mode] [--type] [--status] [--year-min/max] [--project NAME]` | search full text + abstracts by wording, meaning, or both (optionally scoped to a project) |
 | `screen --paper P --status … [--note] [--priority]` | mark reading status / triage |
 | `list [--status]` | list papers (your reading queue) |
 | `paper ID` | show a paper with its notes, keywords, and citekey |
@@ -189,8 +189,9 @@ Notes, indexing, and admin
 
 | Command | Purpose |
 |---|---|
-| `add-note --body … [--title] [--link ID] [--confidential]` | attach a note (basic, by design — see below) |
+| `add-note --body … [--title] [--link ID] [--confidential] [--project NAME \| --no-project]` | attach a note (basic, by design — see below; auto-tags with the working-folder name) |
 | `link --note N --paper P [--relation]` | link an existing note to a paper |
+| `projects list \| rename OLD NEW \| tag NAME --paper/--note ID \| untag …` | manage the project/topic tags on papers and notes |
 | `embed [--provider] [--model] [--force]` | build/refresh the "search by meaning" index |
 | `prefs [set KEY VALUE \| get KEY]` | view/change settings (see Settings) |
 | `s2-key [status \| set KEY \| clear]` | store your Semantic Scholar key |

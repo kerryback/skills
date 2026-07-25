@@ -130,8 +130,13 @@ out or strip it without revisiting that decision.
 `init, import-zotero, scan-pdfs, import-doi, external-search, discover, search,
 embed, add-note, link, screen, list, paper, update, merge, delete, ingest-pdf,
 cite-fetch, refs, cited-by, most-cited, export-bib, push-zotero, sync-zotero,
-sync-inbox, migrate-to-zotero, missing-refs, prefs, s2-key, onboarded, status`.
-Every command supports `--human`; see README.md for the full table.
+sync-inbox, migrate-to-zotero, missing-refs, projects, prefs, s2-key, onboarded,
+status`. Every command supports `--human`; see README.md for the full table.
+
+Papers and notes carry project/topic tags (many-to-many): `scan-pdfs --project`
+sets them at folder ingest (ask the user for the name), `add-note --project` /
+`--no-project` at note capture (defaults to the cwd name), and `search --project`
+filters to one. Manage with `projects list|rename|tag|untag`.
 
 Zotero (source_of_truth=zotero only): `push-zotero [--ids …] [--status S]
 [--dry-run] [--force]` adds papers to a running Zotero via its connector API

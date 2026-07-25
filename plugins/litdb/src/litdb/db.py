@@ -13,13 +13,14 @@ Design notes:
 from __future__ import annotations
 
 import hashlib
+import re
 import sqlite3
 from pathlib import Path
 from typing import Iterable
 
 from . import config
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -148,6 +149,28 @@ CREATE TABLE IF NOT EXISTS ingested_file (
     paper_id    INTEGER,
     ingested_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Named projects/collections. A paper or note may belong to many; the same work
+-- legitimately spans several projects, so membership is many-to-many. `owner` is
+-- polymorphic (mirroring `chunk`) — no FK, so it is cleaned up explicitly on
+-- paper delete/merge (notes have no delete path yet).
+CREATE TABLE IF NOT EXISTS project (
+    id         INTEGER PRIMARY KEY,
+    name       TEXT NOT NULL,          -- display form (first seen), renameable
+    slug       TEXT NOT NULL UNIQUE,   -- lowercased/whitespace-collapsed match key
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS project_member (
+    project_id INTEGER NOT NULL REFERENCES project(id) ON DELETE CASCADE,
+    owner_type TEXT NOT NULL CHECK (owner_type IN ('paper','note')),
+    owner_id   INTEGER NOT NULL,
+    source     TEXT NOT NULL DEFAULT 'user',  -- folder|cwd|user
+    added_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (project_id, owner_type, owner_id)
+);
+CREATE INDEX IF NOT EXISTS idx_project_member_owner
+    ON project_member(owner_type, owner_id);
 """
 
 
@@ -541,6 +564,15 @@ def merge_papers(conn: sqlite3.Connection, keep_id: int, dupe_id: int) -> dict |
         "SELECT ?, keyword_id, source FROM paper_keyword WHERE paper_id=?",
         (keep_id, dupe_id),
     )
+    conn.execute(
+        "INSERT OR IGNORE INTO project_member(project_id, owner_type, owner_id, source) "
+        "SELECT project_id, 'paper', ?, source FROM project_member "
+        "WHERE owner_type='paper' AND owner_id=?",
+        (keep_id, dupe_id),
+    )
+    conn.execute(
+        "DELETE FROM project_member WHERE owner_type='paper' AND owner_id=?", (dupe_id,)
+    )
 
     # Delete the dupe (its remaining chunks first, so their embeddings cascade;
     # this also frees any unique doi/zotero_key before we copy it onto keep).
@@ -581,6 +613,7 @@ def delete_paper(conn: sqlite3.Connection, paper_id: int) -> bool:
     if conn.execute("SELECT 1 FROM paper WHERE id=?", (paper_id,)).fetchone() is None:
         return False
     conn.execute("DELETE FROM chunk WHERE owner_type='paper' AND owner_id=?", (paper_id,))
+    conn.execute("DELETE FROM project_member WHERE owner_type='paper' AND owner_id=?", (paper_id,))
     conn.execute("DELETE FROM paper WHERE id=?", (paper_id,))
     conn.commit()
     return True
@@ -754,6 +787,111 @@ def link_note_paper(
 
 
 # --------------------------------------------------------------------------- #
+# projects / collections
+# --------------------------------------------------------------------------- #
+
+def _project_slug(name: str) -> str:
+    return re.sub(r"\s+", " ", (name or "").strip()).lower()
+
+
+def upsert_project(conn: sqlite3.Connection, name: str) -> int:
+    slug = _project_slug(name)
+    if not slug:
+        raise ValueError("project name cannot be empty")
+    conn.execute(
+        "INSERT INTO project(name, slug) VALUES (?, ?) ON CONFLICT(slug) DO NOTHING",
+        (name.strip(), slug),
+    )
+    return int(conn.execute("SELECT id FROM project WHERE slug=?", (slug,)).fetchone()["id"])
+
+
+def tag_project(
+    conn: sqlite3.Connection, owner_type: str, owner_id: int, name: str, source: str = "user"
+) -> int:
+    """Add (owner) to project ``name``, creating the project if needed. Idempotent."""
+    pid = upsert_project(conn, name)
+    conn.execute(
+        "INSERT INTO project_member(project_id, owner_type, owner_id, source) "
+        "VALUES (?,?,?,?) ON CONFLICT(project_id, owner_type, owner_id) DO NOTHING",
+        (pid, owner_type, owner_id, source),
+    )
+    return pid
+
+
+def untag_project(conn: sqlite3.Connection, owner_type: str, owner_id: int, name: str) -> bool:
+    cur = conn.execute(
+        "DELETE FROM project_member WHERE owner_type=? AND owner_id=? AND project_id="
+        "(SELECT id FROM project WHERE slug=?)",
+        (owner_type, owner_id, _project_slug(name)),
+    )
+    return cur.rowcount > 0
+
+
+def project_names(conn: sqlite3.Connection, owner_type: str, owner_id: int) -> list[str]:
+    return [
+        r["name"]
+        for r in conn.execute(
+            "SELECT p.name FROM project_member pm JOIN project p ON p.id = pm.project_id "
+            "WHERE pm.owner_type=? AND pm.owner_id=? ORDER BY p.name",
+            (owner_type, owner_id),
+        ).fetchall()
+    ]
+
+
+def project_members(conn: sqlite3.Connection, name: str) -> set[tuple[str, int]]:
+    """The (owner_type, owner_id) set belonging to a project. Empty if unknown."""
+    rows = conn.execute(
+        "SELECT pm.owner_type, pm.owner_id FROM project_member pm "
+        "JOIN project p ON p.id = pm.project_id WHERE p.slug=?",
+        (_project_slug(name),),
+    ).fetchall()
+    return {(r["owner_type"], r["owner_id"]) for r in rows}
+
+
+def project_exists(conn: sqlite3.Connection, name: str) -> bool:
+    return conn.execute(
+        "SELECT 1 FROM project WHERE slug=?", (_project_slug(name),)
+    ).fetchone() is not None
+
+
+def list_projects(conn: sqlite3.Connection) -> list[dict]:
+    return [
+        dict(r)
+        for r in conn.execute(
+            "SELECT p.id, p.name, "
+            "  COALESCE(SUM(pm.owner_type='paper'), 0) AS papers, "
+            "  COALESCE(SUM(pm.owner_type='note'),  0) AS notes "
+            "FROM project p LEFT JOIN project_member pm ON pm.project_id = p.id "
+            "GROUP BY p.id ORDER BY p.name"
+        ).fetchall()
+    ]
+
+
+def rename_project(conn: sqlite3.Connection, old: str, new: str) -> bool:
+    """Rename a project. Folds into the target if ``new`` already exists."""
+    src = conn.execute("SELECT id FROM project WHERE slug=?", (_project_slug(old),)).fetchone()
+    if src is None:
+        return False
+    new_slug = _project_slug(new)
+    if not new_slug:
+        raise ValueError("new project name cannot be empty")
+    dst = conn.execute("SELECT id FROM project WHERE slug=?", (new_slug,)).fetchone()
+    if dst is None:
+        conn.execute(
+            "UPDATE project SET name=?, slug=? WHERE id=?", (new.strip(), new_slug, src["id"])
+        )
+    else:  # fold memberships into the existing target, then drop the old row
+        conn.execute(
+            "INSERT OR IGNORE INTO project_member(project_id, owner_type, owner_id, source) "
+            "SELECT ?, owner_type, owner_id, source FROM project_member WHERE project_id=?",
+            (dst["id"], src["id"]),
+        )
+        conn.execute("DELETE FROM project WHERE id=?", (src["id"],))
+    conn.commit()
+    return True
+
+
+# --------------------------------------------------------------------------- #
 # stats
 # --------------------------------------------------------------------------- #
 
@@ -777,6 +915,7 @@ def status(conn: sqlite3.Connection) -> dict:
         "db_path": str(config.db_path()),
         "papers": count("SELECT COUNT(*) FROM paper"),
         "notes": count("SELECT COUNT(*) FROM note"),
+        "projects": count("SELECT COUNT(*) FROM project"),
         "note_paper_links": count("SELECT COUNT(*) FROM note_paper"),
         "keywords": count("SELECT COUNT(*) FROM keyword"),
         "chunks": count("SELECT COUNT(*) FROM chunk"),

@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+from pathlib import Path
 
 from . import db
 from . import config
@@ -36,6 +38,12 @@ def _humanize(obj) -> str:
     if isinstance(obj, list):
         lines = []
         for i, hit in enumerate(obj, 1):
+            if "type" not in hit and "name" in hit and ("papers" in hit or "notes" in hit):
+                lines.append(
+                    f"{i}. {hit['name']}  "
+                    f"({hit.get('papers', 0)} papers, {hit.get('notes', 0)} notes)"
+                )
+                continue
             if hit.get("type") == "paper":
                 who = hit.get("authors") or ""
                 yr = hit.get("year") or ""
@@ -54,6 +62,17 @@ def _humanize(obj) -> str:
                 lines.append(f"     {hit['snippet']}")
         return "\n".join(lines) or "(no results)"
     return json.dumps(obj, indent=2, ensure_ascii=False)
+
+
+def _note_projects(args) -> tuple[list[str], str]:
+    """Project tags for an added note: explicit --project wins; else the cwd
+    basename (which the skill has the agent confirm/override); --no-project opts
+    out entirely."""
+    if getattr(args, "no_project", False):
+        return [], "cwd"
+    if getattr(args, "project", None):
+        return list(args.project), "user"
+    return [Path(os.getcwd()).name], "cwd"
 
 
 def cmd_init(args) -> int:
@@ -115,7 +134,11 @@ def cmd_add_note(args) -> int:
         link_paper_ids=args.link or [],
         relation=args.relation,
     )
-    _out({"ok": True, "note_id": nid, "linked": args.link or []}, args.human)
+    names, src = _note_projects(args)
+    for name in names:
+        db.tag_project(conn, "note", nid, name, source=src)
+    conn.commit()
+    _out({"ok": True, "note_id": nid, "linked": args.link or [], "projects": names}, args.human)
     return 0
 
 
@@ -132,8 +155,14 @@ def cmd_search(args) -> int:
     db.init_db(conn)
     cfg = config.load_config()
     owner = args.type if args.type != "all" else None
+    project_owners = None
+    if args.project:
+        project_owners = db.project_members(conn, args.project)
+        if not project_owners:
+            print(f"warning: no items tagged with project {args.project!r}", file=sys.stderr)
     common = dict(k=args.k, owner_type=owner, year_min=args.year_min,
-                  year_max=args.year_max, reading_status=args.status)
+                  year_max=args.year_max, reading_status=args.status,
+                  project_owners=project_owners)
 
     mode = args.mode
     if mode == "auto":
@@ -364,6 +393,17 @@ def cmd_scan_pdfs(args) -> int:
         conn, cfg, args.dir, recursive=not args.no_recursive, limit=args.limit,
         keep_unresolved=args.keep_unresolved,
     )
+    # The agent asks the user for the project/topic and passes it via --project;
+    # there is no folder-basename default (folder names make poor topic tags).
+    names = args.project or []
+    if names:
+        ids = [r["paper_id"] for r in result["resolved"]]
+        ids += [r["paper_id"] for r in result["unresolved"] if r.get("paper_id")]
+        for pid in ids:
+            for name in names:
+                db.tag_project(conn, "paper", pid, name, source="user")
+        conn.commit()
+        result["projects"] = names
     if args.embed and result["resolved"]:
         from . import indexer
         from .embeddings import registry
@@ -729,6 +769,28 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_projects(args) -> int:
+    conn = db.connect()
+    db.init_db(conn)
+    if args.action == "list":
+        _out(db.list_projects(conn), args.human)
+    elif args.action == "rename":
+        ok = db.rename_project(conn, args.old, args.new)
+        _out({"ok": ok, "old": args.old, "new": args.new}, args.human)
+    else:  # tag | untag
+        fn = db.tag_project if args.action == "tag" else db.untag_project
+        n = 0
+        for oid in args.paper or []:
+            fn(conn, "paper", oid, args.name)
+            n += 1
+        for oid in args.note or []:
+            fn(conn, "note", oid, args.name)
+            n += 1
+        conn.commit()
+        _out({"ok": True, "action": args.action, "project": args.name, "items": n}, args.human)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     # A shared parent carrying --human so the flag is accepted both before and
     # after the subcommand (natural for interactive/agent use).
@@ -764,6 +826,10 @@ def build_parser() -> argparse.ArgumentParser:
     note.add_argument("--confidential", action="store_true", help="keep local-only for embeddings (Phase 2+)")
     note.add_argument("--link", type=int, action="append", metavar="PAPER_ID")
     note.add_argument("--relation", help="relation label for the links, e.g. about/critique/cites")
+    note.add_argument("--project", action="append", metavar="NAME",
+                      help="tag the note with a project (repeatable); default: cwd basename")
+    note.add_argument("--no-project", action="store_true",
+                      help="do not auto-tag the note with a project")
     note.set_defaults(func=cmd_add_note)
 
     ln = add("link", help="link an existing note to a paper")
@@ -780,6 +846,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--year-max", type=int, dest="year_max")
     s.add_argument("--status", choices=list(db.READING_STATUSES),
                    help="restrict to papers with this reading status")
+    s.add_argument("--project", metavar="NAME", help="restrict results to a project")
     s.add_argument("--mode", choices=["auto", "keyword", "hybrid"], default="auto",
                    help="auto = hybrid if embeddings exist, else keyword")
     s.set_defaults(func=cmd_search)
@@ -833,6 +900,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--keep-unresolved", action="store_true",
                     help="also add papers for PDFs with no findable DOI (filename title + full text)")
     sp.add_argument("--embed", action="store_true", help="embed the newly added papers afterward")
+    sp.add_argument("--project", action="append", metavar="NAME",
+                    help="project/topic tag for ingested papers (repeatable). The agent "
+                         "asks the user for this before ingesting; no folder-name default.")
     sp.set_defaults(func=cmd_scan_pdfs)
 
     cf = add("cite-fetch", help="fetch citation edges (references + citing works) from OpenAlex")
@@ -898,6 +968,22 @@ def build_parser() -> argparse.ArgumentParser:
     dl.set_defaults(func=cmd_delete)
 
     add("status", help="show corpus statistics").set_defaults(func=cmd_status)
+
+    pj = add("projects", help="list, rename, or edit project tags")
+    pjsub = pj.add_subparsers(dest="action", required=True)
+    pjsub.add_parser("list", parents=[common], help="list projects with paper/note counts"
+                     ).set_defaults(func=cmd_projects)
+    pjr = pjsub.add_parser("rename", parents=[common], help="rename a project (folds into an existing target)")
+    pjr.add_argument("old")
+    pjr.add_argument("new")
+    pjr.set_defaults(func=cmd_projects)
+    for _act, _help in (("tag", "add papers/notes to a project"),
+                        ("untag", "remove papers/notes from a project")):
+        pja = pjsub.add_parser(_act, parents=[common], help=_help)
+        pja.add_argument("name")
+        pja.add_argument("--paper", type=int, action="append", metavar="ID")
+        pja.add_argument("--note", type=int, action="append", metavar="ID")
+        pja.set_defaults(func=cmd_projects)
 
     pz = add("push-zotero", help="add litdb papers to a running Zotero via the connector API")
     pz.add_argument("--ids", type=int, nargs="*", help="only these paper ids")

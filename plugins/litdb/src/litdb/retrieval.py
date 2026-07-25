@@ -11,8 +11,9 @@ Two modes share one result shape:
 from __future__ import annotations
 
 import sqlite3
-from typing import Dict, List, Sequence
+from typing import Dict, List, Sequence, Set, Tuple
 
+from . import db
 from . import vectorstore
 from .embeddings.base import EmbeddingProvider
 
@@ -70,8 +71,12 @@ def _rrf(rank_lists: Sequence[List[dict]]) -> Dict[int, float]:
 # --------------------------------------------------------------------------- #
 
 def keyword_search(conn, query, *, k=10, owner_type=None, year_min=None,
-                   year_max=None, reading_status=None) -> List[dict]:
-    hits = _bm25_hits(conn, query, max(k * 8, 40))
+                   year_max=None, reading_status=None,
+                   project_owners: Set[Tuple[str, int]] | None = None) -> List[dict]:
+    # A project filter narrows an already-capped candidate pool, so widen it when
+    # one is set — a small project inside a large corpus still fills k.
+    pool = max(k * 20, 200) if project_owners is not None else max(k * 8, 40)
+    hits = _bm25_hits(conn, query, pool)
     results, seen = [], set()
     for h in hits:
         key = (h["owner_type"], h["owner_id"])
@@ -81,7 +86,7 @@ def keyword_search(conn, query, *, k=10, owner_type=None, year_min=None,
         rec = _hydrate(conn, h["owner_type"], h["owner_id"],
                        {"score_bm25": round(float(h["score"]), 4), "snippet": h["snippet"],
                         "matched": {"kind": h["kind"], "page": h["page"]}})
-        if rec and _passes(rec, owner_type, year_min, year_max, reading_status):
+        if rec and _passes(rec, owner_type, year_min, year_max, reading_status, project_owners):
             results.append(rec)
         if len(results) >= k:
             break
@@ -89,10 +94,11 @@ def keyword_search(conn, query, *, k=10, owner_type=None, year_min=None,
 
 
 def hybrid_search(conn, query, query_providers: Dict[str, EmbeddingProvider], *, k=10,
-                  owner_type=None, year_min=None, year_max=None, reading_status=None) -> List[dict]:
+                  owner_type=None, year_min=None, year_max=None, reading_status=None,
+                  project_owners: Set[Tuple[str, int]] | None = None) -> List[dict]:
     """Fuse BM25 with a vector rank-list per model space. Falls back to keyword
     search when no usable embeddings are present."""
-    pool = max(k * 6, 30)
+    pool = max(k * 20, 200) if project_owners is not None else max(k * 6, 30)
     bm25 = _bm25_hits(conn, query, pool)
     lists: List[List[dict]] = [bm25]
     snippets = {h["chunk_id"]: h["snippet"] for h in bm25}
@@ -111,7 +117,8 @@ def hybrid_search(conn, query, query_providers: Dict[str, EmbeddingProvider], *,
         return []
     if not used_vectors:
         return keyword_search(conn, query, k=k, owner_type=owner_type, year_min=year_min,
-                              year_max=year_max, reading_status=reading_status)
+                              year_max=year_max, reading_status=reading_status,
+                              project_owners=project_owners)
 
     fused = sorted(_rrf(lists).items(), key=lambda kv: kv[1], reverse=True)
     results, seen = [], set()
@@ -129,7 +136,7 @@ def hybrid_search(conn, query, query_providers: Dict[str, EmbeddingProvider], *,
         rec = _hydrate(conn, owner["owner_type"], owner["owner_id"],
                        {"score_rrf": round(score, 5), "snippet": snippet,
                         "matched": {"kind": owner["kind"], "page": owner["page"]}})
-        if rec and _passes(rec, owner_type, year_min, year_max, reading_status):
+        if rec and _passes(rec, owner_type, year_min, year_max, reading_status, project_owners):
             results.append(rec)
         if len(results) >= k:
             break
@@ -153,7 +160,9 @@ def resolve_query_providers(conn, config) -> Dict[str, EmbeddingProvider]:
 # helpers
 # --------------------------------------------------------------------------- #
 
-def _passes(rec, owner_type, year_min, year_max, reading_status) -> bool:
+def _passes(rec, owner_type, year_min, year_max, reading_status, project_owners=None) -> bool:
+    if project_owners is not None and (rec["type"], rec["id"]) not in project_owners:
+        return False
     if owner_type and rec["type"] != owner_type:
         return False
     if rec["type"] == "paper":
@@ -198,4 +207,5 @@ def _hydrate(conn, owner_type, owner_id, extra: dict) -> dict | None:
                 "JOIN paper p ON p.id = np.paper_id WHERE np.note_id=?", (n["id"],)
             ).fetchall()
         ]
+    base["projects"] = db.project_names(conn, owner_type, owner_id)
     return base

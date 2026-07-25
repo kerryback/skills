@@ -18,11 +18,18 @@ DOIs embedded in PDFs are missing or wrong for most older/scanned papers, so do
 not rely on them; resolve metadata from OpenAlex by title/author with subagents
 that verify each match against the PDF.
 
-1. Ask for the folder path — the only synchronous step.
+1. Ask for the folder path and the project/topic these papers belong to — the only
+   synchronous steps. For the project, ask what research project or topic this
+   folder is for; offer the folder's name only as a suggestion, never as a silent
+   default (folder names like `Downloads` or `refs` make poor topic tags). If the
+   user says the papers span several projects, collect each name. Only skip the tag
+   if the user explicitly declines. Pass each name with a `--project "<name>"` flag
+   (repeatable) on the `scan-pdfs` call below; every paper the scan adds is tagged,
+   and `search --project "<name>"` then scopes retrieval to this set.
 
 2. Start ingestion in the background and return control to the user immediately.
-   Run as a background command:
-   `"$LITDB_PY" -m litdb scan-pdfs "<folder>" --keep-unresolved --embed`
+   Run as a background command (one `--project` per project name from step 1):
+   `"$LITDB_PY" -m litdb scan-pdfs "<folder>" --project "<name>" --keep-unresolved --embed`
    Tell the user ingestion is running in the background and they can keep working;
    you will report when it's done. Do not wait on it.
    - It adds every PDF with full text (embedded), resolving metadata via OpenAlex
