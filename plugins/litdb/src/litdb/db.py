@@ -317,6 +317,37 @@ def record_ingested(conn: sqlite3.Connection, rows: list[tuple[str, str, int]]) 
         conn.commit()
 
 
+# The location shown for a paper whose PDF was never ingested (metadata-only
+# record, e.g. from import-doi). Kept as a plain string so callers never have to
+# special-case a null and the user sees an answer instead of an empty field.
+NOT_DOWNLOADED = "not downloaded"
+
+
+def locations_for(conn: sqlite3.Connection, paper_ids: list[int]) -> dict[int, str]:
+    """Map paper_id -> on-disk PDF path for the given papers (one per paper).
+
+    Papers with no ingested file are absent from the map; callers substitute
+    NOT_DOWNLOADED. Reads the ingested_file ledger directly — no filesystem hit —
+    so surfacing a paper's location is a single cheap query, not a disk crawl.
+    """
+    if not paper_ids:
+        return {}
+    q = ",".join("?" * len(paper_ids))
+    out: dict[int, str] = {}
+    for pid, path in conn.execute(
+        f"SELECT paper_id, path FROM ingested_file WHERE paper_id IN ({q}) "
+        "ORDER BY ingested_at",
+        list(paper_ids),
+    ).fetchall():
+        out[pid] = path  # last one wins if a paper has several files
+    return out
+
+
+def paper_location(conn: sqlite3.Connection, paper_id: int) -> str:
+    """On-disk PDF path for a paper, or NOT_DOWNLOADED if it was never ingested."""
+    return locations_for(conn, [paper_id]).get(paper_id, NOT_DOWNLOADED)
+
+
 def add_citations(conn: sqlite3.Connection, edges: list[tuple[str, str]], source: str = "openalex") -> int:
     """Insert (citing_ext, cited_ext) OpenAlex-id edges, ignoring duplicates."""
     clean = [(a, b, source) for a, b in edges if a and b and a != b]
@@ -662,7 +693,11 @@ def list_papers(
         params.append(reading_status)
     sql += " ORDER BY (priority IS NULL), priority, year DESC LIMIT ?"
     params.append(limit)
-    return [{"type": "paper", **dict(r)} for r in conn.execute(sql, params).fetchall()]
+    rows = [{"type": "paper", **dict(r)} for r in conn.execute(sql, params).fetchall()]
+    locs = locations_for(conn, [r["id"] for r in rows])
+    for r in rows:
+        r["location"] = locs.get(r["id"], NOT_DOWNLOADED)
+    return rows
 
 
 def papers_for_export(conn: sqlite3.Connection, *, ids=None,
@@ -737,6 +772,7 @@ def get_paper(conn: sqlite3.Connection, paper_id: int) -> dict | None:
     if row is None:
         return None
     d = dict(row)
+    d["location"] = paper_location(conn, paper_id)
     d["keywords"] = paper_keyword_terms(conn, paper_id)
     d["notes"] = [
         dict(r)

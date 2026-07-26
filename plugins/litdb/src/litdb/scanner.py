@@ -109,6 +109,12 @@ def scan_directory(
             unresolved.append({"file": str(path), "hash": fhash, "added": False,
                                "reason": "doi_found_but_unresolved" if doi else "no_doi"})
 
+    # Record where each ingested PDF lives so the paper's location is queryable
+    # (and repeat scans stay idempotent by content hash). Covers resolved papers
+    # and unresolved stubs we actually created; false unresolved rows have no id.
+    added = resolved + [u for u in unresolved if u.get("added")]
+    db.record_ingested(conn, [(e["hash"], e["file"], e["paper_id"]) for e in added])
+
     return {
         "scanned": len(pdfs),
         "resolved": resolved,

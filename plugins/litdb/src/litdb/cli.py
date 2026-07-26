@@ -723,7 +723,7 @@ def cmd_sync_inbox(args) -> int:
     result = scanner.scan_directory(conn, cfg, inbox, recursive=True,
                                     keep_unresolved=True, skip_hashes=skip)
     added = result["resolved"] + [u for u in result["unresolved"] if u.get("added")]
-    db.record_ingested(conn, [(e["hash"], e["file"], e["paper_id"]) for e in added])
+    # scan_directory already records ingested-file paths (idempotent by hash).
     if added:
         default = registry.build_default(cfg)
         local = registry.build_local(cfg)

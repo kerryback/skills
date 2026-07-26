@@ -115,6 +115,13 @@ out or strip it without revisiting that decision.
 
 - Corpus-first: search the user's library before any external/web source.
 - The CLI prints JSON by default; parse it. Add `--human` when showing the user.
+- Saving downloaded PDFs: the user may keep papers for different projects in
+  different folders (e.g. a per-project `Literature` folder), so when you download
+  or obtain a paper's PDF, save it into the folder for the project it belongs to —
+  then ingest from there (`scan-pdfs`, or drop it in the `inbox`). If you are not
+  sure which folder a paper belongs in, ask; don't guess. Each paper's `location`
+  field (on `paper`/`list`) records where its PDF resides, or `not downloaded` if
+  none is on disk.
 - Propose note↔paper links and important imports; let the user confirm.
 - Confidential notes stay local and are never sent to a hosted embedder.
 - Installing dependencies: when something litdb needs is missing — a Python
