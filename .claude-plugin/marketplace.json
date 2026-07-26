@@ -33,6 +33,11 @@
       "name": "coauthor",
       "source": "./plugins/coauthor",
       "description": "A coordinated multi-agent system for empirical research papers. Claude Code is the coordinator you converse with; a diverse OpenRouter debate panel (Proposer, Adversary) generates and attacks ideas; tool-using Claude subagents ground the work in fact (Verifier over litdb), run the empirics (Analyst over WRDS/OpenAP), and independently re-derive results (Replicator). Runs in any directory, keeping everything in a local .coauthor/ folder; creates no repos."
+    },
+    {
+      "name": "human-write",
+      "source": "./plugins/human-write",
+      "description": "Write and edit academic prose that reads as human, not machine-generated: varied sentence rhythm, no formulaic AI tells (delve, however-at-every-turn, the not-X-but-Y contrast, three-item everything), and structure driven by the argument rather than a template. Defaults to scholarly register (journal articles, working papers, referee reports, grant proposals). Works when drafting fresh and when revising a draft."
     }
   ],
   "description": "Authoring and teaching skills for Claude Code: narrated video from slide decks, Quarto slide decks, free financial/economic data, and adversarial work review."

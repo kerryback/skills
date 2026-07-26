@@ -1,0 +1,16 @@
+{
+  "name": "human-write",
+  "version": "0.1.0",
+  "description": "Write and edit prose that reads as human, not machine-generated: varied sentence rhythm, no formulaic AI tells, structure driven by meaning rather than a template. Applies both when drafting fresh prose and when revising a draft.",
+  "author": {
+    "name": "Kerry Back"
+  },
+  "license": "MIT",
+  "keywords": [
+    "writing",
+    "editing",
+    "prose",
+    "style",
+    "academic-writing"
+  ]
+}
