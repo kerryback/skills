@@ -22,6 +22,31 @@ CSV, and keep going with whatever analysis they actually wanted. Getting the dat
 is usually a means to an end — treat it as one step in a larger conversation, not
 the finish line.
 
+## Runtime — a dedicated environment (set up once)
+
+finance-data does NOT use the system Python. It fetches through a private
+virtualenv at `~/.finance-data/venv`, so the fetch libraries (yfinance,
+pandas-datareader, finnhub-python, requests, pandas) are always present and
+unambiguous. A machine can have several Pythons that disagree about what's
+installed — where `pip` puts a package and where `python` imports from need not
+match — and running everything through one owned venv sidesteps that entirely.
+
+Before the first fetch in a session, make sure the runtime exists. The bundled
+`setup.py` (in this skill's directory) manages it:
+
+1. `python3 <skill-dir>/setup.py --check` — if READY is yes, you're done.
+2. Otherwise `python3 <skill-dir>/setup.py --yes` — creates the venv and installs
+   the libraries (uses `uv` if present, else `python -m venv` + pip; the system
+   Python is never modified). Idempotent — re-run to repair.
+
+Then run EVERY fetch with that venv's interpreter, never bare `python`/`python3`:
+
+- macOS/Linux: `~/.finance-data/venv/bin/python <script>`
+- Windows: `~/.finance-data/venv/Scripts/python.exe <script>`
+
+`python3 <skill-dir>/setup.py --runtime-path` prints the exact interpreter path
+(and exits non-zero if the runtime isn't ready) — capture it once and reuse it.
+
 ## The loop
 
 1. Interpret the request — what *kind* of data is this? Map it to a category in
@@ -34,10 +59,10 @@ the finish line.
 4. Check whether the chosen source needs an API key (see "API keys"). If it does
    and the key isn't set, tell the user how to get one and where to put it before
    running code.
-5. Read the matching `references/<source>.md` file and run Python to fetch the
-   data. Load it into a pandas DataFrame and save a CSV (see "Output
-   conventions"). Prefer running the fetch in the user's Python so the DataFrame
-   stays live for the analysis that follows.
+5. Read the matching `references/<source>.md` file and run the fetch with the
+   finance-data runtime — always `~/.finance-data/venv/bin/python`, never the
+   system Python (see "Runtime"). Load it into a pandas DataFrame and save a CSV
+   (see "Output conventions").
 6. Report what you saved — the path, the shape (rows × columns), the columns, and
    the date range — then continue with the user's analysis.
 
@@ -133,29 +158,31 @@ How to prompt:
 
 ## Output conventions
 
-- Save CSVs into a `data/` folder in the workspace (create it if needed) — but if
-  the user names a location, use theirs. The exact filename and format are
-  secondary to the analysis — pick something descriptive, like
-  `data/aapl_prices.csv` or `data/ff_factors_monthly.csv`.
-- Keep the date index in the CSV (`df.to_csv(path)` with a DatetimeIndex is
-  fine). Parse dates back with `pd.read_csv(path, index_col=0, parse_dates=True)`.
-- After saving, print a one-line confirmation with shape, columns, and date
-  range so the user can sanity-check coverage before you build on it.
-- Don't overwrite an existing file the user may care about without noting it.
+The fetch runs in the finance-data venv, which is ISOLATED from wherever the user
+does their own analysis. So the CSV on disk is the hand-off between the two
+environments — always save it, then let the user's own environment read it back.
+
+- Save CSVs into a `data/` folder in the workspace (create it if needed) — unless
+  the user names a location. Pick a descriptive name, like `data/aapl_prices.csv`
+  or `data/ff_factors_monthly.csv`.
+- Keep the date index (`df.to_csv(path)` with a DatetimeIndex is fine). The
+  analysis environment reads it back with
+  `pd.read_csv(path, index_col=0, parse_dates=True)` — no extra libraries needed.
+  (That's why CSV rather than parquet: pandas reads CSV everywhere, with no
+  pyarrow dependency in the reading environment.)
+- After saving, print a one-line confirmation with shape, columns, and date range
+  so the user can sanity-check coverage before you build on it.
+- Don't overwrite a file the user may care about without noting it.
+- The analysis that follows runs in the USER'S environment (their notebook or
+  REPL), reading the CSV — not in the finance-data venv, which exists only to
+  fetch. Don't try to keep a live DataFrame across the two.
 
 ## Dependencies
 
-Assume these libraries are already installed — they ship with this skill as the
-Academic Studio "Finance Data" package, so don't probe for them or run
-`pip install` up front; just import and use them:
-
-- `pandas`
-- `yfinance`
-- `pandas-datareader`
-- `finnhub-python` (imported as `finnhub`)
-- `requests`
-
-Only if an import genuinely fails at runtime, tell the user to install the
-Finance Data package from Help → Run Setup (or, as a fallback,
-`pip install yfinance pandas-datareader finnhub-python requests`) — then
-retry. Don't check preemptively.
+All fetch libraries live in the finance-data venv (see "Runtime") — `pandas`,
+`yfinance`, `pandas-datareader`, `finnhub-python` (imports as `finnhub`), and
+`requests`. Never `pip install` into the system Python, and never probe the
+system Python with imports to decide whether things are ready — that's precisely
+the multi-environment trap the venv avoids. If a fetch fails on a missing library,
+the venv is incomplete: re-run `python3 <skill-dir>/setup.py --yes` to repair,
+then retry.
