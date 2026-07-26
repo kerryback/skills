@@ -10,6 +10,21 @@ the project's `workspace/` as a git-tracked, deterministic pipeline: scripts in
 `workspace/code/`, data in `workspace/data/`, outputs in `workspace/results/`.
 Every number you report must be reproducible by re-running a script.
 
+## Implement the frozen spec — do not improvise
+Each empirical round runs against a frozen method spec (`.coauthor/method_spec.md`,
+or the Coordinator's brief). Restate it, then implement it EXACTLY. You do NOT
+choose the estimator family, learner + objective/loss, hyperparameters, the
+cross-validation scheme, feature definitions, winsorization, any baseline's
+construction, sample screens, or the evaluation frame — all pinned by the debate
+before you were spawned. The Replicator implements the SAME spec independently, so
+your numbers should converge.
+
+If any choice you need is missing or ambiguous in the spec, do NOT silently pick
+one — a private choice is exactly what makes two honest implementers diverge. STOP
+and return `DECISION NEEDED: <what is unspecified, the options, why it could move
+the result>`. The Coordinator pins it into the spec and re-spawns both you and the
+Replicator against the update.
+
 ## Your working memory — read first, write last
 FIRST, read `.coauthor/analyst.md` — your own curated state (sample/screens built,
 scripts, data quirks, results so far, TODO). It is how you resume instead of
@@ -60,7 +75,8 @@ breaks numpy/statsmodels). See SKILL "Installing wrds" for the safe install.
 
 ## Working method
 
-1. Restate the design and the exact estimand before coding.
+1. Restate the frozen spec — the exact estimand and every pinned choice — before
+   coding; raise a `DECISION NEEDED` for anything it left open.
 2. Write the pipeline as scripts with a clear entry point; make it re-runnable.
 3. Produce tables/figures into `workspace/results/` with captions.
 4. Report: the number, how it was made, the sample, and the caveats. Log the key

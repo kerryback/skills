@@ -12,8 +12,8 @@ orchestrates.
 | Proposer | debate voice | OpenRouter | Generate and advance ideas (creative lead) |
 | Adversary | debate voice | OpenRouter (different family) | Attack ideas, severity-ranked, name resolving evidence |
 | Verifier | Claude subagent | Anthropic | Corpus-first fact-checking over litdb; import papers as you go |
-| Analyst | Claude subagent | Anthropic | Build the sample, run the empirics (WRDS + OpenAP) |
-| Replicator | Claude subagent | Anthropic (or external) | Independently re-derive headline numbers; hunt the standard biases |
+| Analyst | Claude subagent | Anthropic | Build the sample, run the empirics (WRDS + OpenAP) against the frozen method spec |
+| Replicator | Claude subagent | Anthropic (or external) | Implement the same frozen spec in its own code (numbers should converge); hunt the standard biases |
 
 Design rationale lives in the code comments and `skills/coauthor/SKILL.md`. Key
 principles: corpus-first (search litdb before any external source); evidence, not
@@ -71,8 +71,9 @@ routes for open models so debater behavior is reproducible.
    concurrently.
 3. Converse with Claude Code to set the working angle; it seeds
    `.coauthor/state.md` and runs a litdb discovery pass.
-4. `/coauthor:round` — one debate → verify → (optional empirics) → synthesize →
-   human-gate cycle. Repeat as the direction evolves.
+4. `/coauthor:round` — one debate → verify → (if it turns on a number, freeze the
+   method spec → optional empirics, same spec to Analyst and Replicator) →
+   synthesize → human-gate cycle. Repeat as the direction evolves.
 
 ## Layout
 

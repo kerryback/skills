@@ -114,9 +114,11 @@ proper float; the older `crsp.msf` returns returns as strings.
   `--seats` (they execute concurrently).
 - Verifier — Claude subagent, corpus-first over litdb. Every "known result" goes
   through it. It grows the library as questions evolve.
-- Analyst — Claude subagent, builds the sample and runs empirics on WRDS/OpenAP.
-- Replicator — Claude subagent, independently re-derives headline numbers and
-  hunts the standard biases. Give it the design, not the Analyst's code.
+- Analyst — Claude subagent, builds the sample and runs empirics on WRDS/OpenAP
+  against the frozen method spec.
+- Replicator — Claude subagent, implements the SAME frozen spec in its own code
+  (never the Analyst's) so the numbers should converge, and hunts the standard
+  biases on top. Both get the same spec; you decide the method, not them.
 
 ## Non-negotiable principles
 1. Corpus-first: search litdb before any external/web source.
@@ -126,9 +128,16 @@ proper float; the older `crsp.msf` returns returns as strings.
    the human gate before mutating state — UNLESS the user has granted blanket
    approval (`.coauthor/autonomy`), in which case proceed on routine calls but
    still hard-stop for the exceptions listed under "Autonomy".
-4. Independence: the Analyst never checks its own empirics; the Replicator works
-   without seeing the Analyst's code.
-5. State discipline: curate into `.coauthor/state.md` + litdb notes (committed);
+4. Spec-first empirics: when a round turns on a number, you (with the Proposer and
+   Adversaries) freeze a fully-implementable `method_spec.md` BEFORE spawning any
+   implementer. The Analyst and Replicator both implement that same spec and never
+   improvise — an unspecified choice comes back to you as `DECISION NEEDED`, you pin
+   it, and re-sync both.
+5. Independence, aimed at bugs: the Analyst never checks its own empirics; the
+   Replicator implements the same spec in its own code (never seeing the Analyst's)
+   so the numbers should converge, and its genuine independence lives in the
+   robustness/bias probes — not in choosing a different method.
+6. State discipline: curate into `.coauthor/state.md` + litdb notes (committed);
    never hoard raw transcripts as memory. `.coauthor/logs/` is exhaustive but
    local/gitignored.
 
@@ -154,6 +163,10 @@ exists.
      curated state; it reads its file when it spawns and rewrites it before
      returning. The Verifier needs none — litdb IS its memory; debaters are
      stateless.
+   - `.coauthor/method_spec.md` — the frozen, fully-implementable spec for an
+     empirical round, written by you before spawning implementers and rewritten
+     each round the plan turns on a number. The Analyst and Replicator both
+     implement THIS.
 3. Exhaustive (local only): `.coauthor/logs/events.jsonl` + rendered transcripts.
 
 The anti-rot loop: subagents are spawned FRESH each task and re-read their own
@@ -187,9 +200,10 @@ clean file handoff).
 ## A round, in one line
 Read state + session.md → build a brief → run the DEBATE LOOP (Proposer →
 Adversaries `--seats` → you judge feasibility → back to Proposer to refine or
-pivot; iterate until a plan converges) → optional Analyst + Replicator → GATE →
-update `.coauthor/state.md` + notes, refresh `.coauthor/session.md`, render
-transcript. Run it with `/coauthor:round`.
+pivot; iterate until a plan converges) → if it turns on a number, freeze
+`method_spec.md` → optional Analyst + Replicator (same spec) → GATE → update
+`.coauthor/state.md` + notes, refresh `.coauthor/session.md`, render transcript.
+Run it with `/coauthor:round`.
 
 ## Autonomy — the debate loop and the gate
 You are more than a relay. Within a round you actively drive the debate: the

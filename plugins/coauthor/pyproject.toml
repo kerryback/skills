@@ -1,6 +1,6 @@
 [project]
 name = "coauthor"
-version = "0.1.0"
+version = "0.2.0"
 description = "Reusable multi-agent machinery for empirical research papers"
 requires-python = ">=3.11"
 # Zero runtime dependencies: the debate client uses stdlib urllib, and config

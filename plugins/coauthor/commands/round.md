@@ -53,16 +53,36 @@ Iterate, up to ~3 passes, until a direction converges:
 If nothing converges within the cap, carry the best surviving option forward and
 say so explicitly — do not loop forever (each pass spends API budget).
 
+## 2.5 Freeze the method spec (only if the plan turns on a number)
+Before spawning any implementer, decide the empirics — this is your job with the
+Proposer and Adversaries, not the Analyst's or Replicator's. Write a fully
+implementable spec to `.coauthor/method_spec.md` (see the project-template for the
+checklist). Pin every choice that could move the headline: sample & screens;
+variable/feature definitions; the estimator and every baseline's EXACT
+construction; the learner + objective/loss + hyperparameters (or a shared tuning
+protocol with a fixed seed and budget); the cross-validation scheme (name it — e.g.
+grouped by the panel unit, never a random split on a firm panel); winsorization;
+the evaluation frame + metric; and the inference method. Run one Adversary pass
+whose ONLY job is to find choices still left open that could move the result; treat
+a survivor as a hole to close, not a detail. The spec is frozen for the round — the
+Analyst and the Replicator both implement THIS same spec.
+
 ## 3. Empirics (only if the converged plan turns on a number)
 - First ensure the Python environment is resolved (see SKILL → "Python environment":
   use a project venv if present, else ask the user; record it in `.coauthor/python`).
   The Analyst/Replicator run with that interpreter.
 - Spawn the `analyst` subagent to build the sample and run the estimation
-  (WRDS/OpenAP): re-runnable code + a result.
-- Spawn the `replicator` subagent to independently re-derive the headline number
-  and run the bias checks. Give it the DESIGN, not the Analyst's code.
-- If they disagree, that disagreement IS the finding — surface it; never reconcile
-  silently.
+  (WRDS/OpenAP) against the frozen `method_spec.md`: re-runnable code + a result.
+- Spawn the `replicator` subagent to implement the SAME frozen spec from scratch in
+  its own code (NOT the Analyst's code) and run the bias checks. Because both build
+  the same method, their headline numbers should CONVERGE.
+- If either returns a `DECISION NEEDED` flag (a choice the spec did not settle), do
+  NOT let it stand on a private guess: resolve it, update `method_spec.md`, and
+  re-spawn both against the update so the clarification reaches them identically.
+- A gap between two same-spec builds is a coding bug or a spec hole — reconcile it
+  by fixing the code or tightening the spec, NEVER by averaging. Disagreement that
+  survives a correct, identical spec — or that the Replicator's robustness probes
+  surface — IS the finding; surface it, never reconcile silently.
 
 ## 4. The plan
 Write the converged plan plainly: the direction as a falsifiable claim, the test

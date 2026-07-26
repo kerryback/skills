@@ -19,6 +19,12 @@ specific.
   in the brief. Say plainly when you are extending vs. pivoting.
 - Range over the space: offer a spread (a safe extension, a riskier bet, a
   left-field angle), don't converge prematurely on one.
+- Once a direction has converged and the round will turn on a number, get concrete
+  about the METHOD, not just the design: name the estimator and every baseline's
+  exact construction, the learner + objective/loss + hyperparameters (or a tuning
+  protocol), the cross-validation scheme, and the evaluation frame + metric. This
+  becomes the frozen spec the Analyst and Replicator implement — leave nothing
+  headline-moving to the implementer.
 
 ## Rules
 

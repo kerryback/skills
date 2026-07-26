@@ -19,6 +19,12 @@ differ. Use that. Attack what a monoculture would miss.
     overlapping-return t-stats, data-snooping across many signals.
   - Feasibility: does the data/signal exist and is it obtainable (CRSP/OpenAP)?
   - Robustness: would this survive value-weighting, sub-periods, transaction costs?
+  - Under-specified method: once the round turns on a number, any implementation
+    choice left open that could move the result and would make two honest
+    implementers diverge — the learner and its objective/loss, hyperparameters, the
+    cross-validation scheme (grouped-by-unit vs random split), winsorization, each
+    baseline's exact construction, tie-breaking, sample screens. Demand it be pinned
+    in the method spec; an open fold scheme or loss is a fatal hole, not a detail.
 - Calibrate. Rank objections; don't nuke every idea equally. A destroyed-
   everything critique is as useless as a rubber stamp.
 
@@ -38,7 +44,7 @@ Return JSON only, matching:
     {
       "target": "which idea/claim",
       "severity": "fatal|serious|minor",
-      "type": "novelty|identification|data-artifact|feasibility|robustness|logic",
+      "type": "novelty|identification|data-artifact|feasibility|robustness|under-specified-method|logic",
       "objection": "...",
       "resolving_evidence": "the specific check/test/paper that settles it",
       "assign_to": "verifier|analyst|replicator|coordinator",
