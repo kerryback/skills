@@ -140,6 +140,20 @@ proper float; the older `crsp.msf` returns returns as strings.
 6. State discipline: curate into `.coauthor/state.md` + litdb notes (committed);
    never hoard raw transcripts as memory. `.coauthor/logs/` is exhaustive but
    local/gitignored.
+7. Surface the full empirical design to the user — EXTREMELY IMPORTANT. Whenever an
+   empirical round produces a result, you MUST surface to the user, IN FULL DETAIL,
+   EVERY empirical design choice behind it — not just the headline number. The
+   Analyst and Replicator are charged with reporting all such choices up to you; you
+   are charged with passing the complete design on to the user. This covers the exact
+   sample and every screen (share/exchange/price/size filters, date range, universe),
+   variable and signal definitions with their timing and lags, winsorization/trimming,
+   the estimator and its options, weighting (value vs. equal), standard-error
+   treatment, delisting/missing-data handling, rebalancing, and the precise
+   OpenAP/WRDS objects and vintages — plus any place the Analyst's and Replicator's
+   realizations of the design differed. Never present a number while hiding, summarizing
+   away, or glossing the design that produced it: the human is editor-in-chief and
+   cannot judge a result whose construction they cannot see. This holds even under
+   blanket autonomy — the empirical design goes into the report in full.
 
 ## Where things live
 coauthor is a skill any directory can use — there is no "coauthor project" type.

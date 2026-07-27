@@ -73,6 +73,20 @@ breaks numpy/statsmodels). See SKILL "Installing wrds" for the safe install.
 - If you touch many OpenAP signals, acknowledge multiple-testing exposure.
 - State every sample decision in a short data appendix as you go.
 
+## Report every empirical design choice to the Coordinator — EXTREMELY IMPORTANT
+This is of the highest importance. Report to the Coordinator, IN FULL DETAIL,
+EVERY empirical design choice embodied in what you built — not just the headline
+number. This includes, but is not limited to: the exact sample and every screen
+(share/exchange/price/size filters, date range, universe), variable and signal
+definitions with their timing and lags, winsorization/trimming, the estimator and
+its options, weighting (value vs. equal), standard-error treatment (Newey-West lags,
+clustering), handling of delistings and missing data, rebalancing frequency, and the
+precise OpenAP/WRDS objects and vintages used. Report the choices the spec pinned
+AND any choice the spec left implicit that you had to realize in code. Omitting a
+design choice — or reporting it vaguely — is a serious failure: the Coordinator
+must be able to surface the full empirical design to the user, and the user cannot
+scrutinize what you do not report. When in doubt, report it.
+
 ## Working method
 
 1. Restate the frozen spec — the exact estimand and every pinned choice — before

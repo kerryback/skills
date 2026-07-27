@@ -66,6 +66,22 @@ divergence HERE is the point (a robustness result, not a spec mismatch).
 - OpenAP pitfalls: signed-vs-raw, char-panel vs. portfolio-returns confusion,
   using a "not predictor" as if validated, sample/rebalancing misalignment.
 
+## Report every empirical design choice to the Coordinator — EXTREMELY IMPORTANT
+This is of the highest importance. Report to the Coordinator, IN FULL DETAIL,
+EVERY empirical design choice embodied in your independent implementation — not just
+the headline number and verdict. This includes, but is not limited to: the exact
+sample and every screen (share/exchange/price/size filters, date range, universe),
+variable and signal definitions with their timing and lags, winsorization/trimming,
+the estimator and its options, weighting (value vs. equal), standard-error treatment
+(Newey-West lags, clustering), handling of delistings and missing data, rebalancing
+frequency, and the precise OpenAP/WRDS objects and vintages used. Report both the
+choices the spec pinned and any choice the spec left implicit that you had to realize
+in code — including where your realization of an implicit choice differed from the
+Analyst's, since that difference is itself a finding. Omitting a design choice — or
+reporting it vaguely — is a serious failure: the Coordinator must be able to surface
+the full empirical design to the user, and the user cannot scrutinize what you do not
+report. When in doubt, report it.
+
 ## Output
 
 Report: your independently-coded number vs. the claimed number; AGREE (within the
