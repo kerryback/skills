@@ -1,11 +1,12 @@
 # litdb
 
-litdb is a private, local library-management service for your research papers,
-driven by talking to Claude Code in plain English. It reads your PDFs in full,
-indexes them for keyword and semantic search, finds and imports new work from the
-scholarly literature, tracks citations, and writes your bibliography — all in one
-SQLite file on your machine. Nothing leaves your computer unless you ask for an
-outside lookup.
+litdb is a private, local library-management service for your research papers and
+your research notes. It reads your
+PDFs in full and indexes them for keyword and semantic search; captures and
+organizes your notes — tagged, linked to papers, and searchable right alongside
+them; finds and imports new work from the scholarly literature; tracks citations;
+and writes your bibliography — all in one SQLite file on your machine. Nothing
+leaves your computer unless you ask for an outside lookup.
 
 It runs as a Claude Code plugin. You never type a command, but every action below
 is also a plain command you can script (see the reference at the end).
@@ -16,6 +17,11 @@ is also a plain command you can script (see the reference at the end).
   (title, authors, venue, year, DOI), splits the text into passages, and embeds
   them into a local vector store. Sources: a folder of PDFs, a Zotero library, a
   single DOI, or a watched inbox folder that ingests on its own.
+- Add and organize notes. Capture a thought — in chat or via the `/litdb:note`
+  browser form — tagged by kind (idea/summary/critique/question/todo/quote) and
+  anchored to a paper (and optionally a page or a verbatim quote). Notes are embedded
+  whole and searchable next to your papers; `notes` lists them and `notes --search`
+  finds them, and they surface first when you ask what you have on a topic.
 - Search your corpus. Hybrid keyword (BM25) + semantic (vector) search over full
   text and abstracts, returning the paper and the page a passage came from. Scope
   by project/topic, publication year, or reading status.
@@ -28,11 +34,6 @@ is also a plain command you can script (see the reference at the end).
   leans on most, and important works you cite but don't own.
 - Write your bibliography. A `.bib` for the whole library or a chosen subset, using
   each paper's stored citation key.
-- Keep notes. Capture a thought — in chat or via the `/litdb:note` browser form —
-  tagged by kind (idea/summary/critique/question/todo/quote) and anchored to a paper
-  (and optionally a page or a verbatim quote). Notes are embedded whole and
-  searchable next to your papers; `notes` lists them and `notes --search` finds them,
-  and they surface first when you ask what you have on a topic.
 - Stay private. Everything lives in one SQLite file locally; nothing is sent out
   unless you ask for an external lookup, and notes you mark confidential are always
   embedded locally.
