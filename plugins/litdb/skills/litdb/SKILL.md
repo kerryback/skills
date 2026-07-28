@@ -98,18 +98,22 @@ Read the named file from SKILL_DIR (this skill's own directory) before acting.
 | …do this | read and follow |
 |---|---|
 | add a folder of PDFs, import Zotero, get papers in | `SKILL_DIR/add-folder.md` |
-| capture a note / a thought about a paper | `SKILL_DIR/add-note.md` |
+| capture a note / a thought about a paper (chat or the `/litdb:note` form) | `SKILL_DIR/add-note.md` |
 | find papers, search, "what do I have on…", find new work, what to read next | `SKILL_DIR/search.md` |
 
 For anything else (triage/reading status, showing a paper, corpus stats), use the
 CLI directly — see the reference below.
 
-Notes are intentionally rudimentary for now. `add-note`/`link` (and the
-`note`/`note_paper` tables) provide a minimal capability — attach a thought to a
-paper and search it — not a note-taking app. Established tools (Obsidian, Notion,
-Markdown, Zotero annotations) already own that space, so a proper "complement your
-note app" integration is deferred by design. Keep the substrate; don't build it
-out or strip it without revisiting that decision.
+Notes are paper-anchored raw material for synthesis, not an editor. A note is
+captured in chat (`add-note`) or via the `/litdb:note` browser form, optionally
+tagged with a `kind` (idea/summary/critique/question/todo/quote) and anchored to a
+page or a verbatim `quote`, linked to one or more papers; it is embedded whole (one
+vector per note) and searchable next to the library. Retrieve with `notes` /
+`notes --search` and read notes IN FULL — they outrank papers and are read as a
+separate first track (see `search.md`). Rich editing still belongs to the user's own
+note app (Obsidian, Markdown, Zotero annotations); litdb complements that rather than
+replacing it. Deliberately still out of scope (revisit before building): synthesis
+commands, Markdown/Obsidian export, Zotero note push, note-to-note links.
 
 ## Conventions (always)
 
@@ -135,7 +139,7 @@ out or strip it without revisiting that decision.
 ## Command reference
 
 `init, import-zotero, scan-pdfs, import-doi, external-search, discover, search,
-embed, add-note, link, screen, list, paper, update, merge, delete, ingest-pdf,
+embed, add-note, link, notes, note, note-form, screen, list, paper, update, merge, delete, ingest-pdf,
 cite-fetch, refs, cited-by, most-cited, export-bib, push-zotero, sync-zotero,
 sync-inbox, migrate-to-zotero, missing-refs, projects, prefs, s2-key, onboarded,
 status`. Every command supports `--human`; see README.md for the full table.

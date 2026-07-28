@@ -7,6 +7,27 @@ resolved in SKILL.md.
 Core rule: search the user's own library FIRST. Only go to external sources when
 the user explicitly asks for new/outside work or the library clearly lacks it.
 
+## 0. Notes come first — two tracks
+
+The user's own notes are their prior thinking and outrank papers. For any topic or
+"what do I have / think / know on X" question, run TWO separate tracks and present
+notes first, as their own section, then papers — never blend them into one ranked
+list.
+
+Notes track: a note is short and you want the whole thought, not a snippet, so
+surface notes and READ THEM IN FULL.
+- If few notes are in scope, just read them all — `"$LITDB_PY" -m litdb notes`
+  (optionally `--project NAME`, `--kind K`, `--paper ID`). No search needed.
+- If there are many, shortlist by relevance and read those whole:
+  `"$LITDB_PY" -m litdb notes --search "QUERY" -k 20` — hybrid keyword+semantic over
+  notes only, returned as full note bodies (with each note's linked papers, kind,
+  page/quote). Bias to recall (a generous `-k`); you're reading the surfaced notes,
+  not trusting a top-1.
+- Use your judgment on "few vs many" per request — there's no fixed threshold.
+
+Then the papers track below (steps 1–3). Report what the notes say first, then the
+supporting/relevant papers.
+
 ## 1. Search the library (do this first)
 
 ```

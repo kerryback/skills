@@ -131,22 +131,90 @@ def cmd_add_note(args) -> int:
         title=args.title,
         source=args.source,
         confidential=args.confidential,
+        kind=args.kind,
         link_paper_ids=args.link or [],
         relation=args.relation,
     )
+    # A page/quote attaches to the linked paper(s): re-link (upsert) to record them.
+    if (args.page is not None or args.quote) and args.link:
+        for pid in args.link:
+            db.link_note_paper(conn, nid, pid, args.relation, page=args.page, quote=args.quote)
     names, src = _note_projects(args)
     for name in names:
         db.tag_project(conn, "note", nid, name, source=src)
     conn.commit()
-    _out({"ok": True, "note_id": nid, "linked": args.link or [], "projects": names}, args.human)
+    _out({"ok": True, "note_id": nid, "kind": args.kind, "linked": args.link or [],
+          "projects": names}, args.human)
     return 0
 
 
 def cmd_link(args) -> int:
     conn = db.connect()
     db.init_db(conn)
-    db.link_note_paper(conn, args.note, args.paper, args.relation)
-    _out({"ok": True, "note_id": args.note, "paper_id": args.paper, "relation": args.relation}, args.human)
+    db.link_note_paper(conn, args.note, args.paper, args.relation,
+                       page=args.page, quote=args.quote)
+    _out({"ok": True, "note_id": args.note, "paper_id": args.paper,
+          "relation": args.relation, "page": args.page, "quote": args.quote}, args.human)
+    return 0
+
+
+def cmd_notes(args) -> int:
+    conn = db.connect()
+    db.init_db(conn)
+    if args.search:
+        # Two-track retrieval: notes only, recall-biased, returned as FULL notes
+        # (the caller reads them whole — a note is short and you want the thought,
+        # not a passage). Hybrid when embeddings exist, else keyword.
+        cfg = config.load_config()
+        mode = "hybrid" if vectorstore.models_present(conn) else "keyword"
+        if mode == "keyword":
+            hits = retrieval.keyword_search(conn, args.search, k=args.k, owner_type="note")
+        else:
+            providers = retrieval.resolve_query_providers(conn, cfg)
+            hits = retrieval.hybrid_search(conn, args.search, providers, k=args.k, owner_type="note")
+        out = []
+        for h in hits:
+            n = db.get_note(conn, h["id"])
+            if n:
+                if h.get("score") is not None:
+                    n["score"] = h["score"]
+                out.append(n)
+        _out(out, args.human)
+        return 0
+    notes = db.list_notes(
+        conn,
+        paper_id=args.paper,
+        kind=args.kind,
+        project=args.project,
+        since=args.since,
+        confidential=True if args.confidential else None,
+        limit=args.k,
+    )
+    _out(notes, args.human)
+    return 0
+
+
+def cmd_note(args) -> int:
+    conn = db.connect()
+    db.init_db(conn)
+    n = db.get_note(conn, args.id)
+    if n is None:
+        _out({"error": "note not found", "id": args.id}, args.human)
+        return 1
+    _out(n, args.human)
+    return 0
+
+
+def cmd_note_form(args) -> int:
+    from . import note_app
+    result = note_app.run(
+        prefill_papers=args.paper or [],
+        project=args.project,
+        port=args.port,
+        timeout=args.timeout,
+        open_browser=not args.no_browser,
+    )
+    _out(result, args.human)
     return 0
 
 
@@ -823,9 +891,13 @@ def build_parser() -> argparse.ArgumentParser:
     note.add_argument("--body", help="note text, or '-' to read stdin", default="-")
     note.add_argument("--title")
     note.add_argument("--source")
-    note.add_argument("--confidential", action="store_true", help="keep local-only for embeddings (Phase 2+)")
+    note.add_argument("--kind", choices=list(db.NOTE_KINDS),
+                      help="note kind: idea|summary|critique|question|todo|quote")
+    note.add_argument("--confidential", action="store_true", help="keep local-only for embeddings")
     note.add_argument("--link", type=int, action="append", metavar="PAPER_ID")
     note.add_argument("--relation", help="relation label for the links, e.g. about/critique/cites")
+    note.add_argument("--page", type=int, help="page in the linked paper the note refers to")
+    note.add_argument("--quote", help="verbatim passage from the linked paper the note is about")
     note.add_argument("--project", action="append", metavar="NAME",
                       help="tag the note with a project (repeatable); default: cwd basename")
     note.add_argument("--no-project", action="store_true",
@@ -836,7 +908,33 @@ def build_parser() -> argparse.ArgumentParser:
     ln.add_argument("--note", type=int, required=True)
     ln.add_argument("--paper", type=int, required=True)
     ln.add_argument("--relation")
+    ln.add_argument("--page", type=int, help="page in the paper the note refers to")
+    ln.add_argument("--quote", help="verbatim passage the note is about")
     ln.set_defaults(func=cmd_link)
+
+    nts = add("notes", help="list your notes, or search notes only (returns full notes)")
+    nts.add_argument("--search", metavar="QUERY",
+                     help="hybrid keyword+semantic search over notes only; returns full bodies")
+    nts.add_argument("--paper", type=int, help="only notes linked to this paper id")
+    nts.add_argument("--kind", choices=list(db.NOTE_KINDS), help="only notes of this kind")
+    nts.add_argument("--project", metavar="NAME", help="only notes tagged with this project")
+    nts.add_argument("--since", metavar="YYYY-MM-DD", help="only notes created on/after this date")
+    nts.add_argument("--confidential", action="store_true", help="only confidential notes")
+    nts.add_argument("-k", type=int, default=50, help="max notes to return")
+    nts.set_defaults(func=cmd_notes)
+
+    nsh = add("note", help="show one note with its links (full body)")
+    nsh.add_argument("id", type=int)
+    nsh.set_defaults(func=cmd_note)
+
+    nf = add("note-form", help="open a browser form to capture a note")
+    nf.add_argument("--paper", type=int, action="append", metavar="ID",
+                    help="prefill a linked paper (repeatable)")
+    nf.add_argument("--project", metavar="NAME", help="preselect a project tag")
+    nf.add_argument("--port", type=int, default=0, help="localhost port (0 = pick a free one)")
+    nf.add_argument("--timeout", type=int, default=900, help="seconds to wait for a submit")
+    nf.add_argument("--no-browser", action="store_true", help="don't auto-open the browser")
+    nf.set_defaults(func=cmd_note_form)
 
     s = add("search", help="keyword (BM25) search over papers and notes")
     s.add_argument("query")

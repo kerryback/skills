@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS note (
     title        TEXT,
     body         TEXT NOT NULL,
     source       TEXT,
+    kind         TEXT,               -- idea|summary|critique|question|todo|quote, or NULL
     confidential INTEGER NOT NULL DEFAULT 0,
     created_at   TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
@@ -80,6 +81,8 @@ CREATE TABLE IF NOT EXISTS note_paper (
     note_id  INTEGER NOT NULL REFERENCES note(id)  ON DELETE CASCADE,
     paper_id INTEGER NOT NULL REFERENCES paper(id) ON DELETE CASCADE,
     relation TEXT,
+    page     INTEGER,   -- page the note refers to (optional)
+    quote    TEXT,      -- verbatim passage the note is about (optional)
     PRIMARY KEY (note_id, paper_id)
 );
 
@@ -226,6 +229,13 @@ def _migrate(conn: sqlite3.Connection) -> None:
                      ("page", "page INTEGER"), ("section", "section TEXT")):
         if col not in ccols:
             conn.execute(f"ALTER TABLE chunk ADD COLUMN {ddl}")
+    ncols = {r["name"] for r in conn.execute("PRAGMA table_info(note)").fetchall()}
+    if "kind" not in ncols:
+        conn.execute("ALTER TABLE note ADD COLUMN kind TEXT")
+    npcols = {r["name"] for r in conn.execute("PRAGMA table_info(note_paper)").fetchall()}
+    for col, ddl in (("page", "page INTEGER"), ("quote", "quote TEXT")):
+        if col not in npcols:
+            conn.execute(f"ALTER TABLE note_paper ADD COLUMN {ddl}")
 
 
 # --------------------------------------------------------------------------- #
@@ -373,6 +383,7 @@ def get_meta(conn: sqlite3.Connection, key: str, default: str | None = None) -> 
 
 
 READING_STATUSES = ("unseen", "screened", "to_read", "reading", "read", "rejected")
+NOTE_KINDS = ("idea", "summary", "critique", "question", "todo", "quote")
 
 
 def _paper_text(title: str, abstract: str | None, keywords: list[str] | None = None) -> str:
@@ -796,12 +807,13 @@ def add_note(
     title: str | None = None,
     source: str | None = None,
     confidential: bool = False,
+    kind: str | None = None,
     link_paper_ids: Iterable[int] = (),
     relation: str | None = None,
 ) -> int:
     cur = conn.execute(
-        "INSERT INTO note(title, body, source, confidential) VALUES (?,?,?,?)",
-        (title, body, source, int(confidential)),
+        "INSERT INTO note(title, body, source, kind, confidential) VALUES (?,?,?,?,?)",
+        (title, body, source, kind, int(confidential)),
     )
     nid = int(cur.lastrowid)
     reindex_owner(conn, "note", nid, _note_text(title, body))
@@ -812,14 +824,80 @@ def add_note(
 
 
 def link_note_paper(
-    conn: sqlite3.Connection, note_id: int, paper_id: int, relation: str | None = None
+    conn: sqlite3.Connection, note_id: int, paper_id: int, relation: str | None = None,
+    *, page: int | None = None, quote: str | None = None,
 ) -> None:
     conn.execute(
-        "INSERT INTO note_paper(note_id, paper_id, relation) VALUES (?,?,?) "
-        "ON CONFLICT(note_id, paper_id) DO UPDATE SET relation=excluded.relation",
-        (note_id, paper_id, relation),
+        "INSERT INTO note_paper(note_id, paper_id, relation, page, quote) VALUES (?,?,?,?,?) "
+        "ON CONFLICT(note_id, paper_id) DO UPDATE SET relation=excluded.relation, "
+        "page=excluded.page, quote=excluded.quote",
+        (note_id, paper_id, relation, page, quote),
     )
     conn.commit()
+
+
+def get_note(conn: sqlite3.Connection, note_id: int) -> dict | None:
+    """One note with its full body, kind, linked papers (relation/page/quote), and
+    project tags. Notes are read whole — the retrieval unit is the entire note."""
+    row = conn.execute(
+        "SELECT id, title, body, kind, confidential, created_at, updated_at "
+        "FROM note WHERE id=?",
+        (note_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    d = {"type": "note", **dict(row)}
+    d["confidential"] = bool(d["confidential"])
+    d["papers"] = [
+        dict(x)
+        for x in conn.execute(
+            "SELECT np.paper_id, p.title, p.citation_key, np.relation, np.page, np.quote "
+            "FROM note_paper np JOIN paper p ON p.id = np.paper_id "
+            "WHERE np.note_id=? ORDER BY np.paper_id",
+            (note_id,),
+        ).fetchall()
+    ]
+    d["projects"] = project_names(conn, "note", note_id)
+    return d
+
+
+def list_notes(
+    conn: sqlite3.Connection,
+    *,
+    paper_id: int | None = None,
+    kind: str | None = None,
+    project: str | None = None,
+    since: str | None = None,
+    confidential: bool | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    """Notes matching the filters, newest first, each as a full `get_note` dict.
+    Filters compose with AND. `project` is applied via `project_members` so this
+    doesn't depend on the project-tag table's column names."""
+    joins, where, params = [], [], []
+    if paper_id is not None:
+        joins.append("JOIN note_paper np ON np.note_id = n.id")
+        where.append("np.paper_id=?")
+        params.append(int(paper_id))
+    if kind:
+        where.append("n.kind=?")
+        params.append(kind)
+    if since:
+        where.append("n.created_at >= ?")
+        params.append(since)
+    if confidential is not None:
+        where.append("n.confidential=?")
+        params.append(int(confidential))
+    sql = "SELECT DISTINCT n.id, n.created_at FROM note n " + " ".join(joins)
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+    sql += " ORDER BY n.created_at DESC, n.id DESC"
+    ids = [r["id"] for r in conn.execute(sql, params).fetchall()]
+    if project:
+        allowed = {oid for (ot, oid) in project_members(conn, project) if ot == "note"}
+        ids = [i for i in ids if i in allowed]
+    ids = ids[: int(limit)]
+    return [n for n in (get_note(conn, i) for i in ids) if n]
 
 
 # --------------------------------------------------------------------------- #
