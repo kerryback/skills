@@ -1,0 +1,109 @@
+/* elegant-pdf — reusable design system
+   Change the palette in :root and everything follows. Fonts are system
+   serif/sans (Georgia / Helvetica) so output is reproducible with no web-font
+   downloads. Colors default to Rice Business navy + gold. */
+:root {
+  --navy:  #00205B;   /* primary — headings, chips, links */
+  --gold:  #b8912f;   /* accent — eyebrows, rule tip, labels */
+  --ink:   #1a1a1a;
+  --gray:  #444444;
+  --mut:   #6b6b6b;
+  --line:  #e4e4e4;
+  --panel: #f6f7f9;
+  --serif: Georgia, "Times New Roman", serif;
+  --sans:  "Helvetica Neue", Arial, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: var(--sans); color: var(--ink); background: #fff; }
+a { color: inherit; text-decoration: none; }
+
+/* ---- shared type + marks ---- */
+.eyebrow { font-size: 20px; letter-spacing: 5px; text-transform: uppercase; color: var(--navy); font-weight: 700; }
+.display { font-family: var(--serif); color: var(--navy); font-weight: 700; line-height: 1.1; }
+.lead    { color: var(--gray); line-height: 1.55; }
+/* gold-tipped rule: navy bar with a gold end cap */
+.rule { height: 3px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--navy) 0 62%, var(--gold) 62% 100%); }
+
+/* dot-separated inline meta (e.g. "sessions · Zoom · 3–4 PM") */
+.meta-inline { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px 22px; }
+.meta-inline span { font-size: 21px; color: #333; }
+.meta-inline .dot { color: var(--gold); font-weight: 700; }
+.subline { text-align: center; font-size: 21px; color: #555; }
+.subline b { color: var(--ink); }
+
+/* key/value meta grid (label column in gold) */
+.meta-grid { display: grid; grid-template-columns: auto 1fr; gap: 12px 26px; }
+.meta-grid .k { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); font-weight: 700; align-self: center; }
+.meta-grid .v { font-size: 17px; color: var(--ink); }
+
+/* schedule / list: date-chip + title + description */
+.section-head { display: flex; align-items: baseline; justify-content: space-between; }
+.section-head .label { font-size: 17px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+.section-head .dates { font-size: 17px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+.item { display: flex; gap: 18px; align-items: flex-start; padding: 9px 0; }
+.chip { flex: 0 0 118px; background: var(--navy); color: #fff; font-size: 16px; font-weight: 700;
+  letter-spacing: 1px; text-align: center; padding: 7px 0; border-radius: 6px; }
+.item-title { font-size: 22px; font-weight: 700; color: var(--navy); }
+.item-desc  { font-size: 18px; color: var(--gray); line-height: 1.4; margin-top: 2px; }
+
+/* callout panel */
+.callout { padding: 22px 24px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.callout h2 { font-family: var(--serif); font-size: 19px; color: var(--navy); margin-bottom: 12px; }
+.callout .row { display: flex; gap: 14px; padding: 6px 0; font-size: 15px; }
+.callout .row .k { flex: 0 0 74px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); font-weight: 700; padding-top: 2px; }
+.callout a { color: var(--navy); font-weight: 700; }
+
+/* ============================================================
+   SHEET — a single fixed-width canvas for a flyer/announcement.
+   Export to a 2x JPEG or a 1-page PDF. Width 1080 keeps it
+   crisp and social/email-friendly.
+   ============================================================ */
+.sheet { width: 1080px; padding: 64px 72px 40px; }
+.sheet .eyebrow  { text-align: center; margin-bottom: 14px; }
+.sheet .display  { text-align: center; font-size: 58px; margin-bottom: 26px; }
+.sheet > .rule   { margin-bottom: 30px; }
+.sheet .subline  { margin-bottom: 8px; }
+.sheet .section-head { margin: 24px 0 14px; }
+.sheet-foot { margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center; }
+.sheet-foot .url  { font-size: 23px; font-weight: 700; color: var(--navy); }
+.sheet-foot .note { font-size: 18px; color: var(--mut); }
+
+/* ============================================================
+   PAGE — a Letter page for multi-page documents. One
+   <section class="page"> per printed page.
+   ============================================================ */
+@page { size: 8.5in 11in; margin: 0; }
+.page { position: relative; width: 8.5in; height: 11in; padding: 0.95in 0.9in 0.85in;
+  page-break-after: always; overflow: hidden; }
+.page:last-child { page-break-after: auto; }
+.page .display   { font-size: 52px; }
+.page > .rule    { margin-bottom: 26px; }
+.page .section-head .label { font-size: 22px; letter-spacing: .3px; text-transform: none; color: var(--navy); font-weight: 800; }
+.page .section-head .dates { font-size: 14px; letter-spacing: 2px; }
+.page .chip { flex-basis: 92px; font-size: 13px; padding: 8px 0; }
+.page .item { gap: 20px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.page .item:last-of-type { border-bottom: none; }
+.page .item-title { font-size: 20px; }
+.page .item-desc  { font-size: 15px; line-height: 1.5; }
+
+/* running footer, repeats on every page */
+.pagefoot { position: absolute; left: 0.9in; right: 0.9in; bottom: 0.6in;
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 12px; border-top: 1px solid var(--line);
+  font-size: 11px; color: var(--mut); letter-spacing: .3px; }
+.pagefoot .pg { font-weight: 700; color: var(--navy); }
+
+/* cover page variant */
+.cover { display: flex; flex-direction: column; }
+.cover .top { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.cover .eyebrow { text-align: center; font-size: 13px; letter-spacing: 4px; margin-bottom: 16px; }
+.cover .display { text-align: center; }
+.cover .rule { width: 210px; margin: 26px auto 30px; }
+.cover .lead { text-align: center; font-size: 18px; max-width: 5.6in; margin: 0 auto; }
+.cover .meta-grid { margin: 46px auto 0; grid-template-columns: auto auto; }
+.cover .brand { text-align: center; font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: var(--mut); }
+.cover .cta { text-align: center; margin-top: 8px; font-size: 17px; font-weight: 700; color: var(--navy); }

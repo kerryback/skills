@@ -1,117 +1,69 @@
 # litdb
 
-litdb is a private, searchable library of your research papers that you use by
-talking to Claude in plain English. Point it at your PDFs and it reads them —
-the whole paper, not just the title and abstract — so you can later ask things
-like "what do I have on momentum crashes?" and get the right papers, even the
-one that said "large drawdowns" instead of your words. It also helps you find new
-work, keeps track of what you cite, and produces the bibliography file you cite
-from. Everything stays on your own computer.
+litdb is a private, local library-management service for your research papers,
+driven by talking to Claude Code in plain English. It reads your PDFs in full,
+indexes them for keyword and semantic search, finds and imports new work from the
+scholarly literature, tracks citations, and writes your bibliography — all in one
+SQLite file on your machine. Nothing leaves your computer unless you ask for an
+outside lookup.
 
-It runs as a Claude Code plugin. You don't learn commands or open a terminal —
-you just ask.
+It runs as a Claude Code plugin. You never type a command, but every action below
+is also a plain command you can script (see the reference at the end).
 
----
+## What it does
 
-## What you can do
-
-Once your papers are in, you can say things like:
-
-- "Add all the PDFs in my Papers folder." — it reads each one, looks up the
-  correct title, authors, journal, and year, and makes it searchable.
-- "What do I have on momentum crashes?" — searches your library by meaning and by
-  wording, and tells you which paper and page a passage came from.
-- "Find recent papers on factor momentum that I don't already have." — searches
-  the wider literature (OpenAlex and Semantic Scholar) and marks what's new to you.
-- "What am I citing a lot but haven't saved?" — looks at what your papers
-  reference and flags important works missing from your library.
-- "Make a .bib file of my whole library." — generates the bibliography you cite
-  from in LaTeX.
-- "I just downloaded a paper — add it." — or drop it in a folder litdb watches and
-  it gets added on its own.
-- "Add a note on the Daniel–Moskowitz paper: their crash result is about the short
-  leg." — keeps your thought attached to the paper and searchable.
-
-You ask; Claude does the work. Under the hood each of these is a real command
-(documented far below) that you can also run yourself if you ever want to — but
-you don't have to.
-
----
+- Add papers. Reads each PDF's full text, resolves its metadata from OpenAlex
+  (title, authors, venue, year, DOI), splits the text into passages, and embeds
+  them into a local vector store. Sources: a folder of PDFs, a Zotero library, a
+  single DOI, or a watched inbox folder that ingests on its own.
+- Search your corpus. Hybrid keyword (BM25) + semantic (vector) search over full
+  text and abstracts, returning the paper and the page a passage came from. Scope
+  by project/topic, publication year, or reading status.
+- Find new work. Searches OpenAlex and Semantic Scholar, marks what you already
+  own, and imports the details of any paper it finds into the database — searchable
+  and citable at once. Full-text PDFs are imported on request (you fetch the file
+  through your browser or library login; litdb ingests it from there).
+- Follow citations. A paper's references and who cites it, the works your library
+  leans on most, and important works you cite but don't own.
+- Write your bibliography. A `.bib` for the whole library or a chosen subset, using
+  each paper's stored citation key.
+- Keep notes. Attach a thought to a paper and search it — deliberately minimal, not
+  a note-taking app.
+- Stay private. Everything lives in one SQLite file locally; nothing is sent out
+  unless you ask for an external lookup, and notes you mark confidential are always
+  embedded locally.
 
 ## Getting started
 
-1. Install the plugin (one time):
+Install once:
 
-   ```
-   claude plugin marketplace add kerryback/skills
-   claude plugin install litdb@kerryback-skills
-   ```
+```
+claude plugin marketplace add kerryback/skills
+claude plugin install litdb@kerryback-skills
+```
 
-2. Start using it. The first time, Claude asks you a couple of quick setup
-   questions — see the next section — and sets everything up for you. Then just
-   tell it to add your papers and start asking.
+On first use, Claude runs a short setup — a couple of questions (see modes below),
+then it builds the runtime for you. litdb keeps its data in one place (`~/.litdb`),
+independent of any project or folder, so there is nothing else to configure.
 
-There's nothing else to configure. litdb keeps everything in one file on your
-computer (`~/.litdb`), so it doesn't depend on any particular project or folder.
+For semantic search it will offer to set up a small free tool (Ollama with a local
+embedding model) and walk you through it. Skip it and search still works by
+wording; add it later and litdb reindexes.
 
-For better search, it will offer to set up a small free tool (Ollama) so it can
-search by meaning, not only by exact words — it walks you through that during
-setup. If you skip it, search still works by wording.
+## With or without Zotero
 
----
+litdb has two modes, chosen once at setup and stored as `source_of_truth`:
 
-## Do you use Zotero?
+- litdb (default). litdb owns your references. You add PDFs; it organizes, indexes,
+  and searches them and writes your `.bib`. Zotero is never touched. If you adopt
+  Zotero later, one command migrates the whole library in.
+- zotero. Your Zotero library is authoritative. litdb imports it — using Better
+  BibTeX for your existing citation keys when Zotero is running with that add-on —
+  keeps itself current as you save papers there, and pushes papers you add through
+  litdb back into Zotero.
 
-That's the one choice that shapes how litdb fits your workflow, and Claude asks it
-during setup.
-
-- If you don't use Zotero (or don't want to): litdb handles everything itself.
-  You add PDFs, it organizes and searches them, and it produces your `.bib` file.
-  Nothing else needed. If you ever start using Zotero later, litdb can move your
-  whole library into it in one step.
-- If you do use Zotero: litdb works alongside it and treats Zotero as the master
-  copy of your references. It imports your Zotero library, keeps itself up to date
-  as you save papers there, and (if you use Better BibTeX) uses your existing
-  citation keys. When you add a paper through litdb instead, it puts a copy into
-  Zotero for you.
-
-Either way, you can drop new PDFs into a designated folder and litdb adds them
-automatically the next time you use it.
-
----
-
-## What makes it useful
-
-- It reads the whole paper. Search covers the full text, not just abstracts, so
-  it can find a point buried in a paper's results section — and it tells you the
-  page.
-- It searches by meaning and by wording. Ask in your own words; it also finds
-  papers that make the same point with different terms.
-- It searches your library first. When you look for new work, it checks what you
-  already own before reaching out to OpenAlex or Semantic Scholar, and labels what
-  you already have.
-- It understands citations. It can show what a paper cites, who cites it, and
-  which works you lean on most but haven't saved.
-- It's private. Everything lives on your machine; nothing is sent to an outside
-  service unless you ask it to look something up, and notes you mark confidential
-  never leave your computer.
-- It writes your bibliography. One request produces a `.bib` file for LaTeX, for
-  your whole library or just the papers you choose.
-
----
-
-## Common questions
-
-- Where do my papers live? In one database file on your computer,
-  `~/.litdb/litdb.db`. It's yours; nothing is uploaded.
-- Do I need Zotero? No. It's optional — see above.
-- Do I need to run commands? No. You talk to Claude. The commands exist for people
-  who want to script things.
-- What if I download a paper behind a paywall? Getting the PDF still happens in
-  your browser (through your library's login) — no tool can bypass that. But once
-  the file is on your computer, litdb takes it from there automatically.
-- Can it find papers I don't have? Yes — it searches OpenAlex (free) and, if you
-  add a free key, Semantic Scholar, and can pull chosen papers in.
+Either way, dropping new PDFs into a watched inbox folder ingests them
+automatically.
 
 ---
 

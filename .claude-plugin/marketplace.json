@@ -38,6 +38,11 @@
       "name": "human-write",
       "source": "./plugins/human-write",
       "description": "Write and edit academic prose that reads as human, not machine-generated: varied sentence rhythm, no formulaic AI tells (delve, however-at-every-turn, the not-X-but-Y contrast, three-item everything), and structure driven by the argument rather than a template. Defaults to scholarly register (journal articles, working papers, referee reports, grant proposals). Works when drafting fresh and when revising a draft."
+    },
+    {
+      "name": "elegant-pdf",
+      "source": "./plugins/elegant-pdf",
+      "description": "Create elegant, branded documents from a small HTML design system rendered to PDF or image with headless Chrome — one-page flyers/announcements (2x JPEG or clickable PDF) and multi-page programs, reports, and handbooks (clickable PDF with cover, running footer, and page numbers). Default palette is Rice Business navy + gold; recolor by editing one block."
     }
   ],
   "description": "Authoring and teaching skills for Claude Code: narrated video from slide decks, Quarto slide decks, free financial/economic data, and adversarial work review."

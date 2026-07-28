@@ -1,0 +1,8 @@
+{
+  "name": "elegant-pdf",
+  "description": "Create elegant, branded documents from a small HTML design system rendered to PDF or image with headless Chrome — one-page flyers/announcements (2x JPEG or clickable PDF) and multi-page programs, reports, and handbooks (clickable PDF with cover, running footer, and page numbers). Default palette is Rice Business navy + gold; recolor by editing one block.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Kerry Back"
+  }
+}
