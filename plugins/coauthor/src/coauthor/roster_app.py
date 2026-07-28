@@ -23,12 +23,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import threading
 import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+from . import inapp
 
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 GLOBAL_LAST = Path.home() / ".coauthor" / "last_roster.json"
@@ -186,7 +187,10 @@ def main() -> None:
     t = threading.Thread(target=httpd.serve_forever, daemon=True)
     t.start()
     print(f"Roster picker at {url}  ({len(models)} models)  — waiting for Submit…")
-    if not args.no_browser and not os.environ.get("COAUTHOR_NO_BROWSER"):
+    # Inside Academic Studio the picker opens as an in-editor tab; everywhere else
+    # (and when COAUTHOR_NO_BROWSER is set) inapp.publish_url reports no listener
+    # or suppresses the browser outright. See inapp.py.
+    if not args.no_browser and not inapp.publish_url(url):
         try:
             webbrowser.open(url)
         except Exception:
@@ -204,29 +208,33 @@ def main() -> None:
 _PAGE_TEMPLATE = r"""<!doctype html>
 <html><head><meta charset="utf-8"><title>coauthor — pick the debate roster</title>
 <style>
-  :root { color-scheme: light dark; }
+  /* Pinned to light: the picker is often shown in an in-editor browser tab whose
+     host is dark, and the model catalog reads better on white. */
+  :root { color-scheme: light; }
+  html { background: #fff; }
   body { font: 15px/1.5 system-ui, sans-serif; margin: 0; padding: 2rem;
-         max-width: 1100px; margin-inline: auto; }
+         max-width: 1100px; margin-inline: auto; background: #fff; color: #1a1a1a; }
   h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
-  p.sub { color: #888; margin: 0 0 1.5rem; }
-  .seat { border: 1px solid #8884; border-radius: 10px; padding: 1rem 1.25rem;
+  p.sub { color: #6b7280; margin: 0 0 1.5rem; }
+  .seat { border: 1px solid #dcdcdc; border-radius: 10px; padding: 1rem 1.25rem;
           margin-bottom: .75rem; }
   .seat h3 { margin: 0 0 .5rem; font-size: 1rem; }
-  .seat select, .seat input { font: inherit; padding: .35rem .5rem; }
+  .seat select, .seat input { font: inherit; padding: .35rem .5rem;
+          background: #fff; color: #1a1a1a; border: 1px solid #c9c9c9; border-radius: 6px; }
   .seat select { min-width: 380px; }
-  label { display: inline-block; min-width: 90px; color: #888; }
+  label { display: inline-block; min-width: 90px; color: #6b7280; }
   .row { margin: .3rem 0; }
   .controls { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;
               flex-wrap: wrap; }
   button { font: inherit; padding: .55rem 1.4rem; border-radius: 8px;
            border: 0; background: #3b6ef6; color: #fff; cursor: pointer; }
-  button.secondary { background: #8883; color: inherit; }
-  #done { display:none; padding: 1rem; border-radius: 10px; background: #2ecc7122;
+  button.secondary { background: #f4f4f5; color: #1a1a1a; border: 1px solid #c9c9c9; }
+  #done { display:none; padding: 1rem; border-radius: 10px; background: #eafaf928;
           border: 1px solid #2ecc71; margin-top: 1rem; }
   table { border-collapse: collapse; width: 100%; margin-top: .5rem; font-size: 13px; }
-  th, td { text-align: left; padding: .25rem .5rem; border-bottom: 1px solid #8882; }
-  #catalog { max-height: 260px; overflow: auto; border: 1px solid #8884;
-             border-radius: 8px; margin-top: .5rem; }
+  th, td { text-align: left; padding: .25rem .5rem; border-bottom: 1px solid #e5e5e5; }
+  #catalog { max-height: 260px; overflow: auto; border: 1px solid #dcdcdc;
+             border-radius: 8px; margin-top: .5rem; background: #fff; }
   #filter { width: 260px; }
   details { margin-top: 1.5rem; }
   .warn { color: #e67e22; font-size: 13px; min-height: 1.2em; }
