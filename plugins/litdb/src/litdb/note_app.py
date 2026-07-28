@@ -1,10 +1,13 @@
 """Browser capture form for a litdb note (`litdb note-form`, `/litdb:note`).
 
 Zero-dependency (stdlib http.server + webbrowser), mirroring coauthor's roster
-picker: it serves a one-screen form on 127.0.0.1, opens the browser, and BLOCKS
-until the user submits (or the timeout). On submit it writes the note through the
-normal db layer and returns the created note; `main()`/`run()` prints it as JSON so
-the caller (the CLI, then Claude) can confirm what was saved.
+picker: it serves a one-screen form on 127.0.0.1, opens it, and BLOCKS until the
+user submits (or the timeout). On submit it writes the note through the normal db
+layer and returns the created note; `main()`/`run()` prints it as JSON so the
+caller (the CLI, then Claude) can confirm what was saved.
+
+Inside Academic Studio the form opens as an in-editor tab rather than in the
+system browser — see :mod:`litdb.inapp`.
 
 Unlike the roster picker it needs no network — the paper picker queries the local
 litdb DB in-process. A fresh db.connect() is opened per request so nothing is
@@ -21,6 +24,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from . import db
+from . import inapp
 from . import retrieval
 
 NOTE_KINDS = db.NOTE_KINDS
@@ -132,7 +136,7 @@ def run(*, prefill_papers=(), project: str | None = None, port: int = 0,
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     print(f"litdb note form at {url} — waiting up to {timeout}s for you to submit…",
           file=sys.stderr)
-    if open_browser:
+    if open_browser and not inapp.publish_url(url):
         try:
             webbrowser.open(url)
         except Exception:
@@ -159,23 +163,28 @@ def main() -> None:
 _HTML = r"""<!doctype html>
 <html><head><meta charset="utf-8"><title>litdb — new note</title>
 <style>
-  :root { color-scheme: light dark; }
-  body { font: 15px/1.5 system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  /* Pinned to light: the form is often shown in an in-editor browser tab whose
+     host is dark, and a note you are writing reads better on paper white. */
+  :root { color-scheme: light; }
+  html { background:#fff; }
+  body { font: 15px/1.5 system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem;
+    background:#fff; color:#1a1a1a; }
   h1 { font-size: 1.2rem; }
   label { display:block; font-weight:600; margin:.9rem 0 .25rem; }
   textarea, input[type=text], select { width:100%; box-sizing:border-box; padding:.5rem;
-    font:inherit; border:1px solid #8886; border-radius:6px; background:transparent; color:inherit; }
+    font:inherit; border:1px solid #c9c9c9; border-radius:6px; background:#fff; color:#1a1a1a; }
   textarea { min-height:9rem; resize:vertical; }
-  .row { border:1px solid #8884; border-radius:8px; padding:.6rem; margin:.5rem 0; }
+  .row { border:1px solid #dcdcdc; border-radius:8px; padding:.6rem; margin:.5rem 0; }
   .row .line { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; }
   .row .line > * { flex:1 1 auto; }
-  .results { border:1px solid #8886; border-radius:6px; margin-top:.25rem; max-height:11rem; overflow:auto; }
+  .results { border:1px solid #c9c9c9; border-radius:6px; margin-top:.25rem; max-height:11rem; overflow:auto;
+    background:#fff; }
   .results div { padding:.35rem .5rem; cursor:pointer; }
-  .results div:hover { background:#8882; }
+  .results div:hover { background:#eef2f7; }
   .chosen { font-weight:600; margin-top:.25rem; }
-  .muted { color:#8889; font-weight:400; }
-  button { font:inherit; padding:.45rem .8rem; border-radius:6px; border:1px solid #8886;
-    background:#8881; color:inherit; cursor:pointer; }
+  .muted { color:#6b7280; font-weight:400; }
+  button { font:inherit; padding:.45rem .8rem; border-radius:6px; border:1px solid #c9c9c9;
+    background:#f4f4f5; color:#1a1a1a; cursor:pointer; }
   .primary { background:#3b82f6; color:#fff; border-color:#3b82f6; }
   .bar { display:flex; gap:.6rem; align-items:center; margin-top:1rem; }
   .small { width:6rem; flex:0 0 auto; }
@@ -223,7 +232,7 @@ function addRow(pref){
   const row = document.createElement("div");
   row.className = "row";
   row.innerHTML = `
-    <input type="text" class="q" placeholder="search a paper by title/author…">
+    <input type="text" class="q" placeholder="search papers by title/author">
     <div class="results" style="display:none"></div>
     <div class="chosen muted">no paper chosen</div>
     <div class="line" style="margin-top:.4rem">
