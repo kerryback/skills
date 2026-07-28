@@ -38,6 +38,24 @@ the user explicitly asks for new/outside work or the library clearly lacks it.
 - Importing: propose candidates and import only what the user confirms or what is
   clearly central. Bulk: `external-search "QUERY" --import`; single:
   `import-doi <doi>`. Then run `embed` so new papers are searchable.
+- Getting the full text, not just metadata. Importing (above) stores a paper's
+  metadata + abstract only — its `location` stays `not downloaded` and full text is
+  not searchable. litdb itself never downloads PDFs, but YOU (Claude) can, and
+  should, fetch a free copy before falling back on the user:
+  1. Only for non-paywalled papers. Use WebSearch to find a freely available PDF —
+     an open-access journal copy, a preprint (arXiv/SSRN/NBER/RePEc), or the
+     author's page; use WebFetch on a landing page to locate the actual PDF link.
+     Never try to bypass a paywall or use pirate sources (e.g. Sci-Hub).
+  2. Download it with Bash (`curl -L -o <file>.pdf <url>`), NOT WebFetch (which
+     returns processed text, not the binary). Save it in the paper's project folder
+     (the per-project convention in SKILL.md — ask which folder if unsure), and
+     confirm it really is a PDF before ingesting (the file starts with `%PDF`).
+  3. Ingest into the existing record so no duplicate is created:
+     `"$LITDB_PY" -m litdb ingest-pdf --paper <id> --file <path>`, then `embed`.
+  4. If no free copy exists, say the paper is paywalled and ask the user to download
+     it through their library login; once the file is on disk, ingest it the same
+     way. Never present a paywalled paper as unavailable without checking for a free
+     copy first.
 
 ## 3. Citation-graph exploration
 

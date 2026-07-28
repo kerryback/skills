@@ -21,8 +21,9 @@ is also a plain command you can script (see the reference at the end).
   by project/topic, publication year, or reading status.
 - Find new work. Searches OpenAlex and Semantic Scholar, marks what you already
   own, and imports the details of any paper it finds into the database — searchable
-  and citable at once. Full-text PDFs are imported on request (you fetch the file
-  through your browser or library login; litdb ingests it from there).
+  and citable at once. Full-text PDFs are imported directly when a free copy exists:
+  Claude locates and downloads it with its web search and fetch tools. Paywalled
+  papers you download through your library login, and litdb ingests them from there.
 - Follow citations. A paper's references and who cites it, the works your library
   leans on most, and important works you cite but don't own.
 - Write your bibliography. A `.bib` for the whole library or a chosen subset, using
