@@ -1,15 +1,16 @@
 ---
 name: participation
 description: >-
-  Score class participation quickly from a photo roster. Use when an instructor
-  wants to "grade participation", "record who spoke today", "open the
+  Score class participation quickly against a class roster. Use when an
+  instructor wants to "grade participation", "record who spoke today", "open the
   participation app", "set up a course for participation", or asks to turn a
-  class roster with photos into a scoring screen. Launches a local app
-  (http://127.0.0.1:8020) showing every student's name and headshot with 1-3
-  scores for amount and quality, an optional note, and a class date; Save writes
-  a row per student to participation.csv in that class's folder. Reads the
-  roster straight out of the class folder — nothing is uploaded. Opens inside
-  Academic Studio when it is running, otherwise in a browser.
+  class list into a scoring screen. Launches a local app
+  (http://127.0.0.1:8020) showing each student with 1-3 scores for amount and
+  quality, an optional note, and a class date; Save writes a row per student to
+  participation.csv in that class's folder. Needs only a list of names, read
+  from whatever the instructor has; photos are optional and shown when
+  available. Opens inside Academic Studio when it is running, otherwise in a
+  browser.
 ---
 
 # participation
@@ -31,14 +32,16 @@ Read `~/.participation/.preferences`. It is JSON:
 ```json
 {
   "courses_root": "/Users/you/Courses",
-  "roster_formats": ["PDF printed from a Rice Esther page"]
+  "roster_formats": ["registrar photo-roster PDF, one per class folder"]
 }
 ```
 
 - `courses_root` — the folder holding one subfolder per class. Each class folder
-  holds that class's roster file and its `participation.csv`.
-- `roster_formats` — what the instructor's roster-with-photos files actually
-  are, in their own words.
+  holds that class's roster and its `participation.csv`.
+- `roster_formats` — how this instructor's class lists and photos arrive, in
+  their own words: a spreadsheet exported from the registrar, a photo-roster
+  PDF, a folder of headshots, a list pasted into chat. Whatever it is, record it
+  so you don't ask again next term.
 
 If the file is missing, or either key is absent, ask for what's missing and
 write it before doing anything else. Ask for both in one turn when both are
@@ -46,10 +49,9 @@ missing; don't interrogate them twice.
 
 - For `courses_root`: ask where they keep their class folders. Confirm it
   exists, or offer to create it.
-- For `roster_formats`: tell them the expected file is a PDF printed from a
-  Rice Esther page, and that other formats can be used too — then ask what they
-  will actually be using and record their answer. Don't assume Esther just
-  because it's the default.
+- For `roster_formats`: ask what they have for their classes — a list of names
+  is all that's required, and photos are a bonus if they have them. Don't lead
+  with a format; ask what they've got and record the answer.
 
 Create `~/.participation` if it isn't there, then write the file. Preserve any
 keys you don't recognise. If the instructor later tells you something that
@@ -88,10 +90,28 @@ POST http://127.0.0.1:8020/api/courses
   -> {"id": 1, "name": "MGMT 638"}
 ```
 
-Then find the roster file in that folder and read it in — no upload, no drag and
-drop. A class folder usually holds many PDFs (slides, papers, handouts), so pick
-the one whose name says roster rather than the first PDF you see, and ask if
-more than one is plausible:
+Then get the roster in. All the app needs is names; photos are optional and can
+be added later or not at all. Look in the class folder, and work with whatever
+is actually there rather than asking for a particular format.
+
+**Names — the general case.** You read the class list, whatever it is: a
+spreadsheet, a CSV, a Word document, a text file, an email they paste in. Parse
+it yourself and post the names:
+
+```
+POST http://127.0.0.1:8020/api/courses/<id>/roster/names
+     {"names": ["Ada Lovelace", "Alan Turing", …]}
+  -> {"imported": 35, "total": 35}
+```
+
+Names are stored as given, so normalise "Last, First" to how you'd say it before
+posting. Duplicates and blanks are dropped. `mode` defaults to `"replace"`; pass
+`"append"` to add to an existing roster.
+
+**A photo-roster PDF, if they have one.** This reads names and headshots
+together, in one call. A class folder usually holds many PDFs (slides, papers,
+handouts), so pick the one whose name says roster rather than the first PDF you
+see, and ask if more than one is plausible:
 
 ```
 POST http://127.0.0.1:8020/api/courses/<id>/roster/from-path
@@ -99,19 +119,30 @@ POST http://127.0.0.1:8020/api/courses/<id>/roster/from-path
   -> {"imported": 35, "expected": 35, "path": "…"}
 ```
 
-`mode` defaults to `"replace"`; pass `"append"` to add to an existing roster.
+`imported` is how many students were found; `expected` is how many the PDF's
+student-ID column lists. If they differ, say so plainly rather than presenting a
+short roster as complete. On failure it returns 400 with `{"error": "…"}` and
+leaves any existing roster alone — say what it said, and fall back to names.
 
-Report the result honestly:
+**Photos from a folder of images, if they have one.** Match by name; anything
+unmatched comes back so you can ask rather than guess:
 
-- `imported` is how many students were found; `expected` is how many the PDF's
-  student-ID column lists. If they differ, say so plainly and send them to the
-  roster list to fix it — do not present a short roster as complete.
-- On an error the call returns 400 with `{"error": "…"}` and leaves any existing
-  roster untouched. Say what it said.
+```
+GET  http://127.0.0.1:8020/api/courses/<id>/roster
+  -> {"students": [{"id": 1, "name": "Ada Lovelace", "has_photo": false}, …]}
+
+POST http://127.0.0.1:8020/api/courses/<id>/photos
+     {"photos": [{"name": "Ada Lovelace", "path": "…/ada.jpg"}, …]}
+  -> {"attached": 34, "unmatched": ["Al Turing"], "unreadable": []}
+```
 
 Then have them check the roster at `/admin/courses/<id>`: names are editable,
 wrong entries removable, photos swappable by clicking a thumbnail, and missing
 students addable by hand.
+
+Never block on photos. A names-only roster is a perfectly good roster — the app
+shows initials where there's no photo. Offer photos as an improvement if they
+mention having them, and move on if they don't.
 
 ## 4. Hand off
 
@@ -119,22 +150,23 @@ The instructor picks the class, confirms the date (today by default), taps
 scores, and clicks Save. Leave the launcher running while they work; Ctrl-C
 stops it.
 
-## The roster file
+## What the photo-roster PDF reader handles
 
-The reader targets the Course Roster report printed from Esther: one student per
-table row, square thumbnail in the leftmost column, name beside it as
-"Last, First", wrapping to a second line when long. Names are stored the way you
-would say them, so "Mohammed, Ryan" becomes "Ryan Mohammed".
+Only relevant when the instructor has a photo roster and wants the headshots;
+names alone never go through it.
 
-Layout is measured relative to each thumbnail rather than against fixed page
-coordinates, so a shifted or scaled roster still reads. A different report, or a
-PDF that is one big scanned image, will not — the import stops, says so, and
-leaves any existing roster alone.
+It reads the table layout registrars typically produce: one student per row, a
+square thumbnail in the leftmost column, and the name beside it as
+"Last, First", wrapping to a second line when long. Names come out the way you
+would say them, so "Mohammed, Ryan" becomes "Ryan Mohammed". Layout is measured
+relative to each thumbnail rather than against fixed page coordinates, so a
+shifted or scaled roster still reads.
 
-If `roster_formats` says the instructor uses something else, be straight with
-them: the built-in reader only handles the Esther PDF today. Offer to add the
-students by hand, or to look at a sample of their format and extend the reader.
-Don't quietly try it and let it fail.
+A grid-of-headshots roster, or a PDF that is one big scanned image, will not
+read. Neither will an unrelated PDF: a file with images but no student-ID column
+is refused outright, so pointing at a paper in the same folder can't overwrite a
+good roster. When it fails, don't retry variations — take the names from
+wherever else they are and offer to attach photos separately.
 
 ## What gets saved
 

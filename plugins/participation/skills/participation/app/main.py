@@ -271,6 +271,83 @@ async def create_course_api(request: Request):
     return {"id": course_id, "name": name}
 
 
+@app.get("/api/courses/{course_id}/roster")
+def read_roster(course_id: int):
+    _course_or_404(course_id)
+    return {
+        "students": [
+            {"id": s["id"], "name": s["name"], "has_photo": bool(s["photo"])}
+            for s in db.list_students(course_id)
+        ]
+    }
+
+
+@app.post("/api/courses/{course_id}/photos")
+async def attach_photos(course_id: int, request: Request):
+    """Attach photo files to students by name, for a folder of image files.
+
+    Matching is on the name as stored, case- and spacing-insensitive. Anything
+    that doesn't match is reported back rather than guessed at.
+    """
+    _course_or_404(course_id)
+    payload = await request.json()
+
+    def key(value: str) -> str:
+        return " ".join(str(value).split()).lower()
+
+    by_name = {key(s["name"]): s["id"] for s in db.list_students(course_id)}
+    attached, unmatched, unreadable = [], [], []
+
+    for item in payload.get("photos") or []:
+        name = str(item.get("name") or "")
+        student_id = by_name.get(key(name))
+        if student_id is None:
+            unmatched.append(name)
+            continue
+        path = Path(str(item.get("path") or "")).expanduser()
+        try:
+            db.set_student_photo(student_id, course_id, path.read_bytes())
+        except OSError as exc:
+            unreadable.append(f"{name}: {exc}")
+            continue
+        attached.append(name)
+
+    return {"attached": len(attached), "unmatched": unmatched, "unreadable": unreadable}
+
+
+@app.post("/api/courses/{course_id}/roster/names")
+async def set_roster_names(course_id: int, request: Request):
+    """Set the roster from a list of names.
+
+    The general case: a class list can be a spreadsheet, a text file, an email,
+    anything. Rather than teach the app every format, Claude reads whatever the
+    instructor has and posts the names here. Photos are optional and can be
+    attached per student afterwards.
+    """
+    _course_or_404(course_id)
+    payload = await request.json()
+
+    names, seen = [], set()
+    for raw in payload.get("names") or []:
+        name = " ".join(str(raw).split())
+        if name and name.lower() not in seen:
+            seen.add(name.lower())
+            names.append(name)
+
+    if not names:
+        return JSONResponse({"error": "No names given."}, status_code=400)
+
+    if str(payload.get("mode") or "replace") == "replace":
+        db.clear_roster(course_id)
+
+    start = len(db.list_students(course_id))
+    for i, name in enumerate(names):
+        db.add_student(course_id, name, None, start + i)
+    db.resequence(course_id)
+
+    return {"imported": len(names), "total": len(db.list_students(course_id))}
+
+
 @app.post("/api/courses/{course_id}/roster/from-path")
 async def import_roster_from_path(course_id: int, request: Request):
     """Import the roster from a PDF already sitting in the class folder."""
