@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% set nav = 'courses' %}
+{% block title %}Courses{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h1>Courses</h1>
+
+  {% if courses %}
+    <table class="table">
+      <thead>
+        <tr><th>Course</th><th>Term</th><th>Folder</th><th>Roster</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for c in courses %}
+          <tr>
+            <td><a href="/courses/{{ c.id }}">{{ c.name }}</a></td>
+            <td>{{ c.term or '—' }}</td>
+            <td class="path">
+              {% if c.folder_status == 'unset' %}
+                <span class="tag warn">no folder set</span>
+              {% else %}
+                <code>{{ c.folder }}</code>
+                {% if c.folder_status == 'missing' %}<span class="tag warn">missing</span>{% endif %}
+              {% endif %}
+            </td>
+            <td>{{ c.student_count }}</td>
+            <td><a class="btn small" href="/courses/{{ c.id }}">Edit</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No courses yet.</p>
+  {% endif %}
+
+  <p class="lede footnote">
+    Ask Claude to add a class — it finds the folder, reads your class list, and
+    sets the roster up in one go. Everything here is editable afterwards.
+  </p>
+</section>
+{% endblock %}

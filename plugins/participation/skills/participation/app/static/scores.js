@@ -1,10 +1,11 @@
-// Evaluation screen: score pips, the date field, saving, and the
-// don't-lose-your-work guard.
+// Scores screen: the course picker, score pips, the date field, saving, and
+// the don't-lose-your-work guard.
 
 (function () {
   const bar = document.getElementById('evalbar');
   if (!bar) return;
 
+  const courseSelect = document.getElementById('course-select');
   const courseId = bar.dataset.courseId;
   const grid = document.getElementById('grid');
   const dateInput = document.getElementById('date');
@@ -14,6 +15,22 @@
 
   let dirty = false;
   let leaving = false;          // set while we navigate on purpose
+
+  // The course picker is present even with no course chosen; everything below
+  // it only exists once there is one to score.
+  if (courseSelect) {
+    let lastCourse = courseSelect.value;
+    courseSelect.addEventListener('change', () => {
+      const next = courseSelect.value;
+      if (!next || next === lastCourse) return;
+      if (!confirmLeave()) { courseSelect.value = lastCourse; return; }
+      leaving = true;
+      window.location.href = `/?course=${encodeURIComponent(next)}`;
+    });
+  }
+
+  if (!dateInput || !saveBtn) return;   // no course chosen, or no roster yet
+
   let lastDate = dateInput.value;
 
   function setDirty(value) {
@@ -140,7 +157,7 @@
 
   // --- leave guard ---
 
-  document.querySelectorAll('a[data-guard], .topbar a, .brand').forEach((link) => {
+  document.querySelectorAll('a[data-guard], .topbar a').forEach((link) => {
     link.addEventListener('click', (event) => {
       if (!dirty) return;
       event.preventDefault();

@@ -78,10 +78,14 @@ do not need to open anything yourself. If the port is taken, rerun with
 
 ## 3. Set the class up (once per class)
 
+Creating a class is yours alone — the app has no form for it. The Courses tab
+edits what already exists: name, term, folder, roster, delete. So when an
+instructor wants a new class, don't send them to the app; do it here.
+
 Work out the class folder: `<courses_root>/<class>`. List `courses_root` to see
 what classes exist rather than guessing at a name.
 
-Check whether the course is already in the app — `GET /admin` lists them, or
+Check whether the course is already in the app — `GET /courses` lists them, or
 just ask. If it is new, create it and point it at its own folder:
 
 ```
@@ -136,7 +140,7 @@ POST http://127.0.0.1:8020/api/courses/<id>/photos
   -> {"attached": 34, "unmatched": ["Al Turing"], "unreadable": []}
 ```
 
-Then have them check the roster at `/admin/courses/<id>`: names are editable,
+Then have them check the roster at `/courses/<id>`: names are editable,
 wrong entries removable, photos swappable by clicking a thumbnail, and missing
 students addable by hand.
 
@@ -189,7 +193,7 @@ it yourself — the app has no reporting of its own.
 
 ## Notes
 
-- Deleting a course in the admin panel removes it from the app and leaves the
+- Deleting a course on the Courses tab removes it from the app and leaves the
   CSV alone.
 - The app warns before leaving a class with unsaved scores, so an unsaved-work
   prompt in the browser is expected, not a bug.

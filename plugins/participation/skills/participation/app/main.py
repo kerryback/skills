@@ -40,35 +40,40 @@ def _folder_status(folder: str) -> str:
     return "ok" if Path(folder).expanduser().is_dir() else "missing"
 
 
-# --- course picker ---------------------------------------------------------
+# --- scores ----------------------------------------------------------------
 
 
 @app.get("/")
-def index(request: Request):
+def scores(request: Request, course: int | None = None, date: str | None = None):
+    """The scoring screen. The course is picked from the dropdown in its header,
+    defaulting to whichever course was open last."""
     courses = db.list_courses()
-    return templates.TemplateResponse(
-        request,
-        "index.html",
-        {
-            "courses": courses,
-            "today": date_cls.today().isoformat(),
-        },
-    )
+    course_id = course if course is not None else db.last_course_id()
+    if course_id is None and courses:
+        course_id = courses[0]["id"]
 
+    chosen = db.get_course(course_id) if course_id is not None else None
+    if chosen is None:
+        return templates.TemplateResponse(
+            request,
+            "scores.html",
+            {
+                "courses": courses,
+                "course": None,
+                "students": [],
+                "date": date_cls.today().isoformat(),
+                "today": date_cls.today().isoformat(),
+                "folder_error": "",
+            },
+        )
 
-# --- evaluation screen -----------------------------------------------------
-
-
-@app.get("/evaluate/{course_id}")
-def evaluate(request: Request, course_id: int, date: str | None = None):
-    course = _course_or_404(course_id)
-    students = db.list_students(course_id)
+    db.set_setting("last_course_id", chosen["id"])
     day = date or date_cls.today().isoformat()
 
     existing: dict[str, dict[str, str]] = {}
     folder_error = ""
     try:
-        existing = storage.read_date(course["folder"], day, course["name"])
+        existing = storage.read_date(chosen["folder"], day, chosen["name"])
     except storage.FolderError as exc:
         folder_error = str(exc)
 
@@ -82,20 +87,29 @@ def evaluate(request: Request, course_id: int, date: str | None = None):
             "quality": existing.get(s["name"], {}).get("quality", ""),
             "notes": existing.get(s["name"], {}).get("notes", ""),
         }
-        for s in students
+        for s in db.list_students(chosen["id"])
     ]
 
     return templates.TemplateResponse(
         request,
-        "evaluate.html",
+        "scores.html",
         {
-            "course": course,
+            "courses": courses,
+            "course": chosen,
             "students": rows,
             "date": day,
             "today": date_cls.today().isoformat(),
             "folder_error": folder_error,
         },
     )
+
+
+@app.get("/evaluate/{course_id}")
+def evaluate_redirect(course_id: int, date: str | None = None):
+    """The scoring screen used to live here, before the course picker moved
+    into its header."""
+    url = f"/?course={course_id}"
+    return RedirectResponse(url + (f"&date={date}" if date else ""), status_code=307)
 
 
 @app.get("/api/courses/{course_id}/evaluations")
@@ -150,15 +164,23 @@ def photo(student_id: int):
     return FileResponse(path, media_type="image/png")
 
 
-# --- admin -----------------------------------------------------------------
+# --- courses ---------------------------------------------------------------
 
 
 @app.get("/admin")
-def admin(request: Request):
+@app.get("/admin/courses/{course_id}")
+def admin_redirect(course_id: int | None = None):
+    """The Courses tab was called Admin until the layout change."""
+    target = "/courses" if course_id is None else f"/courses/{course_id}"
+    return RedirectResponse(target, status_code=307)
+
+
+@app.get("/courses")
+def courses_page(request: Request):
     courses = db.list_courses()
     return templates.TemplateResponse(
         request,
-        "admin.html",
+        "courses.html",
         {
             "courses": [
                 {**dict(c), "folder_status": _folder_status(c["folder"])} for c in courses
@@ -167,15 +189,7 @@ def admin(request: Request):
     )
 
 
-@app.post("/admin/courses")
-def create_course(name: str = Form(...), term: str = Form(""), folder: str = Form("")):
-    if not name.strip():
-        return RedirectResponse("/admin", status_code=303)
-    course_id = db.create_course(name, term, folder)
-    return RedirectResponse(f"/admin/courses/{course_id}", status_code=303)
-
-
-@app.get("/admin/courses/{course_id}")
+@app.get("/courses/{course_id}")
 def edit_course(request: Request, course_id: int):
     course = _course_or_404(course_id)
     students = db.list_students(course_id)
@@ -198,7 +212,7 @@ def edit_course(request: Request, course_id: int):
     )
 
 
-@app.post("/admin/courses/{course_id}")
+@app.post("/courses/{course_id}")
 def save_course(
     course_id: int,
     name: str = Form(...),
@@ -207,14 +221,14 @@ def save_course(
 ):
     _course_or_404(course_id)
     db.update_course(course_id, name, term, folder)
-    return RedirectResponse(f"/admin/courses/{course_id}", status_code=303)
+    return RedirectResponse(f"/courses/{course_id}", status_code=303)
 
 
-@app.post("/admin/courses/{course_id}/delete")
+@app.post("/courses/{course_id}/delete")
 def remove_course(course_id: int):
     _course_or_404(course_id)
     db.delete_course(course_id)
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/courses", status_code=303)
 
 
 class RosterImportError(Exception):
@@ -373,7 +387,7 @@ async def import_roster_from_path(course_id: int, request: Request):
     return {"imported": imported, "expected": expected, "path": str(path)}
 
 
-@app.post("/admin/courses/{course_id}/students")
+@app.post("/courses/{course_id}/students")
 async def update_roster(course_id: int, request: Request):
     _course_or_404(course_id)
     payload = await request.json()
@@ -392,17 +406,17 @@ async def update_roster(course_id: int, request: Request):
     return {"ok": True, "count": len(db.list_students(course_id))}
 
 
-@app.post("/admin/courses/{course_id}/students/add")
+@app.post("/courses/{course_id}/students/add")
 async def add_student(course_id: int, name: str = Form(...), photo: UploadFile | None = None):
     _course_or_404(course_id)
     image = await photo.read() if photo is not None and photo.filename else None
     order = len(db.list_students(course_id))
     db.add_student(course_id, name, image, order)
     db.resequence(course_id)
-    return RedirectResponse(f"/admin/courses/{course_id}", status_code=303)
+    return RedirectResponse(f"/courses/{course_id}", status_code=303)
 
 
-@app.post("/admin/courses/{course_id}/students/{student_id}/photo")
+@app.post("/courses/{course_id}/students/{student_id}/photo")
 async def replace_photo(course_id: int, student_id: int, photo: UploadFile):
     student = db.get_student(student_id)
     if student is None or student["course_id"] != course_id:

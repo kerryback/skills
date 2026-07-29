@@ -1,6 +1,6 @@
 {
   "name": "participation",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Score class participation against your class roster: tap 1-3 for amount and quality, with optional notes. Needs only a list of names, read from whatever you already have; photos are optional and shown when available. Saves one participation.csv per class folder, a row per student per meeting. Opens in Academic Studio when it is running, otherwise in a browser.",
   "author": {
     "name": "Kerry Back"

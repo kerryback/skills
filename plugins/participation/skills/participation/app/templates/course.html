@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% set nav = 'admin' %}
+{% set nav = 'courses' %}
 {% block title %}{{ course.name }} &middot; setup{% endblock %}
 
 {% block content %}
-<p class="crumbs"><a href="/admin">&larr; All courses</a></p>
+<p class="crumbs"><a href="/courses">&larr; All courses</a></p>
 
 <section class="panel">
   <h1>{{ course.name }}</h1>
-  <form method="post" action="/admin/courses/{{ course.id }}" class="stack">
+  <form method="post" action="/courses/{{ course.id }}" class="stack">
     <label>Course name
       <input type="text" name="name" value="{{ course.name }}" required>
     </label>
@@ -67,7 +67,7 @@
        or add someone by hand below.</p>
   {% endif %}
 
-  <form method="post" action="/admin/courses/{{ course.id }}/students/add"
+  <form method="post" action="/courses/{{ course.id }}/students/add"
         enctype="multipart/form-data" class="row addrow">
     <input type="text" name="name" placeholder="Add a student by name" required>
     <input type="file" name="photo" accept="image/*">
@@ -79,7 +79,7 @@
   <h2>Delete course</h2>
   <p class="lede">Removes the course and its roster from this app. Files already
      written to <code>{{ course.folder or 'the course folder' }}</code> are left alone.</p>
-  <form method="post" action="/admin/courses/{{ course.id }}/delete"
+  <form method="post" action="/courses/{{ course.id }}/delete"
         onsubmit="return confirm('Delete {{ course.name }} and its roster? Saved CSV files are not touched.')">
     <button type="submit" class="btn danger">Delete course</button>
   </form>

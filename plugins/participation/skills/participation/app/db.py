@@ -51,6 +51,11 @@ CREATE TABLE IF NOT EXISTS students (
 );
 
 CREATE INDEX IF NOT EXISTS students_course ON students(course_id);
+
+CREATE TABLE IF NOT EXISTS settings (
+    key    TEXT PRIMARY KEY,
+    value  TEXT NOT NULL
+);
 """
 
 
@@ -71,6 +76,32 @@ def connect():
         con.commit()
     finally:
         con.close()
+
+
+# --- settings --------------------------------------------------------------
+
+
+def get_setting(key: str) -> str:
+    with connect() as con:
+        row = con.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else ""
+
+
+def set_setting(key: str, value: str) -> None:
+    with connect() as con:
+        con.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, str(value)),
+        )
+
+
+def last_course_id() -> int | None:
+    """The course the instructor was last scoring, if it still exists."""
+    raw = get_setting("last_course_id")
+    if not raw.isdigit():
+        return None
+    return int(raw) if get_course(int(raw)) is not None else None
 
 
 # --- courses ---------------------------------------------------------------

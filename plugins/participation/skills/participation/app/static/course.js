@@ -29,7 +29,7 @@
     body.append('photo', input.files[0]);
     const id = input.dataset.photoFor;
     try {
-      const response = await fetch(`/admin/courses/${courseId}/students/${id}/photo`, {
+      const response = await fetch(`/courses/${courseId}/students/${id}/photo`, {
         method: 'POST', body,
       });
       if (!response.ok) throw new Error();
@@ -55,7 +55,7 @@
 
     saveRoster.disabled = true;
     try {
-      const response = await fetch(`/admin/courses/${courseId}/students`, {
+      const response = await fetch(`/courses/${courseId}/students`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ students, delete: remove }),
