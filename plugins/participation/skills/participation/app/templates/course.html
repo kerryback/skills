@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% set nav = 'admin' %}
+{% block title %}{{ course.name }} &middot; setup{% endblock %}
+
+{% block content %}
+<p class="crumbs"><a href="/admin">&larr; All courses</a></p>
+
+<section class="panel">
+  <h1>{{ course.name }}</h1>
+  <form method="post" action="/admin/courses/{{ course.id }}" class="stack">
+    <label>Course name
+      <input type="text" name="name" value="{{ course.name }}" required>
+    </label>
+    <label>Term <span class="opt">optional</span>
+      <input type="text" name="term" value="{{ course.term }}">
+    </label>
+    <label>Folder for saved evaluations
+      <span class="row">
+        <input type="text" name="folder" id="folder" value="{{ course.folder }}"
+               placeholder="/Users/you/Courses/{{ course.name }}">
+        <button type="button" class="btn" data-browse="#folder">Browse…</button>
+      </span>
+    </label>
+    {% if folder_status == 'missing' %}
+      <p class="banner warn">That folder does not exist right now. Saving will fail until it does.</p>
+    {% elif folder_status == 'unset' %}
+      <p class="banner warn">Set a folder — evaluations are written to
+        <code>participation.csv</code> inside it.</p>
+    {% endif %}
+    <div class="row spread">
+      <button type="submit" class="btn primary">Save course</button>
+      <a class="btn" href="/evaluate/{{ course.id }}">Open evaluations →</a>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="row spread">
+    <h2>Roster <span class="count">{{ students|length }}</span></h2>
+    <button type="button" class="btn primary" id="save-roster" disabled>Save roster changes</button>
+  </div>
+  <p class="lede">
+    Ask Claude to read the roster in this course's folder — names and headshots
+    are pulled out automatically. Check them here and fix anything that came
+    through wrong.
+  </p>
+
+  {% if students %}
+    <div class="roster" id="roster" data-course-id="{{ course.id }}">
+      {% for s in students %}
+        <div class="roster-row" data-student-id="{{ s.id }}">
+          <label class="thumb" title="Click to replace this photo">
+            {% if s.has_photo %}
+              <img src="/photo/{{ s.id }}" alt="">
+            {% else %}
+              <span class="initials">{{ s.initials }}</span>
+            {% endif %}
+            <input type="file" accept="image/*" hidden data-photo-for="{{ s.id }}">
+          </label>
+          <input type="text" class="rname" value="{{ s.name }}" aria-label="Student name">
+          <button type="button" class="btn small danger" data-remove>Remove</button>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty">No students yet — ask Claude to read this course's roster,
+       or add someone by hand below.</p>
+  {% endif %}
+
+  <form method="post" action="/admin/courses/{{ course.id }}/students/add"
+        enctype="multipart/form-data" class="row addrow">
+    <input type="text" name="name" placeholder="Add a student by name" required>
+    <input type="file" name="photo" accept="image/*">
+    <button type="submit" class="btn">Add</button>
+  </form>
+</section>
+
+<section class="panel danger-zone">
+  <h2>Delete course</h2>
+  <p class="lede">Removes the course and its roster from this app. Files already
+     written to <code>{{ course.folder or 'the course folder' }}</code> are left alone.</p>
+  <form method="post" action="/admin/courses/{{ course.id }}/delete"
+        onsubmit="return confirm('Delete {{ course.name }} and its roster? Saved CSV files are not touched.')">
+    <button type="submit" class="btn danger">Delete course</button>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/course.js"></script>
+{% endblock %}

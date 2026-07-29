@@ -1,0 +1,17 @@
+{
+  "name": "participation",
+  "version": "1.0.0",
+  "description": "Score class participation from a photo roster. Import Banner's Course Roster PDF to get every student's name and headshot, then tap 1-3 for amount and quality with optional notes while the class is fresh. Saves one participation.csv per course folder, a row per student per meeting. Opens in Academic Studio when it is running, otherwise in a browser.",
+  "author": {
+    "name": "Kerry Back"
+  },
+  "license": "MIT",
+  "keywords": [
+    "teaching",
+    "participation",
+    "grading",
+    "roster",
+    "classroom"
+  ],
+  "skills": "./skills/"
+}

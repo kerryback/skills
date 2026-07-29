@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% set nav = 'admin' %}
+{% block title %}Admin{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h1>Courses</h1>
+
+  {% if courses %}
+    <table class="table">
+      <thead>
+        <tr><th>Course</th><th>Term</th><th>Folder</th><th>Roster</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for c in courses %}
+          <tr>
+            <td><a href="/admin/courses/{{ c.id }}">{{ c.name }}</a></td>
+            <td>{{ c.term or '—' }}</td>
+            <td class="path">
+              {% if c.folder_status == 'unset' %}
+                <span class="tag warn">no folder set</span>
+              {% else %}
+                <code>{{ c.folder }}</code>
+                {% if c.folder_status == 'missing' %}<span class="tag warn">missing</span>{% endif %}
+              {% endif %}
+            </td>
+            <td>{{ c.student_count }}</td>
+            <td><a class="btn small" href="/admin/courses/{{ c.id }}">Edit</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No courses yet — add your first one below.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Add a course</h2>
+  <form method="post" action="/admin/courses" class="stack">
+    <label>Course name
+      <input type="text" name="name" required placeholder="Investments">
+    </label>
+    <label>Term <span class="opt">optional</span>
+      <input type="text" name="term" placeholder="Fall 2026">
+    </label>
+    <label>Folder for saved evaluations
+      <span class="row">
+        <input type="text" name="folder" id="folder" placeholder="/Users/you/Courses/Investments">
+        <button type="button" class="btn" data-browse="#folder">Browse…</button>
+      </span>
+    </label>
+    <div><button type="submit" class="btn primary">Create course</button></div>
+  </form>
+</section>
+{% endblock %}
