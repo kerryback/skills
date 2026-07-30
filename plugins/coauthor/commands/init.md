@@ -33,9 +33,8 @@ code/data/results (which you chose to keep first-class at the root).
    - litdb must be installed — the Verifier depends on it (corpus-first). If it's
      not present, flag that verification won't work until it is.
    - Set `OPENROUTER_API_KEY` and `ANTHROPIC_API_KEY` in the environment. For
-     empirical rounds, set up WRDS: `~/.pgpass` for the password, and a resolvable
-     WRDS username — `$WRDS_USER`, a `~/.wrds` file, or field 4 of the `.pgpass`
-     wrds line (check with `python -m coauthor.wrds_username`).
+     empirical rounds, set up whatever data sources the project uses — connection
+     details and credentials come from that project's data plugin/skill, not coauthor.
    - Then converse to set the working angle — you seed `.coauthor/state.md` and run
      a litdb discovery pass — and run `/coauthor:round` to start.
 

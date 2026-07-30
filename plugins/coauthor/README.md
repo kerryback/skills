@@ -12,8 +12,8 @@ orchestrates.
 | Proposer | debate voice | OpenRouter | Generate and advance ideas (creative lead) |
 | Adversary | debate voice | OpenRouter (different family) | Attack ideas, severity-ranked, name resolving evidence |
 | Verifier | Claude subagent | Anthropic | Corpus-first fact-checking over litdb; import papers as you go |
-| Analyst | Claude subagent | Anthropic | Build the sample, run the empirics (WRDS + OpenAP) against the frozen method spec |
-| Replicator | Claude subagent | Anthropic (or external) | Implement the same frozen spec in its own code (numbers should converge); hunt the standard biases |
+| Analyst | Claude subagent | Anthropic | Independently build the sample, run the empirics against the frozen method spec |
+| Replicator | Claude subagent | Anthropic (or external) | Independently build the sample and implement the same frozen spec in its own code (both should converge); hunt the standard biases |
 
 Design rationale lives in the code comments and `skills/coauthor/SKILL.md`. Key
 principles: corpus-first (search litdb before any external source); evidence, not
@@ -47,11 +47,10 @@ analyst's code/data/results).
   before any external source. Install the litdb plugin/skill first (the Verifier
   drives `~/.litdb/.venv/bin/python -m litdb …`). Without it, verification — half
   of every round — does not work.
-- WRDS + Open Source Asset Pricing — required only for empirical rounds. The
-  Analyst/Replicator use the `wrds` Python package with `~/.pgpass` (password) and
-  a resolvable WRDS username — `$WRDS_USER`, a `~/.wrds` file, or field 4 of the
-  `.pgpass` wrds line (`python -m coauthor.wrds_username` prints it). Plus OpenAP
-  (public). Debate-and-verify-only rounds don't need these.
+- Data sources — required only for empirical rounds, and supplied by whatever data
+  plugin/skill the project uses (connection details, credentials, and field-level
+  standards live there, not in coauthor). Debate-and-verify-only rounds don't need
+  any of that.
 - Two API keys — see below.
 
 ## Credentials (two secrets)

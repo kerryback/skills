@@ -49,13 +49,15 @@ Continue the existing project.
   `~/.litdb/.venv/bin/python -m litdb …`). If litdb isn't present, say so plainly:
   verification won't work, so debate is ungrounded — point the user at the litdb
   plugin before real rounds.
-- WRDS (`~/.pgpass` + `wrds` package) + OpenAP are needed only for empirical
-  rounds (Analyst/Replicator), not for debate/verify-only rounds.
+- Empirical rounds also need the project's data sources and the packages to work
+  them (resolved in the interpreter below). Domain-specific data access, connection
+  details, and field-level standards live in whatever data plugin/skill the project
+  uses — not here. Debate-and-verify-only rounds need none of that.
 - `OPENROUTER_API_KEY` (debate voices) and `ANTHROPIC_API_KEY` (Claude subagents).
 
 ## Python environment (for empirical work)
-The Analyst and Replicator run real Python (wrds, pandas, numpy, statsmodels,
-OpenAP). Resolve which interpreter they use ONCE and record it in
+The Analyst and Replicator run real Python (pandas, numpy, and whatever the
+project's analysis needs). Resolve which interpreter they use ONCE and record it in
 `.coauthor/python`, before the first empirical run — never create or install into
 an environment without asking:
 1. If `.coauthor/python` already exists, use the interpreter it names.
@@ -64,46 +66,11 @@ an environment without asking:
    project. If found, write its `bin/python` path to `.coauthor/python` and use it.
 3. Else ASK the user — do not guess: (a) use the default environment (the `python3`
    already on PATH), or (b) set up a fresh project venv (`python3 -m venv .venv`,
-   then install the empirical stack). Write the chosen interpreter to
+   then install the analysis stack). Write the chosen interpreter to
    `.coauthor/python`.
 coauthor's own plumbing (debate/roster/render) is stdlib and only needs `python3`
-≥ 3.11 — this resolution is specifically about the empirical packages the subagents
+≥ 3.11 — this resolution is specifically about the analysis packages the subagents
 need. If a needed package is missing, surface it; don't silently pip-install.
-
-### Installing wrds — do NOT let it downgrade pandas
-The `wrds` package pins an OLD pandas in its metadata; installed normally it
-uninstalls your current pandas and drops to that old version, which breaks numpy /
-statsmodels / much else. wrds actually runs fine on current pandas, so never accept
-the downgrade. Use the interpreter from `.coauthor/python`; pick one approach:
-- Clean install (preferred): install wrds alone, touching nothing else —
-  `<interp> -m pip install --no-deps wrds` — then, only if `import wrds` reports a
-  genuinely missing module (e.g. `psycopg2`, `sqlalchemy`, `mock`), install just
-  that one package. NEVER reinstall/downgrade pandas.
-- Snapshot + restore: `<interp> -m pip freeze > /tmp/env-before.txt` BEFORE
-  installing wrds; `pip install wrds`; then restore the downgraded packages to
-  their prior versions (`<interp> -m pip install -r /tmp/env-before.txt`). Ignore
-  pip's "wrds requires pandas==X" dependency-conflict warnings — they are harmless
-  here.
-Verify: `<interp> -c "import wrds, pandas; print(pandas.__version__)"` — pandas
-should be your CURRENT version and wrds should import.
-
-### Connecting to WRDS non-interactively (or an unattended run HANGS)
-`.pgpass` supplies the PASSWORD (robust — no secret in code), but the wrds library
-does NOT read the username from it, so you MUST pass the username or the connection
-prompts and an unattended run hangs forever. NEVER hardcode a username (the skill
-must work for anyone) — resolve it per user, first hit wins: `$WRDS_USER` → `~/.wrds`
-(a `WRDS_USER=<id>` or bare-username line) → `~/.pgpass` field 4 of the wrds line
-(zero setup — anyone with WRDS already has it). coauthor ships this resolver:
-`python -m coauthor.wrds_username` prints the resolved id. Pattern:
-```python
-import wrds
-from coauthor.wrds_username import wrds_username   # or embed the resolver inline
-conn = wrds.Connection(wrds_username=wrds_username())   # password from ~/.pgpass
-```
-In a re-runnable Analyst script, copy the small resolver in so the script doesn't
-depend on the plugin path. Prefer the CRSP v2 tables (`crsp.msf_v2`: `mthcaldt,
-mthret, mthprc, shrout, sharetype, securitytype, primaryexch`) — there `mthret` is a
-proper float; the older `crsp.msf` returns returns as strings.
 
 ## The roles you orchestrate
 - Proposer, Adversary (+ extra voices) — stateless OpenRouter voices, called via
@@ -114,11 +81,14 @@ proper float; the older `crsp.msf` returns returns as strings.
   `--seats` (they execute concurrently).
 - Verifier — Claude subagent, corpus-first over litdb. Every "known result" goes
   through it. It grows the library as questions evolve.
-- Analyst — Claude subagent, builds the sample and runs empirics on WRDS/OpenAP
-  against the frozen method spec.
-- Replicator — Claude subagent, implements the SAME frozen spec in its own code
-  (never the Analyst's) so the numbers should converge, and hunts the standard
-  biases on top. Both get the same spec; you decide the method, not them.
+- Analyst — Claude subagent, independently builds the sample from the raw sources and
+  runs the empirics against the frozen method spec. Its build is reconciled against the
+  Replicator's and confirmed before analysis (see "The data build is confirmed before
+  analysis").
+- Replicator — Claude subagent, independently builds the sample AND implements the
+  SAME frozen spec in its own code (never the Analyst's), so both the data build and
+  the numbers should converge; it hunts the standard biases on top. Both get the same
+  spec; you decide the method, not them.
 
 ## Non-negotiable principles
 1. Corpus-first: search litdb before any external/web source.
@@ -133,10 +103,18 @@ proper float; the older `crsp.msf` returns returns as strings.
    implementer. The Analyst and Replicator both implement that same spec and never
    improvise — an unspecified choice comes back to you as `DECISION NEEDED`, you pin
    it, and re-sync both.
-5. Independence, aimed at bugs: the Analyst never checks its own empirics; the
-   Replicator implements the same spec in its own code (never seeing the Analyst's)
-   so the numbers should converge, and its genuine independence lives in the
-   robustness/bias probes — not in choosing a different method.
+5. Independence, aimed at bugs — and it MUST cover the DATA BUILD, not just the
+   estimator. The most dangerous bug hides in the sample: if both implementers read
+   ONE pre-built panel, they converge on the same wrong data and their agreement
+   proves nothing about it (a bad screen, a market-cap/share-class aggregation, a
+   broken merge — all invisible to estimator convergence). So the Analyst and the
+   Replicator each build the sample INDEPENDENTLY from the raw sources, reconcile
+   observation counts AND summary statistics, and CONFIRM they agree BEFORE any
+   estimation; only then do you collapse to one verified panel and run analysis on it
+   (see "The data build is confirmed before analysis"). On that retained panel each
+   still implements the frozen spec in its own code (never the other's) so the numbers
+   converge; the Replicator's extra independence lives in the robustness/bias probes —
+   not in choosing a different method. The Analyst never checks its own empirics.
 6. State discipline: curate into `.coauthor/state.md` + litdb notes (committed);
    never hoard raw transcripts as memory. `.coauthor/logs/` is exhaustive but
    local/gitignored.
@@ -145,15 +123,42 @@ proper float; the older `crsp.msf` returns returns as strings.
    EVERY empirical design choice behind it — not just the headline number. The
    Analyst and Replicator are charged with reporting all such choices up to you; you
    are charged with passing the complete design on to the user. This covers the exact
-   sample and every screen (share/exchange/price/size filters, date range, universe),
-   variable and signal definitions with their timing and lags, winsorization/trimming,
-   the estimator and its options, weighting (value vs. equal), standard-error
-   treatment, delisting/missing-data handling, rebalancing, and the precise
-   OpenAP/WRDS objects and vintages — plus any place the Analyst's and Replicator's
+   sample and every inclusion/exclusion filter, the date range and universe, variable
+   definitions with their timing and lags, any winsorization/trimming, the estimator
+   and its options, weighting, standard-error treatment, missing-data handling, and the
+   precise data sources and vintages — plus any place the Analyst's and Replicator's
    realizations of the design differed. Never present a number while hiding, summarizing
    away, or glossing the design that produced it: the human is editor-in-chief and
    cannot judge a result whose construction they cannot see. This holds even under
    blanket autonomy — the empirical design goes into the report in full.
+
+## The data build is confirmed before analysis (two independent builds → one)
+The sample is the empirical foundation, and it is the one thing estimator-convergence
+CANNOT vet — two estimators reading a single panel agree on whatever that panel says,
+right or wrong. So the data build gets its own independent-verification stage, ahead of
+any estimation:
+1. TWO INDEPENDENT BUILDS. The Analyst and the Replicator each construct the sample in
+   their OWN code, from the raw sources (their own pulls and their own construction of
+   every column — screens, variable definitions, derived quantities, merges/joins,
+   lags), never from a shared pre-built file.
+2. RECONCILE. They report, and you compare head to head: the number of observations
+   (total and per year / cross-section), the summary statistics of every variable
+   (N, mean, median, sd, key quantiles), and the key sample counts (each screen's
+   effect, exchange/share-class handling, coverage).
+3. CONFIRM before analysis — a HARD GATE. Estimation does NOT begin until the two
+   builds agree within tolerance. A gap in a count or a moment is a bug, not noise — a
+   differing screen, a variable definition, a market-cap/share-class aggregation, a bad
+   link/merge — run it down by test (route it like any dispute), fix the spec, and
+   re-reconcile. Never average the two or wave a discrepancy through.
+4. COLLAPSE to one. ONLY after confirmation, DELETE one copy and base ALL downstream
+   analysis on the single retained panel, so both estimators are scored on an identical,
+   independently-verified sample. From here the estimator-level independence (each
+   implements the frozen spec in its own code) isolates estimation bugs on a sample you
+   now trust.
+This is what turns "the two builds agreed" into evidence about the data, not just about
+the code. It is the fix for the failure mode where a shared sample carries an unnoticed
+construction bug — a mis-scoped screen, a wrongly-aggregated identifier, a bad join — that
+both estimators inherit identically and no amount of estimator agreement can reveal.
 
 ## Where things live
 coauthor is a skill any directory can use — there is no "coauthor project" type.
@@ -215,7 +220,9 @@ clean file handoff).
 Read state + session.md → build a brief → run the DEBATE LOOP (Proposer →
 Adversaries `--seats` → you judge feasibility → back to Proposer to refine or
 pivot; iterate until a plan converges) → if it turns on a number, freeze
-`method_spec.md` → optional Analyst + Replicator (same spec) → GATE → update
+`method_spec.md` → Analyst + Replicator each build the sample INDEPENDENTLY and
+reconcile obs-counts + summary stats → CONFIRM the data build, then collapse to one
+verified panel → both run the estimation (same spec) on it → GATE → update
 `.coauthor/state.md` + notes, refresh `.coauthor/session.md`, render transcript.
 Run it with `/coauthor:round`.
 

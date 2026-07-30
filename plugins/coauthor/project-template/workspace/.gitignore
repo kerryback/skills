@@ -1,3 +1,3 @@
-# Data extracts can be large / licensed (CRSP-Compustat) — not committed by default.
+# Data extracts can be large / licensed — not committed by default.
 data/*
 !data/.gitkeep

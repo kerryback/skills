@@ -29,7 +29,7 @@ every `/coauthor:round`. The argument is "$ARGUMENTS".
    - empty → report the CURRENT mode from `.coauthor/autonomy` (say `gated` if the
      file is absent) and do not change anything.
 3. If you just enabled blanket, warn the user plainly: the Coordinator will now run
-   up to N rounds unattended — spending OpenRouter (and possibly WRDS) on each — and
+   up to N rounds unattended — spending OpenRouter (and any paid data access) on each — and
    will still hard-stop for an Analyst/Replicator disagreement, a fatal unsalvageable
    objection, budget/context exhaustion, or a genuine value judgment. State is
    written every round, so the run is resumable and safe to leave.

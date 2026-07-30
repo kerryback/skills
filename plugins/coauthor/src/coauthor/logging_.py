@@ -18,7 +18,7 @@ _REDACTIONS = [
     (re.compile(r"sk-[A-Za-z0-9_\-]{16,}"), "sk-<redacted>"),
     (re.compile(r"sk-or-[A-Za-z0-9_\-]{16,}"), "sk-or-<redacted>"),
     (re.compile(r"(?i)(api[_-]?key|authorization|bearer)\s*[:=]\s*\S+"), r"\1=<redacted>"),
-    # WRDS / postgres connection strings and .pgpass-style host:port:db:user:pw
+    # database connection strings and .pgpass-style host:port:db:user:pw
     (re.compile(r"postgres(?:ql)?://[^\s\"']+"), "postgresql://<redacted>"),
     (re.compile(r"(?m)^([^:\s]+:\d+:[^:]+:[^:]+):[^:\s]+$"), r"\1:<redacted>"),
 ]

@@ -1,7 +1,7 @@
 """Resolve the WRDS username portably — no hardcoding, works for any user.
 
 The wrds library needs the username passed to `wrds.Connection(wrds_username=...)`
-(it never reads it from ~/.pgpass). To keep the skill reusable across users, never
+(it never reads it from ~/.pgpass). To keep code reusable across users, never
 hardcode it — resolve it at runtime, first hit wins:
 
   1. $WRDS_USER environment variable (explicit override).
@@ -9,9 +9,9 @@ hardcode it — resolve it at runtime, first hit wins:
   3. ~/.pgpass — field 4 (username) of the line whose host contains "wrds".
      Zero extra setup: anyone who has WRDS working already has this.
 
-Use it in an Analyst script (self-contained — copy the function so the script
-stays re-runnable without this package on the path), or run as a tool:
-    python -m coauthor.wrds_username     # prints the resolved username
+Copy this function INLINE into a data-build script so the script stays
+re-runnable without this file on the path, or run it as a tool:
+    python wrds_username.py     # prints the resolved username
 """
 from __future__ import annotations
 

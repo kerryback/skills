@@ -11,9 +11,14 @@ back channel for the Analyst's code (the Replicator implements the same frozen
 claimed value, your value, AGREE (within tolerance) / DISAGREE (with magnitude +
 hypothesis: a coding bug or a spec hole), and the date.>
 
+## Data build reconciliation
+<your independent obs count + summary stats vs. the Analyst's: AGREE/DISAGREE, any
+discrepancy localized. Reconciled and CONFIRMED before estimation began?>
+
 ## Bias checks run
-<per result: look-ahead, survivorship/delisting, microcaps/value-weighting,
-overlapping-return SEs, data-snooping, OpenAP pitfalls — with the outcome of each.>
+<per result: look-ahead, sample selection/attrition, influence/outliers,
+specification search, plus the field-specific pitfalls for this data — with the
+outcome of each.>
 
 ## Outstanding
 - <results claimed by the Analyst but not yet independently replicated>

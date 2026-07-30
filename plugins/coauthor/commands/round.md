@@ -71,10 +71,15 @@ Analyst and the Replicator both implement THIS same spec.
 - First ensure the Python environment is resolved (see SKILL → "Python environment":
   use a project venv if present, else ask the user; record it in `.coauthor/python`).
   The Analyst/Replicator run with that interpreter.
-- Spawn the `analyst` subagent to build the sample and run the estimation
-  (WRDS/OpenAP) against the frozen `method_spec.md`: re-runnable code + a result.
-- Spawn the `replicator` subagent to implement the SAME frozen spec from scratch in
-  its own code (NOT the Analyst's code) and run the bias checks. Because both build
+- Spawn the `analyst` and `replicator` subagents to each build the sample
+  INDEPENDENTLY (own code, own pull) against the frozen `method_spec.md`, then
+  reconcile their observation counts + summary statistics. CONFIRM the two builds
+  agree before any estimation; then collapse to ONE retained dataset (delete the
+  other) and run all analysis on it. (See SKILL → "The data build is confirmed
+  before analysis".)
+- On the confirmed dataset, the Analyst runs the estimation (re-runnable code + a
+  result) and the Replicator implements the SAME frozen spec from scratch in its own
+  code (NOT the Analyst's) and runs the robustness/bias checks. Because both build
   the same method, their headline numbers should CONVERGE.
 - If either returns a `DECISION NEEDED` flag (a choice the spec did not settle), do
   NOT let it stand on a private guess: resolve it, update `method_spec.md`, and
