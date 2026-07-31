@@ -22,7 +22,7 @@
     {
       "name": "slides",
       "source": "./plugins/slides",
-      "description": "Build a polished slide deck as a Quarto reveal.js presentation — HTML slides you render, present in a browser, and export to PDF, PowerPoint, or PNG."
+      "description": "Build a polished slide deck as a Quarto reveal.js presentation \u2014 HTML slides you render, present in a browser, and export to PDF, PowerPoint, or PNG."
     },
     {
       "name": "finance-data",
@@ -30,9 +30,14 @@
       "description": "Fetch free financial, market, and economic data (prices, fundamentals, SEC filings, macro series, asset-pricing factors) from Yahoo, Stooq, SEC EDGAR, FRED, Ken French, FinnHub, FMP, and US Treasury, and save it as CSV."
     },
     {
+      "name": "wrds",
+      "source": "./plugins/wrds",
+      "description": "Empirical asset-pricing data from WRDS (CRSP v2/Compustat) and Open Source Asset Pricing: extractable Python building blocks for connect, pull, merge, market cap aggregated across share classes, the CRSP-Compustat link, book equity, accounting alignment and firm age \u2014 every query run against live WRDS. Surfaces the constructions that are genuine decisions rather than common practice (Ken French vs Drechsler's WRDS script vs OpenAP, and the 4- vs 6-month reporting lag) instead of picking silently, and ships twelve WRDS reference scripts."
+    },
+    {
       "name": "critique",
       "source": "./plugins/critique",
-      "description": "Critique and revise work produced by Claude. Spawns parallel reviewer agents, synthesizes findings, and applies revisions. Heavyweight — fans out multiple subagents."
+      "description": "Critique and revise work produced by Claude. Spawns parallel reviewer agents, synthesizes findings, and applies revisions. Heavyweight \u2014 fans out multiple subagents."
     },
     {
       "name": "coauthor",
@@ -45,9 +50,14 @@
       "description": "Write and edit academic prose that reads as human, not machine-generated: varied sentence rhythm, no formulaic AI tells (delve, however-at-every-turn, the not-X-but-Y contrast, three-item everything), and structure driven by the argument rather than a template. Defaults to scholarly register (journal articles, working papers, referee reports, grant proposals). Works when drafting fresh and when revising a draft."
     },
     {
+      "name": "cloning",
+      "source": "./plugins/cloning",
+      "description": "Clone your own voice on ElevenLabs, end to end: account and plan setup for newcomers, a reading script drafted from your own slides and papers so the clone learns your vocabulary and teaching cadence, guidance for recording it fresh in one sitting, and an automated ffmpeg QC pass that catches bad audio before you spend your one professional cloning slot."
+    },
+    {
       "name": "elegant-pdf",
       "source": "./plugins/elegant-pdf",
-      "description": "Create elegant, branded documents from a small HTML design system rendered to PDF or image with headless Chrome — one-page flyers/announcements (2x JPEG or clickable PDF) and multi-page programs, reports, and handbooks (clickable PDF with cover, running footer, and page numbers). Default palette is Rice Business navy + gold; recolor by editing one block."
+      "description": "Create elegant, branded documents from a small HTML design system rendered to PDF or image with headless Chrome \u2014 one-page flyers/announcements (2x JPEG or clickable PDF) and multi-page programs, reports, and handbooks (clickable PDF with cover, running footer, and page numbers). Default palette is Rice Business navy + gold; recolor by editing one block."
     }
   ],
   "description": "Authoring and teaching skills for Claude Code: narrated video from slide decks, Quarto slide decks, free financial/economic data, and adversarial work review."

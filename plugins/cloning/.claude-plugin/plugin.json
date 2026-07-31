@@ -1,0 +1,16 @@
+{
+  "name": "cloning",
+  "version": "0.1.0",
+  "description": "Clone your own voice on ElevenLabs, end to end: account setup, a reading script drafted from your own writing so the clone learns your vocabulary and cadence, guidance for recording it fresh, an automated audio QC pass before you spend a cloning slot, and verification of the finished voice.",
+  "author": {
+    "name": "Kerry Back"
+  },
+  "license": "MIT",
+  "keywords": [
+    "voice-cloning",
+    "elevenlabs",
+    "text-to-speech",
+    "narration",
+    "audio"
+  ]
+}
