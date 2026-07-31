@@ -52,7 +52,7 @@
     {
       "name": "cloning",
       "source": "./plugins/cloning",
-      "description": "Clone your own voice on ElevenLabs, end to end: account and plan setup for newcomers, a reading script drafted from your own slides and papers so the clone learns your vocabulary and teaching cadence, guidance for recording it fresh in one sitting, and an automated ffmpeg QC pass that catches bad audio before you spend your one professional cloning slot."
+      "description": "Clone your own voice on ElevenLabs, end to end: account and plan setup for newcomers, a reading script drafted from your own slides and papers so the clone learns your vocabulary and teaching cadence, guidance for recording it fresh in one sitting, and an automated ffmpeg QC pass that catches bad audio before you spend your one professional cloning slot, and verification of the finished voice."
     },
     {
       "name": "elegant-pdf",
