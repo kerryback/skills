@@ -1,21 +1,15 @@
 ---
-name: slides
+name: cardstock
 description: >-
-  Build a polished slide deck as a Quarto reveal.js presentation — HTML slides
-  you render, present in a browser, and export to PDF, PowerPoint, or PNG
-  images. Use whenever the user wants to create or edit a slide deck,
-  presentation, talk, lecture, or seminar slides with a professional look:
-  "make me slides", "build a deck / presentation", "turn these notes (or this
-  paper / report / outline) into slides", "a reveal.js or Quarto deck", "lecture
-  slides on …", or when they want good-looking slides they can also hand out as
-  a PDF or PowerPoint. Ships a ready-made theme with cards, callouts, section
-  dividers, comparison tables, and diagram layouts. Prefer this for design-rich,
-  browser-first decks; use the separate "pptx" skill instead only when the user
-  needs a natively editable PowerPoint (editable text boxes) rather than a
-  rendered deck.
+  Build a slide deck in Kerry Back's Quarto reveal.js house style — a vendored
+  theme with cards, section dividers, comparison tables, and step flows,
+  rendered to HTML and exported to PDF, PowerPoint, or PNG. Use when the user
+  invokes /cardstock, asks for a cardstock deck by name, or is editing a deck
+  already built with it. For a general request to make slides or a
+  presentation with no style specified, prefer the pptx skill.
 ---
 
-# Slide Deck
+# Cardstock
 
 Author a presentation as a Quarto **reveal.js** deck: you write plain-text
 Markdown in a `.qmd` file, Quarto renders it to a self-contained `.html` deck
@@ -30,14 +24,17 @@ coordinates on a blank canvas.
 
 ## When to use this vs. the `pptx` skill
 
-- Use **this skill** for lecture/seminar/talk decks and any presentation where a
-  clean, consistent look matters. The deliverable is an HTML deck (present in a
-  browser) that can also export to PDF, PNG, or an image-based PPTX.
-- Use the **`pptx` skill** only when the user specifically needs a *natively
-  editable* PowerPoint — real editable text boxes and shapes they will rework in
-  PowerPoint. decktape's PPTX export here is image-per-slide (not editable text);
-  if that is a dealbreaker, build with `pptx` instead. It is fine to ask which
-  they want when unclear.
+- Use **cardstock** when the user asks for it — `/cardstock`, "a cardstock
+  deck", "the usual deck style" — or when editing a deck already built with this
+  theme. The deliverable is an HTML deck you present in a browser, exportable to
+  PDF, PNG, or an image-based PPTX.
+- Use the **`pptx` skill** for a general "make me slides" or "build a deck" with
+  no style named. It is also the right choice whenever the user needs a
+  *natively editable* PowerPoint — real text boxes and shapes they will rework —
+  since decktape's PPTX export here is image-per-slide.
+- **Don't reach for cardstock by default.** It imposes one specific house style;
+  someone who just wants slides is usually better served by PowerPoint. When it
+  is genuinely unclear, ask.
 
 ## Prerequisites
 
