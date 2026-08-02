@@ -20,6 +20,11 @@
       "description": "Turn a PDF slide deck into a narrated MP4 video plus a transcript. Claude Code writes the per-slide narration; ElevenLabs voices it. Requires quarto and an ElevenLabs API key."
     },
     {
+      "name": "smithers",
+      "source": "./plugins/smithers",
+      "description": "A personal email and calendar desk. Claude Code reads your Gmail and Calendar through a local connector, writes your morning briefing, and parks drafted replies in a Compose tab you review and send yourself. Claude never sends mail and never deletes events — those stay your actions in the app. Local-first; state and Google tokens live in ~/.smithers."
+    },
+    {
       "name": "slides",
       "source": "./plugins/slides",
       "description": "Build a polished slide deck as a Quarto reveal.js presentation \u2014 HTML slides you render, present in a browser, and export to PDF, PowerPoint, or PNG."
