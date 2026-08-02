@@ -1,7 +1,7 @@
 {
   "name": "smithers",
   "description": "A personal email and calendar desk: your inbox split into what needs a reply, a 7-day calendar with multi-select delete, tasks, and a Compose tab. Claude Code reads your Gmail and Calendar through a local connector, writes your morning briefing, and parks drafted replies in Compose — you review and press Send. Claude never sends mail and never deletes events.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Kerry Back"
   }

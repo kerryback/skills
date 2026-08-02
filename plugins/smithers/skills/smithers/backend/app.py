@@ -571,8 +571,8 @@ async def section_overview():
             r"<p class=[\"']date-display[\"']>.*?</p>", "", _briefing_html, count=1
         ).strip()
         return {"html": overview, **meta}
-    return {"html": "<p class='loading'>No briefing yet. Ask Claude Code for your "
-                    "briefing and it will appear here.</p>", **meta}
+    return {"html": "<p class='loading'>No Overview yet. Ask Claude Code when you "
+                    "want your Overview updated and it will appear here.</p>", **meta}
 
 
 @app.get("/api/section/calendar")
@@ -1058,7 +1058,7 @@ body {
         <div class="date-display" id="overview-date"></div>
         <div class="ov-stamp" id="overview-stamp"></div>
       </div>
-      <div class="ov-hint">Ask Claude Code for your briefing</div>
+      <div class="ov-hint">Ask Claude Code when you want your Overview updated</div>
     </div>
     <div id="overview-content"><p class="loading">Loading overview&hellip;</p></div>
   </section>
@@ -1211,7 +1211,7 @@ function renderOverviewMeta(data) {
   const when = d.toLocaleString('en-US',
     {weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'});
   el.className = 'ov-stamp' + (stale ? ' stale' : '');
-  el.textContent = 'Generated ' + when + (stale ? ' — not today’s briefing' : '');
+  el.textContent = 'Generated ' + when + (stale ? ' — Overview was not generated today' : '');
 }
 
 async function refreshSection() {
@@ -1241,7 +1241,7 @@ async function pollBriefing() {
     if (lastStamp !== null && d.generated_at && d.generated_at !== lastStamp) {
       loaded['section-overview'] = false;
       loadSection('section-overview');
-      toast('Briefing updated');
+      toast('Overview updated');
     }
     lastStamp = d.generated_at || '';
   } catch {}
