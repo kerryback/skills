@@ -45,10 +45,12 @@ example, checks for `quarto` and `ELEVENLABS_API_KEY` and offers to set them up)
 | Skill | What it does |
 |-------|--------------|
 | [`voiceover`](./plugins/voiceover/skills/voiceover) | PDF slide deck → narrated MP4 + transcript. Claude Code writes the narration; ElevenLabs voices it. Needs `quarto` + `ELEVENLABS_API_KEY`. |
-| [`slides`](./plugins/slides/skills/slides) | Build a polished Quarto reveal.js deck — HTML slides you render and export to PDF, PPTX, or PNG. |
+| [`cardstock`](./plugins/cardstock/skills/cardstock) | Build a slide deck in the Quarto reveal.js house style — cards, dividers, comparison tables; export to PDF, PPTX, or PNG. |
 | [`finance-data`](./plugins/finance-data/skills/finance-data) | Fetch free market/economic data (prices, fundamentals, FRED, factors) and save as CSV. |
 | [`critique`](./plugins/critique/skills/critique) | Spawn parallel reviewer agents to critique work from different angles, then synthesize and apply revisions. Heavyweight — fans out subagents. |
 | [`coauthor`](./plugins/coauthor/skills/coauthor) | Multi-agent empirical-research system: Claude Code coordinates a diverse OpenRouter debate panel, a litdb-backed Verifier, and WRDS/OpenAP Analyst + Replicator. Commands: `init`, `roster`, `round`, `autonomy`, `refresh`, `stop`. Needs litdb (+ WRDS for empirics), `OPENROUTER_API_KEY`. |
+| [`screenshare`](./plugins/screenshare/skills/screenshare) | Let students put their own screen on the classroom projector. A local WebRTC relay published over a Cloudflare Quick Tunnel; students join from an https link and the instructor picks who is shown. Falls back to a TURN relay when campus segmentation blocks the direct path. Needs `cloudflared`. |
+| [`polls`](./plugins/polls/skills/polls) | Live in-class polls on the projector — multiple choice, word clouds, scales, numeric estimates, rankings. Claude writes the questions; students answer anonymously from their own devices. Needs `cloudflared`. |
 | [`human-write`](./plugins/human-write/skills/human-write) | Write and edit academic prose that reads as human, not machine-generated: varied rhythm, no formulaic AI tells, structure driven by the argument. Defaults to scholarly register (papers, referee reports, proposals); applies to fresh drafting and revision. |
 
 ## Layout

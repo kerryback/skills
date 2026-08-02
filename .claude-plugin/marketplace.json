@@ -22,12 +22,22 @@
     {
       "name": "smithers",
       "source": "./plugins/smithers",
-      "description": "A personal email and calendar desk. Claude Code reads your Gmail and Calendar through a local connector, writes an overview of what’s ahead for the next seven days, and parks drafted replies in a Compose tab you review and send yourself. Claude never sends mail and never deletes events — those stay your actions in the app. Local-first; state and Google tokens live in ~/.smithers."
+      "description": "A personal email and calendar desk. Claude Code reads your Gmail and Calendar through a local connector, writes an overview of what\u2019s ahead for the next seven days, and parks drafted replies in a Compose tab you review and send yourself. Claude never sends mail and never deletes events \u2014 those stay your actions in the app. Local-first; state and Google tokens live in ~/.smithers."
     },
     {
-      "name": "slides",
-      "source": "./plugins/slides",
-      "description": "Build a polished slide deck as a Quarto reveal.js presentation \u2014 HTML slides you render, present in a browser, and export to PDF, PowerPoint, or PNG."
+      "name": "screenshare",
+      "source": "./plugins/screenshare",
+      "description": "Let students put their own screen on the classroom projector. Claude runs a small WebRTC relay on the classroom computer and publishes it over a Cloudflare Quick Tunnel, so students join from an https link on their own laptops, pick a screen, window or tab, and wait in a queue while the instructor chooses who is shown. Video goes browser to browser \u2014 direct when the campus network allows it, through a TURN relay when segmentation blocks the direct path. Nothing is recorded and nothing is written to disk. Runs on Windows, macOS or Linux; on a locked-down classroom machine it can fetch its own cloudflared without admin rights."
+    },
+    {
+      "name": "polls",
+      "source": "./plugins/polls",
+      "description": "Live in-class polls with the results on the projector. Claude writes the questions — from your slides, your notes, or a sentence — and the app runs them: multiple choice, word clouds, confidence scales, numeric estimates and rankings, each drawn live as answers arrive. Students answer from their own devices over a Cloudflare Quick Tunnel. Anonymous by design: no names, no roster, nothing stored per student, and concept-check results stay hidden while voting is open so the room doesn't follow the leading bar. Needs cloudflared."
+    },
+    {
+      "name": "cardstock",
+      "source": "./plugins/cardstock",
+      "description": "Build a slide deck in Kerry Back's Quarto reveal.js house style \u2014 a vendored theme with cards, section dividers, comparison tables, and step flows, rendered to HTML and exported to PDF, PowerPoint, or PNG. Use when the user invokes /cardstock, asks for a cardstock deck by name, or is editing a deck already built with it. For a general request to make slides or a presentation with no style specified, prefer the pptx skill."
     },
     {
       "name": "finance-data",
