@@ -887,7 +887,7 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 15px; line-height: 1.6;
   background: #f0f3f8; color: #1e293b;
-  padding-top: 226px;
+  padding-top: 176px;
 }
 #nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 200;
@@ -896,7 +896,7 @@ body {
   box-shadow: 0 2px 14px rgba(0,0,0,.45);
 }
 .nav-banner { display: flex; align-items: center; justify-content: center; padding: 1.25rem 0 .75rem; }
-.nav-banner img { height: 150px; object-fit: contain; display: block; }
+.nav-banner img { height: 100px; object-fit: contain; display: block; }
 .nav-tabs-row { background: transparent; display: flex; align-items: center; flex-wrap: wrap; border-top: 1px solid rgba(200,169,110,.2); }
 .nav-tab {
   padding: .55rem 1.1rem; background: transparent; color: rgba(255,255,255,.65);
