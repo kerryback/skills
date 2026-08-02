@@ -106,6 +106,13 @@ screenshot to inspect layout. Watch for overflow: fix a dense slide with the
 For PDF, PNG images, or an image-based PPTX, read `references/export.md` and use
 decktape on the rendered `.html`.
 
+### 5 — Offer a structural overview (longer decks)
+Once a deck runs long, or after a round of restructuring, offer to generate a
+standalone HTML overview: every section and slide with a one-sentence
+description, plus flags for duplication, overflowing slides, agenda drift, and
+orphans. Read `references/overview.md` for how to measure the deck and lay the
+page out. Offer it — don't build one unasked, and don't regenerate silently.
+
 ## Conventions (hard rules)
 
 These keep decks rendering cleanly — follow them exactly:
