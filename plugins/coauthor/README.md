@@ -37,8 +37,12 @@ analyst's code/data/results).
   (orchestrator state = the cross-session handoff), `.coauthor/analyst.md`,
   `.coauthor/replicator.md` (each subagent's curated state, re-read on every fresh
   spawn). This is how ephemeral subagents resume without context rot.
-- Exhaustive + local: `.coauthor/logs/` (raw JSONL + rendered transcripts).
-  Gitignored — never committed.
+- Exhaustive: `.coauthor/logs/`. Every artifact is named by run —
+  `events-<user>-<date>-<time>.jsonl`, `transcripts/<user>-<date>-<time>.md` —
+  rather than by round number, so a shared repo holds several coauthors' logs
+  side by side with nothing overwriting anything. The rendered Markdown
+  transcripts are COMMITTED (that is the shared record of what each round
+  actually argued); the raw JSONL under them is gitignored.
 
 ## Requirements
 

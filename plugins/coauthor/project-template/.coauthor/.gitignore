@@ -1,5 +1,14 @@
-# Commit the curated memory; ignore exhaustive logs + transient runtime state.
-logs/
+# Commit the curated memory and the rendered transcripts; ignore the raw event
+# logs and transient runtime state.
+#
+# Note the shape: `logs/` cannot be excluded wholesale, because git will not
+# re-include anything under a directory it has already excluded. So exclude the
+# CONTENTS of logs/, then carve the Markdown transcripts back out.
+logs/*
+!logs/transcripts/
+logs/transcripts/*
+!logs/transcripts/*.md
 round
+run
 autonomy
 python

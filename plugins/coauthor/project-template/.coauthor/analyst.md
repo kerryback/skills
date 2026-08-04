@@ -3,7 +3,7 @@
 The Analyst's private memory. The `analyst` subagent reads this when it spawns
 (so it resumes instead of rebuilding context) and rewrites it before it returns.
 Keep it compact — a curated state, not a log. The exhaustive record is in
-`.coauthor/logs/`.
+`.coauthor/logs/` (one `events-<user>-<date>-<time>.jsonl` per run).
 
 ## Sample & screens built
 <the sample currently constructed: universe, date range, inclusion/exclusion

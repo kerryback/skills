@@ -5,13 +5,18 @@ Agent-SDK / subagent tool activity is captured by the PostToolUse hook, which
 also calls append_event. Readable HTML/Markdown transcripts are rendered FROM
 this JSONL by render.py — never hand-written.
 
-Logs live under <root>/.coauthor/logs/events.jsonl and are gitignored.
+Logs live under <root>/.coauthor/logs/events-<run>.jsonl and are gitignored (the
+rendered transcripts they produce are what gets committed). The run stamp
+(`<user>-<date>-<time>`, see runid.py) keeps two coauthors in a shared repo from
+ever writing the same file.
 """
 from __future__ import annotations
 
 import json
 import re
 from pathlib import Path
+
+from .runid import current_run_id
 
 # Redaction: never let a secret reach disk. One place, enforced for all seats.
 _REDACTIONS = [
@@ -46,10 +51,13 @@ def append_event(project_dir: str | Path, event: dict) -> None:
     """Append one fully-formed event record (already carrying its own ids/ts).
 
     `project_dir` is the root where coauthor is active; logs live in
-    `.coauthor/logs/` so nothing lands at the repo root.
+    `.coauthor/logs/` so nothing lands at the repo root. The run stamp is added
+    to the record as well as the filename, so a transcript can be regrouped even
+    if the files are later renamed or merged.
     """
     logs = Path(project_dir) / ".coauthor" / "logs"
     logs.mkdir(parents=True, exist_ok=True)
-    record = _redact_obj(event)
-    with (logs / "events.jsonl").open("a", encoding="utf-8") as fh:
+    run = event.get("run_id") or current_run_id(project_dir)
+    record = _redact_obj({"run_id": run, **event})
+    with (logs / f"events-{run}.jsonl").open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")

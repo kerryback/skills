@@ -20,6 +20,11 @@ on the autonomy mode. Corpus-first and evidence-not-rhetoric are hard rules.
   ideas). Read recent litdb notes if relevant.
 - Round number: read `.coauthor/round` (else 0), use `n = last + 1`, write `n`
   back so logged events are tagged.
+- Stamp a run — do this BEFORE any debate call, so everything this round writes
+  lands under one `<user>-<date>-<time>` name that cannot collide with a
+  collaborator's in a shared repo:
+  `PYTHONPATH="${CLAUDE_PLUGIN_ROOT}/src" python3 -m coauthor.runid --project "$(pwd)" --new`
+  It prints the run id; keep it for the render step.
 - Debate client (one seat, or several concurrently):
   `PYTHONPATH="${CLAUDE_PLUGIN_ROOT}/src" OPENROUTER_API_KEY=$OPENROUTER_API_KEY python3 -m coauthor.debate --seats <a,b,...> --brief-file <path> --project "$(pwd)" --round <n>`
 
@@ -110,8 +115,10 @@ and any empirical result and whether it replicated.
 - Refresh `.coauthor/session.md`: rewrite "Where we are / In flight / Next actions"
   for the new state; drop what you promoted. Keep it short. (This is what makes an
   unattended blanket run resumable.)
-- Render the transcript:
-  `PYTHONPATH="${CLAUDE_PLUGIN_ROOT}/src" python3 -m coauthor.render --project "$(pwd)" --round <n>`
-- `.coauthor/logs/` is local-only; `.coauthor/state.md` + litdb notes are the
-  committed record. In blanket mode, when the run ends (budget spent or a
+- Render the transcript (writes `logs/transcripts/<run id>.md`):
+  `PYTHONPATH="${CLAUDE_PLUGIN_ROOT}/src" python3 -m coauthor.render --project "$(pwd)" --current`
+- Commit the rendered transcript along with `.coauthor/state.md` — in a shared
+  repo it is how a coauthor sees what this round argued, not just what it
+  concluded. The raw `logs/events-*.jsonl` stays local (gitignored).
+  In blanket mode, when the run ends (budget spent or a
   hard-stop), give the user ONE consolidated report of the rounds you ran.

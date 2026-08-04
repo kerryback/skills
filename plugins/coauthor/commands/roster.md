@@ -14,11 +14,15 @@ the picker fetches the live OpenRouter catalog.
    `.coauthor/config.toml` if it is missing.)
 
 2. Launch the picker. It opens a browser window on the user's machine, shows the
-   live model list, and BLOCKS until they click Submit (or the timeout):
+   live model list, and BLOCKS until they click Submit (or the timeout). The echo
+   file is stamped `<user>-<date>-<time>` like every other log artifact, so two
+   coauthors in a shared repo never write the same path:
 
    ```
+   RUN=$(PYTHONPATH="${CLAUDE_PLUGIN_ROOT}/src" python3 -m coauthor.runid --project "$(pwd)")
    PYTHONPATH="${CLAUDE_PLUGIN_ROOT}/src" python3 -m coauthor.roster_app \
-     --config "$(pwd)/.coauthor/config.toml" --out "$(pwd)/.coauthor/logs/roster_echo.json" --timeout 900
+     --config "$(pwd)/.coauthor/config.toml" \
+     --out "$(pwd)/.coauthor/logs/roster_echo-$RUN.json" --timeout 900
    ```
 
    Tell the user plainly: "A browser window is opening — pick your proposer,

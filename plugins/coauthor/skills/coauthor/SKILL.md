@@ -115,9 +115,9 @@ need. If a needed package is missing, surface it; don't silently pip-install.
    still implements the frozen spec in its own code (never the other's) so the numbers
    converge; the Replicator's extra independence lives in the robustness/bias probes —
    not in choosing a different method. The Analyst never checks its own empirics.
-6. State discipline: curate into `.coauthor/state.md` + litdb notes (committed);
-   never hoard raw transcripts as memory. `.coauthor/logs/` is exhaustive but
-   local/gitignored.
+6. State discipline: curate into `.coauthor/state.md` + litdb notes; that is
+   MEMORY. Transcripts are committed too, but as an archive to consult — never
+   read them forward as context in place of the curated state.
 7. Surface the full empirical design to the user — EXTREMELY IMPORTANT. Whenever an
    empirical round produces a result, you MUST surface to the user, IN FULL DETAIL,
    EVERY empirical design choice behind it — not just the headline number. The
@@ -186,7 +186,16 @@ exists.
      empirical round, written by you before spawning implementers and rewritten
      each round the plan turns on a number. The Analyst and Replicator both
      implement THIS.
-3. Exhaustive (local only): `.coauthor/logs/events.jsonl` + rendered transcripts.
+3. Exhaustive archive: `.coauthor/logs/`. Every artifact is named by RUN —
+   `<user>-<YYYYMMDD>-<HHMMSS>`, stamped fresh at the top of each round into
+   `.coauthor/run` — never by round number. A round counter is per-machine, so in
+   a shared repo two coauthors each produce a "round 3"; a run stamp says who ran
+   it and when, and can never collide.
+   - `.coauthor/logs/transcripts/<run>.md` — COMMITTED. The shared record of what
+     a round actually argued, readable by a coauthor who wasn't there. Consult it;
+     do not carry it forward as context (that is what tier 1 and 2 are for).
+   - `.coauthor/logs/events-<run>.jsonl` — the raw sink the transcript is rendered
+     from. Gitignored, local to whoever ran it.
 
 The anti-rot loop: subagents are spawned FRESH each task and re-read their own
 curated file (not a long transcript) — the disposable context window never

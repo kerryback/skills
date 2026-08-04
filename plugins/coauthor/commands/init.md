@@ -15,6 +15,10 @@ code/data/results (which you chose to keep first-class at the root).
 
 2. If `.coauthor/` already exists here, coauthor is already active — say so, do not
    re-scaffold, and stop (offer `/coauthor:roster` or `/coauthor:round` instead).
+   One exception: if `.coauthor/.gitignore` still ignores `logs/` wholesale, it
+   predates run-stamped naming — the rendered transcripts are meant to be
+   committed now. Offer to replace that one file with
+   `${CLAUDE_PLUGIN_ROOT}/project-template/.coauthor/.gitignore`, then stop.
 
 3. Copy the scaffold into the cwd, never clobbering existing files:
    `cp -Rn "${CLAUDE_PLUGIN_ROOT}/project-template/." .`

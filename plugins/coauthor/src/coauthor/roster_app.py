@@ -16,7 +16,7 @@ run it and read config.toml afterward.
 
 Usage (the Coordinator runs this via Bash):
     PYTHONPATH=.../src python3 -m coauthor.roster_app \
-        --config ./.coauthor/config.toml --out ./.coauthor/logs/roster_echo.json \
+        --config ./.coauthor/config.toml --out ./.coauthor/logs/roster_echo-$RUN.json \
         [--port 0] [--timeout 900]
 """
 from __future__ import annotations
