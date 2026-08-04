@@ -42,6 +42,11 @@ expensive to fix later:
 - **A debate panel or not.** Independent model voices that propose and attack
   ideas through OpenRouter. Each coauthor needs their own key and pays for their
   own calls, so it is off unless you ask.
+- **Overleaf or not.** For teams where some coauthors write in Overleaf and some
+  do not. It mirrors `draft/` — and only `draft/` — into an Overleaf project
+  through the git bridge, so the Overleaf people get a normal Overleaf project,
+  everyone else keeps a normal git repo, and one person holds both. Claude does
+  the syncing, so nobody has to learn `git subtree` to write a paper.
 
 ## What it deliberately does not do
 

@@ -1,6 +1,6 @@
 ---
 name: research-setup
-description: Set up a research repository that several people and their Claudes can work in without tripping over each other — per-author folders, portable paths, a single canonical dataset, provenance, a round lock, and a generated CLAUDE.md. Use when starting a new empirical or theoretical research project, when a solo project is about to gain coauthors, or when an existing project's files have grown organically and need structure. Also use when asked to "set up a research project", "add coauthors to this project", or "make this repo work like the multiples project".
+description: Set up a research repository that several people and their Claudes can work in without tripping over each other — per-author folders, portable paths, a single canonical dataset, provenance, a round lock, and a generated CLAUDE.md. Use when starting a new empirical or theoretical research project, when a solo project is about to gain coauthors, or when an existing project's files have grown organically and need structure. Also use when asked to "set up a research project", "add coauthors to this project", or "make this repo work like the multiples project". Covers wiring a paper directory to an Overleaf project through its git bridge, for teams where only some coauthors use Overleaf.
 ---
 
 You are setting up a research repository. The output is a working structure plus
@@ -48,7 +48,14 @@ are closed; ask in prose where they are not.
 6. **A debate panel?** Independent model voices that propose and attack ideas,
    through OpenRouter. Explain the cost honestly: each coauthor needs their own
    key and pays for their own calls. Default to no unless they want it.
-7. **Existing files?** If the repo already has work in it, ask what is live and
+7. **Does anyone write in Overleaf?** Only worth asking if there is a paper. If
+   yes, `draft/` gets mirrored to an Overleaf project through its git bridge and
+   the rest of the repo stays out of it; coauthors who do not use Overleaf are
+   unaffected. Read `references/overleaf.md` before wiring it — the bootstrap is
+   not what you would guess, because Overleaf prohibits force pushes and
+   `git subtree add` refuses a prefix that already exists. Default to no; it is
+   easy to add later, and easier before anyone has started commenting.
+8. **Existing files?** If the repo already has work in it, ask what is live and
    what is superseded. Do not move anything until they have answered.
 
 ## 2. Build
@@ -77,6 +84,8 @@ Assemble `CLAUDE.md` from `templates/CLAUDE.md.tmpl`, substituting:
 | `@@EMPIRICAL_SECTIONS@@` | `templates/fragments/empirical.md`, or empty |
 | `@@DEBATE_SECTION@@` | `templates/fragments/debate.md`, or empty |
 | `@@WRITING_SECTION@@` | `templates/fragments/writing.md`, or empty |
+| `@@OVERLEAF_SECTION@@` | `templates/fragments/overleaf.md`, or empty |
+| `@@OVERLEAF_PROJECT@@` | the Overleaf project id, once the bridge is wired |
 | `@@ROLES@@`, `@@AUTHOR_MEMORY@@`, `@@WORKSPACE_TREE@@`, `@@INDEPENDENCE_NOTE@@`, `@@ONBOARD_EXTRA@@` | see the fragments; write the empirical or the plain variant |
 
 Substitute the same `@@DATA_ENV@@` into the copied `tools/*.py`. Leave no `@@`
@@ -89,6 +98,13 @@ Then, in the repo:
 - Add the data root and any keys to the user's shell profile — **ask first**, and
   back the file up before you edit it.
 - Make the author's data folder and the `global/` sibling.
+- If they want Overleaf, wire it last, after the repo is otherwise settled, and
+  follow `references/overleaf.md` rather than improvising. Do the file hygiene it
+  lists — naming the paper `main.tex`, untracking build noise, moving heavy
+  non-source material out of `draft/` — BEFORE the first push, because renames
+  destroy Overleaf comment anchors and every one of those decisions is cheaper
+  than it will ever be again. Have the user authenticate themselves; never ask
+  for their token.
 
 ## 3. Verify — do not skip this
 
@@ -102,8 +118,14 @@ grep -rn "@@" CLAUDE.md tools/ protocols.html  # must find nothing
 ```
 
 If there is data and any script, run one through `tools/runlog.py` and confirm a
-line lands in `runs.jsonl`. If a check fails, fix it and say what was wrong —
-never report a setup as working on the strength of having written the files.
+line lands in `runs.jsonl`.
+
+If Overleaf is wired, `git fetch overleaf` and list the remote tree — it must be
+the draft and nothing else — and test the pull direction, not only the push. A
+bridge that has only ever been pushed to is half verified.
+
+If a check fails, fix it and say what was wrong — never report a setup as working
+on the strength of having written the files.
 
 ## 4. Explain, briefly
 
