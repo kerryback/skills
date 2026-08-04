@@ -24,15 +24,29 @@ on the autonomy mode. Corpus-first and evidence-not-rhetoric are hard rules.
   lands under one `<user>-<date>-<time>` name that cannot collide with a
   collaborator's in a shared repo:
   `PYTHONPATH="${CLAUDE_PLUGIN_ROOT}/src" python3 -m coauthor.runid --project "$(pwd)" --new`
-  It prints the run id; keep it for the render step.
+  It prints the run id.
 - Debate client (one seat, or several concurrently):
   `PYTHONPATH="${CLAUDE_PLUGIN_ROOT}/src" OPENROUTER_API_KEY=$OPENROUTER_API_KEY python3 -m coauthor.debate --seats <a,b,...> --brief-file <path> --project "$(pwd)" --round <n>`
 
 ## 1. Opening brief
 Assemble a short, high-signal brief from `.coauthor/state.md`: current thesis, the
 question(s) this round, relevant settled facts. Fold in this round's focus if
-given: "$ARGUMENTS". A few thousand tokens — not the history. Write it to a temp
-file for `--brief-file`.
+given: "$ARGUMENTS". A few thousand tokens — not the history.
+
+Write EVERY brief you send a seat — this one, the adversary briefs, and each
+refine-pass rewrite — to `.coauthor/logs/`, never a temp file. They are the actual
+prompts the debate answered, and the only part of a round the event log does not
+already hold. Name them:
+
+```
+brief-<seat>-$(PYTHONPATH="${CLAUDE_PLUGIN_ROOT}/src" python3 -m coauthor.runid --stamp).md
+```
+
+where `<seat>` is `proposer`, `adversary`, or `refine` — e.g.
+`brief-proposer-kerry-back-20260803-142530.md`. Take a FRESH `--stamp` per brief
+(it is the time of writing, and writes nothing): a round rewrites its brief each
+pass, so reusing one stamp would overwrite the earlier passes. Pass the file to
+`--brief-file`.
 
 ## 2. The debate loop (this is the heart of the round)
 Iterate, up to ~3 passes, until a direction converges:
@@ -54,7 +68,7 @@ Iterate, up to ~3 passes, until a direction converges:
      address X and Y" and update the brief with the critiques + your verdict; loop.
    - Pivot — won't work. Tell the Proposer why ("that fails on Z") and ask for
      alternatives; update the brief; loop.
-   State your reasoning briefly each pass so the transcript shows the judgment.
+   State your reasoning briefly each pass so the log shows the judgment.
 If nothing converges within the cap, carry the best surviving option forward and
 say so explicitly — do not loop forever (each pass spends API budget).
 
@@ -115,10 +129,5 @@ and any empirical result and whether it replicated.
 - Refresh `.coauthor/session.md`: rewrite "Where we are / In flight / Next actions"
   for the new state; drop what you promoted. Keep it short. (This is what makes an
   unattended blanket run resumable.)
-- Render the transcript (writes `logs/transcripts/<run id>.md`):
-  `PYTHONPATH="${CLAUDE_PLUGIN_ROOT}/src" python3 -m coauthor.render --project "$(pwd)" --current`
-- Commit the rendered transcript along with `.coauthor/state.md` — in a shared
-  repo it is how a coauthor sees what this round argued, not just what it
-  concluded. The raw `logs/events-*.jsonl` stays local (gitignored).
-  In blanket mode, when the run ends (budget spent or a
-  hard-stop), give the user ONE consolidated report of the rounds you ran.
+- In blanket mode, when the run ends (budget spent or a hard-stop), give the user
+  ONE consolidated report of the rounds you ran.

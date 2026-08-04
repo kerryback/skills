@@ -3,7 +3,7 @@
 
 Captures the hands-on activity of the Claude subagents (Verifier/Analyst/
 Replicator) and the Coordinator into the same run-stamped events log the debate
-voices feed, so render.py can weave one complete transcript per run. Debate-voice
+voices feed, so one file holds everything a run did. Debate-voice
 prompts/responses are logged separately by debate.py; Claude Code also keeps its
 own full session transcript natively.
 
@@ -96,7 +96,7 @@ def main() -> None:
     })
     logs = root / ".coauthor" / "logs"
     logs.mkdir(parents=True, exist_ok=True)
-    with (logs / f"events-{run}.jsonl").open("a", encoding="utf-8") as fh:
+    with (logs / f"log-{run}.jsonl").open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
 
 

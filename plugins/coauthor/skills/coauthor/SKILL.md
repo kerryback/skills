@@ -68,7 +68,7 @@ an environment without asking:
    already on PATH), or (b) set up a fresh project venv (`python3 -m venv .venv`,
    then install the analysis stack). Write the chosen interpreter to
    `.coauthor/python`.
-coauthor's own plumbing (debate/roster/render) is stdlib and only needs `python3`
+coauthor's own plumbing (debate/roster/logging) is stdlib and only needs `python3`
 ≥ 3.11 — this resolution is specifically about the analysis packages the subagents
 need. If a needed package is missing, surface it; don't silently pip-install.
 
@@ -115,9 +115,9 @@ need. If a needed package is missing, surface it; don't silently pip-install.
    still implements the frozen spec in its own code (never the other's) so the numbers
    converge; the Replicator's extra independence lives in the robustness/bias probes —
    not in choosing a different method. The Analyst never checks its own empirics.
-6. State discipline: curate into `.coauthor/state.md` + litdb notes; that is
-   MEMORY. Transcripts are committed too, but as an archive to consult — never
-   read them forward as context in place of the curated state.
+6. State discipline: curate into `.coauthor/state.md` + litdb notes (committed);
+   that is MEMORY. `.coauthor/logs/` is the exhaustive record but is local and
+   gitignored — never hoard it as memory or read it forward as context.
 7. Surface the full empirical design to the user — EXTREMELY IMPORTANT. Whenever an
    empirical round produces a result, you MUST surface to the user, IN FULL DETAIL,
    EVERY empirical design choice behind it — not just the headline number. The
@@ -186,16 +186,24 @@ exists.
      empirical round, written by you before spawning implementers and rewritten
      each round the plan turns on a number. The Analyst and Replicator both
      implement THIS.
-3. Exhaustive archive: `.coauthor/logs/`. Every artifact is named by RUN —
-   `<user>-<YYYYMMDD>-<HHMMSS>`, stamped fresh at the top of each round into
-   `.coauthor/run` — never by round number. A round counter is per-machine, so in
-   a shared repo two coauthors each produce a "round 3"; a run stamp says who ran
-   it and when, and can never collide.
-   - `.coauthor/logs/transcripts/<run>.md` — COMMITTED. The shared record of what
-     a round actually argued, readable by a coauthor who wasn't there. Consult it;
-     do not carry it forward as context (that is what tier 1 and 2 are for).
-   - `.coauthor/logs/events-<run>.jsonl` — the raw sink the transcript is rendered
-     from. Gitignored, local to whoever ran it.
+3. Exhaustive archive: `.coauthor/logs/log-<run>.jsonl` — every debate call and
+   every subagent tool call, appended as it happens. This is THE full record and it
+   writes itself; you never curate it and never read it forward as context (that is
+   what tiers 1 and 2 are for). Gitignored — it is large and local.
+
+   Named by RUN — `<user>-<YYYYMMDD>-<HHMMSS>`, stamped fresh at the top of each
+   round into `.coauthor/run` — never by round number. A round counter is
+   per-machine, so in a shared repo two coauthors each produce a "round 3"; a run
+   stamp says who ran it and when, and can never collide.
+
+   There is no transcript format and nothing renders it. If the user wants to read
+   part of the log, read the JSONL directly — it is line-delimited JSON, so filter
+   it to the slice they asked for (a `round_id`, a seat, a time span) rather than
+   opening the whole file.
+
+   NOTHING under `logs/` is committed. The log outgrows what GitHub accepts (a
+   real project's runs to tens of megabytes, dominated by tool-call payloads), so
+   `state.md` + litdb notes remain the shared record.
 
 The anti-rot loop: subagents are spawned FRESH each task and re-read their own
 curated file (not a long transcript) — the disposable context window never
@@ -232,7 +240,7 @@ pivot; iterate until a plan converges) → if it turns on a number, freeze
 `method_spec.md` → Analyst + Replicator each build the sample INDEPENDENTLY and
 reconcile obs-counts + summary stats → CONFIRM the data build, then collapse to one
 verified panel → both run the estimation (same spec) on it → GATE → update
-`.coauthor/state.md` + notes, refresh `.coauthor/session.md`, render transcript.
+`.coauthor/state.md` + notes, refresh `.coauthor/session.md`.
 Run it with `/coauthor:round`.
 
 ## Autonomy — the debate loop and the gate

@@ -1,14 +1,14 @@
 """Canonical event log: append-only JSONL, secret-redacted.
 
-This is the single sink every seat feeds. Debate calls log through here directly;
-Agent-SDK / subagent tool activity is captured by the PostToolUse hook, which
-also calls append_event. Readable HTML/Markdown transcripts are rendered FROM
-this JSONL by render.py — never hand-written.
+This is the single sink every seat feeds, and the complete record of a project:
+debate calls log through here directly, and Agent-SDK / subagent tool activity is
+captured by the PostToolUse hook, which also calls append_event. Nothing renders
+or summarizes it — read it directly (it is line-delimited JSON) when you need it.
 
-Logs live under <root>/.coauthor/logs/events-<run>.jsonl and are gitignored (the
-rendered transcripts they produce are what gets committed). The run stamp
-(`<user>-<date>-<time>`, see runid.py) keeps two coauthors in a shared repo from
-ever writing the same file.
+Logs live under <root>/.coauthor/logs/log-<run>.jsonl and are gitignored — they
+grow past what GitHub accepts, and `state.md` + litdb notes are the committed
+record. The run stamp (`<user>-<date>-<time>`, see runid.py) keeps two coauthors
+in a shared repo from ever writing the same file.
 """
 from __future__ import annotations
 
@@ -52,12 +52,12 @@ def append_event(project_dir: str | Path, event: dict) -> None:
 
     `project_dir` is the root where coauthor is active; logs live in
     `.coauthor/logs/` so nothing lands at the repo root. The run stamp is added
-    to the record as well as the filename, so a transcript can be regrouped even
-    if the files are later renamed or merged.
+    to the record as well as the filename, so events stay attributable even if
+    the files are later renamed or concatenated.
     """
     logs = Path(project_dir) / ".coauthor" / "logs"
     logs.mkdir(parents=True, exist_ok=True)
     run = event.get("run_id") or current_run_id(project_dir)
     record = _redact_obj({"run_id": run, **event})
-    with (logs / f"events-{run}.jsonl").open("a", encoding="utf-8") as fh:
+    with (logs / f"log-{run}.jsonl").open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")

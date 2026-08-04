@@ -37,12 +37,16 @@ analyst's code/data/results).
   (orchestrator state = the cross-session handoff), `.coauthor/analyst.md`,
   `.coauthor/replicator.md` (each subagent's curated state, re-read on every fresh
   spawn). This is how ephemeral subagents resume without context rot.
-- Exhaustive: `.coauthor/logs/`. Every artifact is named by run —
-  `events-<user>-<date>-<time>.jsonl`, `transcripts/<user>-<date>-<time>.md` —
-  rather than by round number, so a shared repo holds several coauthors' logs
-  side by side with nothing overwriting anything. The rendered Markdown
-  transcripts are COMMITTED (that is the shared record of what each round
-  actually argued); the raw JSONL under them is gitignored.
+- Exhaustive: `.coauthor/logs/log-<user>-<date>-<time>.jsonl` — every debate
+  call and subagent tool call, appended as it happens. The full record, written
+  automatically; large, and gitignored. Named by run rather than by round number,
+  so a shared repo holds several coauthors' logs side by side with nothing
+  overwriting anything.
+
+  Nothing under `logs/` is committed — it outgrows what GitHub will take.
+  `state.md` + litdb notes are the shared record. There is no transcript format:
+  the JSONL is line-delimited, so ask Claude for the slice you want and it filters
+  the file.
 
 ## Requirements
 
@@ -85,7 +89,7 @@ agents/       Claude subagents (Verifier, Analyst, Replicator) — charters as s
 charters/     OpenRouter debate-voice charters (Proposer, Adversary) — versioned prompts
 commands/     /coauthor:init, /coauthor:roster, /coauthor:round, /coauthor:autonomy, /coauthor:refresh, /coauthor:stop
 skills/       coordinator orchestration guidance
-src/coauthor/ debate client (OpenRouter, concurrent), roster picker, logger, renderer, config
+src/coauthor/ debate client (OpenRouter, concurrent), roster picker, logger, run stamps, config
 hooks/        tool-call logging hook (silent unless .coauthor/ exists)
 project-template/  what /coauthor:init copies in: .coauthor/ + workspace/
 config.example.toml  the starter model roster for the debate voices

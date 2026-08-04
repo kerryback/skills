@@ -1,13 +1,10 @@
-# Commit the curated memory and the rendered transcripts; ignore the raw event
-# logs and transient runtime state.
+# Commit the curated memory; ignore the logs + transient runtime state.
 #
-# Note the shape: `logs/` cannot be excluded wholesale, because git will not
-# re-include anything under a directory it has already excluded. So exclude the
-# CONTENTS of logs/, then carve the Markdown transcripts back out.
-logs/*
-!logs/transcripts/
-logs/transcripts/*
-!logs/transcripts/*.md
+# logs/ never goes to git. The event log is the full record but it grows without
+# bound (tool-call payloads dominate it) and a real project's runs to tens of
+# megabytes — past what GitHub will take. `.coauthor/state.md` + litdb notes are
+# the committed record.
+logs/
 round
 run
 autonomy

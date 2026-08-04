@@ -1,7 +1,7 @@
 """Per-run identity for log filenames: `<user>-<YYYYMMDD>-<HHMMSS>`.
 
-Shared repos are the reason this exists. Fixed names — one `events.jsonl`, a
-`round-003.md` keyed off a per-machine counter — mean two coauthors write the
+Shared repos are the reason this exists. A fixed name — one `log.jsonl`, or
+anything keyed off a per-machine round counter — means two coauthors write the
 same path, and whoever pulls second reconciles interleaved appends by hand.
 Every log artifact instead carries who produced it and when, so nothing two
 people generate can collide, and the directory listing itself says who ran what.
@@ -13,6 +13,12 @@ anything that logs outside a round creates one lazily.
 Usage (the Coordinator runs this via Bash):
     python -m coauthor.runid --project "$(pwd)" --new   # start a run, print its id
     python -m coauthor.runid --project "$(pwd)"         # print the current id
+    python -m coauthor.runid --stamp                    # a fresh stamp, nothing written
+
+`--stamp` is for artifacts written SEVERAL times within one round — the briefs,
+which are rewritten each pass of the debate loop. They cannot share the round's
+run id or each pass would overwrite the last, so each takes the time it was
+written. Everything logged by the run itself uses the run id instead.
 """
 from __future__ import annotations
 
@@ -70,9 +76,16 @@ def main() -> None:
     import argparse
 
     ap = argparse.ArgumentParser()
-    ap.add_argument("--project", required=True)
+    ap.add_argument("--project", help="project root (not needed with --stamp)")
     ap.add_argument("--new", action="store_true", help="start a new run")
+    ap.add_argument("--stamp", action="store_true",
+                    help="print a fresh <user>-<date>-<time>; writes nothing")
     args = ap.parse_args()
+    if args.stamp:
+        print(new_run_id())
+        return
+    if not args.project:
+        ap.error("--project is required unless you pass --stamp")
     root = Path(args.project).resolve()
     print(stamp_run(root) if args.new else current_run_id(root))
 
