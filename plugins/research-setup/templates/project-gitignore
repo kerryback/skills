@@ -1,0 +1,4 @@
+# Commit the curated memory; ignore machine-local runtime state.
+*/run
+*/round
+*/onboarded

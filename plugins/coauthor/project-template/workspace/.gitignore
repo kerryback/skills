@@ -1,3 +1,0 @@
-# Data extracts can be large / licensed — not committed by default.
-data/*
-!data/.gitkeep

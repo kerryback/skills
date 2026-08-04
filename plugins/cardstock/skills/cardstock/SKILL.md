@@ -119,9 +119,9 @@ These keep decks rendering cleanly — follow them exactly:
 - Use **plain triple-backtick code fences with no language specifier** (just
   ```` ``` ````), not ```` ```python ````/```` ```sql ````. The theme styles
   code blocks; a language tag can fight the highlighter.
-- Inside a card wrapper, every card needs both `.card` and a color variant
-  (e.g. `::: {.card .card-blue}`) — `.card` supplies grid padding and in-card
-  list sizing; the variant supplies color.
+- A card is a color variant on its own (e.g. `::: {.card-blue}`). There is no
+  `.card` class — never pair it with a variant. Each variant carries its own
+  padding, rounding, and shadow; inside a wrapper the wrapper restyles it.
 - Use **relative paths** for images and assets (`![](images/chart.png)`), never
   absolute paths — the deck folder moves.
 - Preserve the user's wording. When restyling or restructuring a deck, change

@@ -15,3 +15,6 @@
 
 .DS_Store
 *.swp
+
+# Browser-tool scratch: screenshots, console logs, and files it downloaded.
+.playwright-mcp/

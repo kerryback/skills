@@ -205,13 +205,11 @@ $body-bg: $off-white;
   gap: 1em;
 }
 
-// ── Base card styling (applies everywhere .card is used) ──
-.card {
-  border-radius: 22px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-}
-
 // ── Color card variants (equal visual weight, no emphasis) ──
+// Each variant is a complete card on its own: use `::: {.card-blue}`, never
+// `::: {.card .card-blue}`. Inside a grid wrapper the wrapper restyles them.
+$card-variants: ".card-blue, .card-amber, .card-teal, .card-purple, .card-red, .card-dark, .card-light";
+
 $card-blue-bg: #dbeafe;
 $card-blue-title: #2563eb;
 $card-amber-bg: #fef3c7;
@@ -305,7 +303,7 @@ $card-purple-title: #7c3aed;
   gap: 1.5em;
   margin-top: 0.4em;
 
-  .card {
+  #{$card-variants} {
     border-radius: 22px;
     padding: 1.2em 1.5em;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
@@ -488,8 +486,8 @@ $card-purple-title: #7c3aed;
   color: $dark-navy;
 }
 
-// Standalone card styles (outside card grid containers)
-.reveal section .card-dark:not(.card) {
+// Standalone card styles (direct children of a slide, outside any grid wrapper)
+.reveal section > .card-dark {
   background: $dark-navy;
   color: #fff;
   border-radius: 12px;
@@ -501,7 +499,7 @@ $card-purple-title: #7c3aed;
   .card-title { color: $amber; }
 }
 
-.reveal section .card-light:not(.card) {
+.reveal section > .card-light {
   background: $light-blue-tint;
   color: $slate;
   border-radius: 12px;
@@ -664,7 +662,7 @@ $card-purple-title: #7c3aed;
   gap: 1.2em;
   margin-top: 0.4em;
 
-  .card {
+  #{$card-variants} {
     border-radius: 22px;
     padding: 1em 1.2em;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
@@ -704,7 +702,7 @@ $card-purple-title: #7c3aed;
   gap: 1.2em;
   margin-top: 0.6em;
 
-  .card {
+  #{$card-variants} {
     border-radius: 12px;
     padding: 1.2em 1.5em;
     text-align: center;
@@ -721,7 +719,7 @@ $card-purple-title: #7c3aed;
   gap: 1em;
   margin-top: 0.4em;
 
-  .card {
+  #{$card-variants} {
     border-radius: 22px;
     padding: 0.8em 1em;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);

@@ -18,23 +18,23 @@ Wrappers lay out a CSS grid, one column per card:
 - `.four-cards` — 4 columns
 - `.six-cards` — 3×2 grid of short label cards
 
-Inside a wrapper, each card is `::: {.card .card-COLOR}`. Include **both**
-`.card` and a color variant.
+Inside a wrapper, each card is `::: {.card-COLOR}` — the color variant on its
+own. There is no separate `.card` class.
 
 ```
 ::: {.three-cards}
-::: {.card .card-blue}
+::: {.card-blue}
 [Card Title]{.card-title}
 
 - bullet
 - bullet
 :::
-::: {.card .card-amber}
+::: {.card-amber}
 [Card Title]{.card-title}
 
 - bullet
 :::
-::: {.card .card-teal}
+::: {.card-teal}
 [Card Title]{.card-title}
 
 - bullet
@@ -47,9 +47,9 @@ Color variants: `.card-blue`, `.card-amber`, `.card-teal`, `.card-purple`,
 `.card-light` (light-blue tint) is also available.
 
 - `[Title]{.card-title}` is the bold, color-matched heading at the top of a card.
-- A single card can stand alone outside a wrapper (e.g. `::: {.card .card-red}`);
-  the color variants carry their own padding and shadow. Bare `.card` is only
-  rounding + shadow.
+- A single card can stand alone outside a wrapper (e.g. `::: {.card-red}`);
+  every variant carries its own padding, rounding, and shadow. Inside a wrapper
+  the wrapper restyles it for the grid cell.
 
 ## Section dividers
 

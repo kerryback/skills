@@ -1,0 +1,213 @@
+# @@PROJECT@@ — project instructions
+
+@@ONE_LINE@@
+
+This file is the operating manual, and it is for you (Claude). The human
+counterpart is `protocols.html` in the repo root. Keep the two in step when
+either changes.
+
+---
+
+## FIRST THING, EVERY SESSION — is this person set up?
+
+Before anything else:
+
+```bash
+python3 tools/onboard.py
+```
+
+It checks the preconditions themselves rather than trusting a marker file — a
+marker goes stale the moment someone clones onto a second machine.
+
+**If it says `ready`**, say nothing and get on with the work.
+
+**If it does not**, you are onboarding this person. Do not hand them a list of
+commands to type — run the commands yourself, one at a time, saying what each is
+for. Ask only for what genuinely requires them: their name, access to the shared
+data folder@@ONBOARD_EXTRA@@.
+
+Show them the slug their `git config user.name` produces and confirm it before
+continuing — every folder they own is named from it, and a wrong value does not
+error, it just puts their work where nobody looks.
+
+When every required check passes, run `python3 tools/onboard.py --mark`. Never
+mark someone onboarded while a required check fails: the marker means the setup
+works, not that the conversation happened.
+
+---
+
+## Who does what
+
+You are the **Coordinator**. You drive the work, hold the project's state, and
+are the only role that persists across a session.
+@@ROLES@@
+The human is editor-in-chief. You do not decide what the paper is.
+
+---
+@@EMPIRICAL_SECTIONS@@
+## Where things live
+
+```
+project/
+  global/                    SHARED — what everyone agrees on
+    state.md                 thesis, open questions, settled facts, killed ideas
+    method_spec.md           the frozen spec for the current round
+    data_manifest.md         what is canonical, and why
+  <author>/                  ONE PER PERSON — nobody else writes here
+    session.md               that person's handoff between sessions
+@@AUTHOR_MEMORY@@
+workspaces/
+  global/params.py           SHARED — the frozen spec, as code
+  <author>/                  ONE PER PERSON
+@@WORKSPACE_TREE@@    dag/                     provenance diagrams (generated; do not edit)
+draft/                       SHARED — the paper, figures, tables, bibliography
+tools/                       the machinery, vendored — nothing to install
+```
+
+**`project/global/` is the project.** Read `state.md` and `method_spec.md` from
+there at the start of every round and write them back there — never into your own
+folder. A copy in a personal folder is a fork nobody voted for.
+
+**Every substantive change to `state.md` gets a changelog line** at the top of
+that file: date, author slug, what changed. Newest first, append only, never
+rewrite someone else's entry.
+
+**`<author>/` is yours.** Write only into your own.@@INDEPENDENCE_NOTE@@
+
+### Paths — never write an absolute one
+
+Set at the top of each script, all derived:
+
+```python
+DATA_ROOT   = os.environ["@@DATA_ENV@@"]                    # your working data
+GLOBAL_DATA = Path(DATA_ROOT).parent / "global"             # confirmed, shared, read-only
+REPO_ROOT   = next(p for p in Path(__file__).resolve().parents if (p / "CLAUDE.md").exists())
+WORK_ROOT   = next(p for p in Path(__file__).resolve().parents if p.parent.name == "workspaces")
+```
+
+`DATA_ROOT` mirrors `WORK_ROOT`, so a subproject's data sits at the same relative
+path under the data root as its code does under the workspace.
+
+An absolute path in a script means nobody else can run it. If `@@DATA_ENV@@` is
+unset, the script raises immediately — that is deliberate, and the fix is to set
+it, never to hardcode a path. The alternative to a crash is silently reading the
+wrong data.
+
+---
+
+## The canonical data — a single source of truth
+
+`<data root>/global/` holds the core data everyone works from. One copy, shared,
+read-only. `project/global/data_manifest.md` records for each file its hash, its
+shape, who promoted it, and why it is trusted.
+
+Build in your own tree; promote deliberately:
+
+```bash
+python3 tools/promote.py <path-to-your-built-file> --note "why this is trusted"
+```
+
+Never write into `global/` directly, and never promote something whose
+justification you cannot state — that silently turns one person's build into
+everyone's ground truth.
+
+---
+
+## Provenance — what produced this, and what breaks if I change it
+
+`tools/provenance.py` reads the dependency graph out of the code: which script
+wrote each file, what it read, back to the raw inputs. Nothing is declared; it
+works because every path goes through the roots above.
+
+```bash
+python3 -m tools.provenance --file <artifact>     # where did this come from
+python3 -m tools.provenance --script <script>     # what must be re-run
+python3 -m tools.provenance --mermaid <sub>       # draw it
+python3 -m tools.provenance --orphans             # inputs nothing produces
+```
+
+**Run `--script` before changing anything upstream** and report the blast radius
+with the change. Working that set out from memory is how a stale number survives
+into a draft.
+
+**Record runs that produce a reportable result:**
+
+```bash
+python3 tools/runlog.py <script> [args...]
+```
+
+It runs the script normally and records what it actually opened — an audit hook
+below pandas and pyarrow, so paths built at runtime are caught. One line per run
+in `project/<author>/logs/runs.jsonl`, committed: script, arguments, commit,
+duration, status, inputs, outputs. Read them back with `--runs`.
+
+The static graph is a strong first draft of provenance; the run records are what
+actually happened.
+
+---
+
+## One round at a time
+
+`state.md` is long prose rewritten at every gate, and git cannot merge that. So
+the round is claimed, and git enforces it — a push is atomic, so exactly one
+claim wins.
+
+```bash
+python3 -m tools.lock claim "what this round is"
+python3 -m tools.lock status
+python3 -m tools.lock release
+```
+
+Claim before reading state; release after writing it, even if the round was
+killed — an unreleased lock blocks everyone.
+@@DEBATE_SECTION@@
+---
+
+## /refresh — checkpoint before the context runs out
+
+When the session gets long, run `/refresh`. It promotes what has settled into
+`state.md` with a changelog line, rewrites your `session.md` so a cold session
+could resume from it alone, and releases the lock if the round is done. Then it
+stops — it cannot clear its own context.
+
+Suggest it proactively when a round has run long.
+
+---
+
+## Memory discipline
+
+1. **Project truth** (committed, human-gated): `project/global/state.md`.
+2. **Working memory** (committed, rewritten often): `project/<author>/session.md`
+   and `project/global/method_spec.md`.
+3. **Records** (committed, append-only): `project/<author>/logs/runs.jsonl`.
+
+Rewrite tiers 1 and 2 compactly; never append forever. A file that accumulates
+superseded blocks under a "this is all stale now" banner is worse than useless —
+it reads as current. When a result is superseded, cut it to a line saying so and
+where the truth now lives.
+
+---
+
+## Surface the full design — non-negotiable
+
+Whenever a round produces a number, report to the human, in full detail, EVERY
+choice behind it — not just the headline. Sample and filters, definitions with
+timing and lags, the estimator and its options, weighting, standard errors,
+missing-data handling, sources and vintages.
+
+Never present a number while hiding or glossing the design that produced it. The
+human cannot judge a result whose construction they cannot see.
+
+---
+@@WRITING_SECTION@@
+## Environment
+
+- Interpreter: `.venv/bin/python`. Install with
+  `pip install -r requirements.txt`.
+- `@@DATA_ENV@@` must be set; everything else is derived.
+- Run long jobs in the FOREGROUND and poll for output rather than assuming a
+  stall.
+
+Anything this project reads from the environment is prefixed `@@PREFIX@@_`, so
+running a second project set up the same way cannot cross wires. Credentials
+shared across projects (API keys, database logins) are deliberately not prefixed.

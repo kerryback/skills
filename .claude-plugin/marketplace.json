@@ -32,7 +32,7 @@
     {
       "name": "polls",
       "source": "./plugins/polls",
-      "description": "Live in-class polls with the results on the projector. Claude writes the questions — from your slides, your notes, or a sentence — and the app runs them: multiple choice, word clouds, confidence scales, numeric estimates and rankings, each drawn live as answers arrive. Students answer from their own devices over a Cloudflare Quick Tunnel. Anonymous by design: no names, no roster, nothing stored per student, and concept-check results stay hidden while voting is open so the room doesn't follow the leading bar. Needs cloudflared."
+      "description": "Live in-class polls with the results on the projector. Claude writes the questions \u2014 from your slides, your notes, or a sentence \u2014 and the app runs them: multiple choice, word clouds, confidence scales, numeric estimates and rankings, each drawn live as answers arrive. Students answer from their own devices over a Cloudflare Quick Tunnel. Anonymous by design: no names, no roster, nothing stored per student, and concept-check results stay hidden while voting is open so the room doesn't follow the leading bar. Needs cloudflared."
     },
     {
       "name": "cardstock",
@@ -55,11 +55,6 @@
       "description": "Critique and revise work produced by Claude. Spawns parallel reviewer agents, synthesizes findings, and applies revisions. Heavyweight \u2014 fans out multiple subagents."
     },
     {
-      "name": "coauthor",
-      "source": "./plugins/coauthor",
-      "description": "A coordinated multi-agent system for empirical research papers. Claude Code is the coordinator you converse with; a diverse OpenRouter debate panel (Proposer, Adversary) generates and attacks ideas; tool-using Claude subagents ground the work in fact (Verifier over litdb), independently build the data and run the empirics (Analyst), and independently re-derive both the data build and the results (Replicator). Domain-agnostic; data-source access lives in a separate data plugin. Runs in any directory, keeping everything in a local .coauthor/ folder; creates no repos."
-    },
-    {
       "name": "human-write",
       "source": "./plugins/human-write",
       "description": "Write and edit academic prose that reads as human, not machine-generated: varied sentence rhythm, no formulaic AI tells (delve, however-at-every-turn, the not-X-but-Y contrast, three-item everything), and structure driven by the argument rather than a template. Defaults to scholarly register (journal articles, working papers, referee reports, grant proposals). Works when drafting fresh and when revising a draft."
@@ -73,6 +68,11 @@
       "name": "elegant-pdf",
       "source": "./plugins/elegant-pdf",
       "description": "Create elegant, branded documents from a small HTML design system rendered to PDF or image with headless Chrome \u2014 one-page flyers/announcements (2x JPEG or clickable PDF) and multi-page programs, reports, and handbooks (clickable PDF with cover, running footer, and page numbers). Default palette is Rice Business navy + gold; recolor by editing one block."
+    },
+    {
+      "name": "research-setup",
+      "source": "./plugins/research-setup",
+      "description": "Set up a research repository several people and their Claudes can share without tripping over each other: per-author folders, portable paths derived rather than configured, one canonical dataset with recorded promotion, provenance read out of the code, a git-enforced round lock, and a generated CLAUDE.md that makes the whole thing self-explaining. Optional two-build (analyst/replicator) protocol for empirical work and an OpenRouter debate panel. Works on a new project or an existing one that grew organically."
     }
   ],
   "description": "Authoring and teaching skills for Claude Code: narrated video from slide decks, Quarto slide decks, free financial/economic data, and adversarial work review."

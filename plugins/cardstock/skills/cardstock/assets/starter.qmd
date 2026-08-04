@@ -21,17 +21,17 @@ format:
 ## What this talk covers
 
 ::: {.three-cards}
-::: {.card .card-blue}
+::: {.card-blue}
 [The question]{.card-title}
 
 - what we set out to answer
 :::
-::: {.card .card-amber}
+::: {.card-amber}
 [The approach]{.card-title}
 
 - how we went about it
 :::
-::: {.card .card-teal}
+::: {.card-teal}
 [The takeaway]{.card-title}
 
 - what you should remember
