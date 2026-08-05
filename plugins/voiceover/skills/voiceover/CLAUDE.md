@@ -52,9 +52,12 @@ Key backend modules (`backend/builderlib/`):
 - `db.py` / `store.py` — folder-backed project registry (no database: each deck
   folder's `meta.json` is the source of truth; `list_projects` scans the decks
   dir) and per-deck file I/O.
+- `slidematch.py` — aligns a reattached deck against the previous ingest, so an
+  edited PDF keeps the narration and audio of the slides it did not change.
 - `jobs.py` — the state machine: `_convert`, `_build`, each run in a thread via
   `_run_bg`, emitting events. `_convert` leaves each slide with empty narration
-  (the agent fills it in). `_build` renders the deck, synthesizes audio, renders
+  (the agent fills it in), or, on a reattach, carries the previous ingest's
+  narration and audio across (`_reingest`). `_build` renders the deck, synthesizes audio, renders
   the video and transcript straight into the project folder (`_write_transcript`;
   `_announce_outputs` reports where). There is no draft job — narration is written
   by Claude Code via the narration API (`PUT …/narration`).
@@ -72,8 +75,11 @@ variant. `converted` means the slides exist with empty narration and the deck is
 ready for the agent to draft; the Narration and Generate steps are both open from
 there (no drafting state to wait on). `built` means the MP4 is ready. There is no
 deploy state. The frontend maps state to the wizard step. The build step
-re-synthesizes only slides whose narration text changed (a per-slide sha256 map
-is kept in the project dir), then always re-renders the video.
+re-synthesizes only slides whose narration text or voice signature changed (a
+per-slide sha256 map is kept in the project dir), then always re-renders the
+video. Reattaching an edited PDF sends the deck back through
+`converting → converted`; unchanged slides keep their narration and their audio,
+so the next build re-synthesizes only what was actually redrafted.
 
 ## Design choices (and why)
 
@@ -98,6 +104,75 @@ ffmpeg comes from pip, not the system.
 `imageio-ffmpeg` ships a bundled static binary; `video_gen.FFMPEG` is its path.
 This keeps local dev and the container identical with no apt dependency. Do not
 add a system ffmpeg requirement.
+
+Expression is a model + settings choice, not an account tier.
+The most common complaint about the output is that the voice sounds flat or
+robotic, and the instinct is to blame the ElevenLabs plan. It is not the plan.
+The cause is the model. `eleven_multilingual_v2` is deliberately even-toned —
+fine for a short clip, monotonous over a ten-minute lecture — and it was the
+default, reinforced by a dropdown that labelled it "highest quality" and so
+discouraged switching. The default is now `eleven_v3` with honest labels.
+
+Be careful not to overstate the settings half of this. `audio_gen.synthesize`
+used to send only `stability` and `similarity_boost`, but the two it omitted
+already defaulted server-side to what it would have sent anyway (`style` 0,
+`use_speaker_boost` true). Adding them to the payload made the knobs reachable
+from the UI; it did not by itself make the audio less flat. All five settings
+(`audio_gen.VOICE_SETTING_KEYS`) now go on every request and appear in the
+Generate step. Before adding a plan-upgrade suggestion anywhere, check the model
+first — this is not an account-tier problem.
+
+`style` is documented for the v2 family (where it trades stability and latency
+for expression). Its effect on v3 is unverified here: an A/B at 0.0 vs 0.7 was
+inconclusive because generation is non-deterministic and the run-to-run spread
+exceeded the between-setting difference. Don't assert it helps on v3 without
+someone actually listening.
+
+Voice settings travel as one dict, and the whole dict is in the hash.
+`synthesize`/`generate` take a `settings` dict rather than a widening positional
+list, and `_voice_sig` names every field in `VOICE_SETTING_KEYS`. That matters:
+the per-slide hash keys on narration + voice signature, so adding a field
+invalidates old hashes and forces a re-render instead of quietly serving audio
+built with different settings. If you add a sixth setting, add it to
+`VOICE_SETTING_KEYS` and `DEFAULT_VOICE_SETTINGS` and it flows through hashing,
+the API payload, and staleness automatically. Note that `_merged_settings` only
+substitutes defaults for `None`, so an explicit `false` (speaker boost off)
+survives.
+
+A reattached deck is matched by content, never by index.
+The instructor edits the PDF and hands it back (Upload ▸ Reattach edited PDF, or
+relaunching the skill on the edited file). It is tempting to carry narration over
+by slide index — that is what this used to do — and it is wrong in a way that
+hides itself: insert one page and every later slide silently inherits its
+neighbour's script, and because `audio/slide-NNN.mp3` and `audio_hashes.json` are
+keyed by index too, its audio moves with it. Everything looks consistent and
+every slide is narrating the wrong content.
+
+So `_convert` fingerprints each page (`convert._fingerprints`: a sha of the
+rendered PNG and a sha of the page text, kept in `fingerprints.json`) and
+`slidematch.align` matches the ingests through a cascade — identical render,
+then identical text, then similar text, then position within the run between two
+matches. `store.remap_audio` then moves each carried slide's MP3 and hash entry
+to its new index, staged through a temp dir because the renames overlap.
+
+Two fingerprints rather than one, because each covers the other's blind spot: the
+image misses nothing but drifts when a re-export rasterizes identical content
+differently, and the text is stable but blind to a chart edit. The similarity
+level exists for one specific failure — a slide reworded next to a slide deleted,
+where position alone would pair the reworded slide with the deleted one's
+narration. If you add a fingerprint, add it to `slidematch.KEYS` in strength
+order; the cascade handles the rest.
+
+Changed slides keep their old narration, flagged rather than blanked. It is the
+right starting point for a redraft, and sometimes it still fits — hence Keep as
+is / `POST …/review/clear`. Writing a slide's narration clears its flag, so the
+banner empties itself as the work gets done.
+
+`suspect_rerender` on the review summary is the guard against the expensive
+failure mode. When most matched slides come back "same words, different pixels",
+that is a re-export, not a rewrite; without saying so, the agent would redraft a
+perfectly good deck and re-synthesize every slide. Do not remove it in favour of
+just flagging everything.
 
 Audio and video are generated at build time.
 TTS and the MP4 render happen once per build. Segment encodes are parallelized
@@ -141,5 +216,23 @@ slides, the source PDF is a 2-up handout — that is an input problem, not a bug
 
 - Local dev backend runs without `--reload`, so code changes need a manual
   restart to take effect.
+- The two tests in `backend/tests/` cover the reattach path, which is the part
+  of this app most likely to break silently. Run them after touching
+  `slidematch`, `convert._fingerprints`, `jobs._convert`, or `store.remap_audio`:
+  `python3 backend/tests/test_slidematch.py` (no dependencies) and
+  `~/.voiceover/venv/bin/python backend/tests/test_reingest.py` (needs PyMuPDF;
+  no network, temp DATA_DIR).
+- A deck built before fingerprints existed has no `fingerprints.json`, so its
+  first reattach has nothing to match against and falls back to carrying
+  narration by index (the old behaviour) with no flags. That ingest writes the
+  fingerprints, so every reattach after it is matched properly. Don't "fix" the
+  fallback by inventing fingerprints for the old ingest — there is no old PDF to
+  compute them from.
+- The Generate step used to carry a "Password viewers will use" field that
+  blocked the Generate button. Nothing in the backend ever read it (there is no
+  `password` in `ConfigBody` or `DEFAULT_CONFIG`) — it was a leftover of the
+  removed hosting/auth path, so it has been deleted. Do not reintroduce it.
+- Frontend changes need `npm run build` in `frontend/`; FastAPI serves the built
+  `frontend/dist`, so an unbuilt edit will not show up in the running app.
 - The `built` state is terminal; re-running build re-renders the video.
 - Global preference for this user: avoid boldface in generated prose.

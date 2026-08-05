@@ -10,6 +10,9 @@ import {
   ELEVEN_MODELS,
   DEFAULT_TTS,
   JOB_TERMINALS,
+  SPEED_RANGE,
+  V3_STABILITY_LEVELS,
+  modelInfo,
 } from '../../constants'
 import { useJobEvents } from '../../hooks/useJobEvents'
 import { useToast } from '../Toast'
@@ -34,7 +37,11 @@ export default function GenerateStep({ project, refresh, goTo }) {
   const [similarity, setSimilarity] = useState(
     cfg.similarity_boost ?? DEFAULT_TTS.similarity_boost
   )
-  const [password, setPassword] = useState(cfg.password || '')
+  const [style, setStyle] = useState(cfg.style ?? DEFAULT_TTS.style)
+  const [speakerBoost, setSpeakerBoost] = useState(
+    cfg.use_speaker_boost ?? DEFAULT_TTS.use_speaker_boost
+  )
+  const [speed, setSpeed] = useState(cfg.speed ?? DEFAULT_TTS.speed)
 
   const [voices, setVoices] = useState([])
   const [voicesConfigured, setVoicesConfigured] = useState(true)
@@ -45,6 +52,9 @@ export default function GenerateStep({ project, refresh, goTo }) {
       model: cfg.model || DEFAULT_TTS.model,
       stability: cfg.stability ?? DEFAULT_TTS.stability,
       similarity_boost: cfg.similarity_boost ?? DEFAULT_TTS.similarity_boost,
+      style: cfg.style ?? DEFAULT_TTS.style,
+      use_speaker_boost: cfg.use_speaker_boost ?? DEFAULT_TTS.use_speaker_boost,
+      speed: cfg.speed ?? DEFAULT_TTS.speed,
     })
   )
   const [error, setError] = useState('')
@@ -70,11 +80,16 @@ export default function GenerateStep({ project, refresh, goTo }) {
     }
   }, [])
 
+  const info = modelInfo(model)
+
   const config = {
     voice_id: voiceId,
     model,
     stability: Number(stability),
     similarity_boost: Number(similarity),
+    style: Number(style),
+    use_speaker_boost: speakerBoost,
+    speed: Number(speed),
   }
   const dirty = JSON.stringify(config) !== savedSnapshot
 
@@ -94,10 +109,6 @@ export default function GenerateStep({ project, refresh, goTo }) {
       setError(
         'Add your ElevenLabs API key (banner at the top of the page) before generating.'
       )
-      return
-    }
-    if (!password.trim()) {
-      setError('Set a password viewers will use before generating.')
       return
     }
     try {
@@ -127,9 +138,9 @@ export default function GenerateStep({ project, refresh, goTo }) {
   return (
     <div className="animate-fadein">
       <StepHeader
-        step="4 · Generate"
+        step="3 · Generate"
         title="Generate voiceover"
-        subtitle="Choose a voice and style, set the viewer password, then generate the audio and build the narrated deck."
+        subtitle="Choose a voice and how expressive the read should be, then build the narrated video."
       />
 
       <ErrorBanner message={error} />
@@ -169,7 +180,7 @@ export default function GenerateStep({ project, refresh, goTo }) {
             )}
           </Field>
 
-          <Field label="Model" hint="Quality vs. speed">
+          <Field label="Model" hint="Expressiveness vs. speed">
             <div className="relative">
               <select
                 className={`${inputClass} appearance-none pr-9`}
@@ -186,19 +197,92 @@ export default function GenerateStep({ project, refresh, goTo }) {
             </div>
           </Field>
 
-          <Field label={`Stability — ${Number(stability).toFixed(2)}`} hint="Lower is more expressive, higher is more consistent">
+          {/* v3 defines three named stability levels; the v2 family takes a
+              continuous dial. Showing a slider for v3 would imply precision the
+              model does not have. */}
+          {info.discreteStability ? (
+            <Field label="Stability" hint="How much range the read is allowed">
+              <div className="grid grid-cols-3 gap-2">
+                {V3_STABILITY_LEVELS.map((lv) => {
+                  const active = Number(stability) === lv.value
+                  return (
+                    <button
+                      key={lv.label}
+                      type="button"
+                      title={lv.hint}
+                      onClick={() => setStability(lv.value)}
+                      className={`rounded-lg border px-2 py-2 text-xs font-semibold transition ${
+                        active
+                          ? 'border-brand-600 bg-brand-50 text-brand-700'
+                          : 'border-slate-200 bg-white text-muted hover:border-slate-300'
+                      }`}
+                    >
+                      {lv.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="mt-1.5 text-xs text-muted">
+                {V3_STABILITY_LEVELS.find(
+                  (lv) => Number(stability) === lv.value
+                )?.hint || 'Pick a level.'}
+              </p>
+            </Field>
+          ) : (
+            <Field
+              label={`Stability — ${Number(stability).toFixed(2)}`}
+              hint="Lower is more expressive, higher is more consistent"
+            >
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={stability}
+                onChange={(e) => setStability(e.target.value)}
+                className="w-full accent-brand-600"
+              />
+            </Field>
+          )}
+
+          <Field
+            label={`Style — ${Number(style).toFixed(2)}`}
+            hint="Emotional emphasis; 0 is a plain read"
+          >
             <input
               type="range"
               min="0"
               max="1"
               step="0.05"
-              value={stability}
-              onChange={(e) => setStability(e.target.value)}
+              value={style}
+              onChange={(e) => setStyle(e.target.value)}
               className="w-full accent-brand-600"
             />
           </Field>
 
-          <Field label={`Similarity boost — ${Number(similarity).toFixed(2)}`} hint="How closely to match the source voice">
+          <Field
+            label={`Speed — ${Number(speed).toFixed(2)}×`}
+            hint="Below 1 is slower, above 1 is faster"
+          >
+            <input
+              type="range"
+              min={SPEED_RANGE.min}
+              max={SPEED_RANGE.max}
+              step={SPEED_RANGE.step}
+              value={speed}
+              onChange={(e) => setSpeed(e.target.value)}
+              className="w-full accent-brand-600"
+            />
+          </Field>
+
+          {/* "Source voice" used to read as something the instructor supplied.
+              It is the recordings the voice itself was built from — your own
+              samples for a cloned voice, ElevenLabs' originals for a premade
+              one — so the label now says that, and says when to leave it be. */}
+          <Field
+            label={`Similarity boost — ${Number(similarity).toFixed(2)}`}
+            hint="Matters mainly for cloned voices"
+          >
             <input
               type="range"
               min="0"
@@ -208,17 +292,29 @@ export default function GenerateStep({ project, refresh, goTo }) {
               onChange={(e) => setSimilarity(e.target.value)}
               className="w-full accent-brand-600"
             />
+            <p className="mt-1.5 text-xs text-muted">
+              How closely to copy the recordings this voice was built from. Higher
+              tracks them more faithfully, including any noise in them. The default
+              is fine for the built-in voices — this is not the flatness dial.
+            </p>
           </Field>
 
-          <Field label="Password viewers will use">
+          <label className="flex cursor-pointer items-start gap-2.5">
             <input
-              className={inputClass}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Set a password to gate the deck"
-              autoComplete="off"
+              type="checkbox"
+              checked={speakerBoost}
+              onChange={(e) => setSpeakerBoost(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-brand-600"
             />
-          </Field>
+            <span>
+              <span className="block text-sm font-semibold text-navy">
+                Speaker boost
+              </span>
+              <span className="block text-xs text-muted">
+                Strengthens resemblance to the voice. Slightly slower to generate.
+              </span>
+            </span>
+          </label>
         </Card>
 
         <Card className="flex flex-col p-6">

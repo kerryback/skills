@@ -26,31 +26,65 @@ from converters import generate_audio_ref as gaudio  # noqa: E402
 ELEVEN_TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
 OUTPUT_FORMAT = "mp3_44100_128"
 
+# Every voice_settings field we send, in signature order. `style` and
+# `use_speaker_boost` drive how much expression the model puts in; leaving them
+# out (as this app used to) means asking for the model's flattest read and then
+# wondering why the result sounds flat. `speed` trims pacing without re-recording.
+VOICE_SETTING_KEYS = ("stability", "similarity_boost", "style",
+                      "use_speaker_boost", "speed")
+
+DEFAULT_VOICE_SETTINGS = {
+    "stability": 0.5,
+    "similarity_boost": 0.75,
+    "style": 0.0,
+    "use_speaker_boost": True,
+    "speed": 1.0,
+}
+
 
 def _sha(text: str) -> str:
     return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
 
 
-def _voice_sig(voice_id: str, model: str, stability, similarity_boost) -> str:
+def _merged_settings(settings: dict | None) -> dict:
+    """Fill in defaults for anything the caller left unset."""
+    merged = dict(DEFAULT_VOICE_SETTINGS)
+    for k, v in (settings or {}).items():
+        if k in DEFAULT_VOICE_SETTINGS and v is not None:
+            merged[k] = v
+    return merged
+
+
+def _voice_sig(voice_id: str, model: str, settings: dict) -> str:
     """A signature of everything besides the text that affects the audio, so a
-    voice/model/settings change re-synthesizes even when narration is unchanged."""
-    return f"{voice_id}|{model}|{stability}|{similarity_boost}"
+    voice/model/settings change re-synthesizes even when narration is unchanged.
+
+    Every field in VOICE_SETTING_KEYS is included and named, so adding a field
+    later invalidates old hashes (a rebuild re-renders) instead of silently
+    serving audio made with different settings.
+    """
+    fields = ",".join(f"{k}={settings.get(k)}" for k in VOICE_SETTING_KEYS)
+    return f"{voice_id}|{model}|{fields}"
 
 
 def synthesize(text: str, out_path: Path, voice_id: str, model: str,
-               stability: float = 0.5, similarity_boost: float = 0.75) -> None:
-    """Stream one ElevenLabs MP3 to out_path. Reads ELEVENLABS_API_KEY."""
+               settings: dict | None = None) -> None:
+    """Stream one ElevenLabs MP3 to out_path. Reads ELEVENLABS_API_KEY.
+
+    `settings` is passed through to voice_settings as given. Note that v3 defines
+    only three stability levels (0.0 / 0.5 / 1.0) while the v2-family models take
+    a continuous 0–1; the API accepts in-between values on v3 without erroring, so
+    nothing is snapped here — the picker offers the defined levels instead.
+    """
     if not config.ELEVENLABS_API_KEY:
         raise RuntimeError("ELEVENLABS_API_KEY is not set (put it in backend/.env).")
+    merged = _merged_settings(settings)
     url = ELEVEN_TTS_URL.format(voice_id=voice_id)
     headers = {"xi-api-key": config.ELEVENLABS_API_KEY, "accept": "audio/mpeg"}
     payload = {
         "text": text,
         "model_id": model,
-        "voice_settings": {
-            "stability": stability,
-            "similarity_boost": similarity_boost,
-        },
+        "voice_settings": {k: merged[k] for k in VOICE_SETTING_KEYS},
     }
     params = {"output_format": OUTPUT_FORMAT}
     with httpx.stream("POST", url, headers=headers, json=payload, params=params,
@@ -65,8 +99,7 @@ def synthesize(text: str, out_path: Path, voice_id: str, model: str,
 
 def generate(deck_html: Path, audio_dir: Path, narration_json: Path,
              hashes_path: Path, voice_id: str, model: str,
-             stability: float = 0.5, similarity_boost: float = 0.75,
-             progress=None) -> dict:
+             settings: dict | None = None, progress=None) -> dict:
     """Parse deck HTML, (re)synthesize changed slides, write manifest + narration.
 
     progress: optional callable(done, total, message).
@@ -92,7 +125,8 @@ def generate(deck_html: Path, audio_dir: Path, narration_json: Path,
     skipped = 0
     tasks = []  # (slide, out_path) needing (re)synthesis
 
-    sig = _voice_sig(voice_id, model, stability, similarity_boost)
+    merged = _merged_settings(settings)
+    sig = _voice_sig(voice_id, model, merged)
 
     # First pass: build the manifest + hash map and decide which slides to render.
     for s in slides:
@@ -120,8 +154,7 @@ def generate(deck_html: Path, audio_dir: Path, narration_json: Path,
     def _render(task):
         nonlocal done
         s, out_path = task
-        synthesize(s["narration"], out_path, voice_id, model,
-                   stability, similarity_boost)
+        synthesize(s["narration"], out_path, voice_id, model, merged)
         with lock:
             done += 1
             if progress:

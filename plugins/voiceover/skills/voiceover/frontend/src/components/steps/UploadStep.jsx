@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
-import { Loader2, ArrowRight } from 'lucide-react'
-import { toRel } from '../../api'
-import { JOB_TERMINALS } from '../../constants'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Loader2, ArrowRight, RotateCw } from 'lucide-react'
+import { api, toRel } from '../../api'
+import { JOB_TERMINALS, describeReview } from '../../constants'
 import { useJobEvents } from '../../hooks/useJobEvents'
 import { useToast } from '../Toast'
 import {
@@ -10,12 +10,15 @@ import {
   StepHeader,
   ProgressBar,
   ErrorBanner,
+  ReviewSummary,
 } from '../ui'
 
 export default function UploadStep({ project, refresh, goTo }) {
   const { progress, running, start } = useJobEvents()
   const toast = useToast()
   const [failLog, setFailLog] = useState('')
+  const [reattaching, setReattaching] = useState(false)
+  const fileRef = useRef(null)
   const watched = useRef(false)
 
   const converting =
@@ -25,24 +28,58 @@ export default function UploadStep({ project, refresh, goTo }) {
     project.state !== 'converting' &&
     project.state !== 'converting_failed'
 
+  const watchConversion = useCallback(
+    () =>
+      start(project.id, {
+        terminals: JOB_TERMINALS.convert,
+        onDone: async () => {
+          const p = await refresh()
+          const r = p?.review
+          if (r) {
+            toast.success(
+              `Reattached — ${describeReview(r)}. Review the flagged slides.`
+            )
+          } else {
+            toast.success('Slides converted.')
+          }
+          goTo('narration')
+        },
+        onError: (err, evt) => {
+          setFailLog(evt?.message || err.message)
+          toast.error('Conversion failed.')
+          refresh()
+        },
+      }),
+    [project.id, start, refresh, goTo, toast]
+  )
+
   // Watch the conversion job once when the project is still converting.
   useEffect(() => {
     if (!converting || watched.current) return
     watched.current = true
-    start(project.id, {
-      terminals: JOB_TERMINALS.convert,
-      onDone: async () => {
-        toast.success('Slides converted.')
-        await refresh()
-        goTo('narration')
-      },
-      onError: (err, evt) => {
-        setFailLog(evt?.message || err.message)
-        toast.error('Conversion failed.')
-        refresh()
-      },
-    })
-  }, [converting, project.id, start, refresh, goTo, toast])
+    watchConversion()
+  }, [converting, watchConversion])
+
+  // Reattach: the instructor edited the deck and is handing the app the new PDF.
+  // The deck keeps its id, so narration and audio carry across slide by slide;
+  // only what actually changed comes back flagged.
+  const onReattach = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // let the same filename be picked again after a retry
+    if (!file) return
+    setReattaching(true)
+    setFailLog('')
+    try {
+      await api.reingest(project.id, file)
+      watched.current = true // this component drives the watch, not the effect
+      await refresh()
+      watchConversion()
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setReattaching(false)
+    }
+  }
 
   const slides = project.slides || []
 
@@ -51,7 +88,7 @@ export default function UploadStep({ project, refresh, goTo }) {
       <StepHeader
         step="1 · Upload"
         title="Upload & convert"
-        subtitle="Your deck is converted into per-slide images. This runs automatically after upload."
+        subtitle="Your deck is converted into per-slide images. Edited the PDF since? Reattach it here — the narration you already have follows its slides."
       />
 
       {project.state === 'converting_failed' && (
@@ -83,14 +120,33 @@ export default function UploadStep({ project, refresh, goTo }) {
 
       {converted && (
         <div className="space-y-5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm font-medium text-slate">
               {slides.length} slide{slides.length === 1 ? '' : 's'} ready
             </p>
-            <Button onClick={() => goTo('narration')}>
-              Continue to Draft <ArrowRight className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                className="hidden"
+                onChange={onReattach}
+              />
+              <Button
+                variant="subtle"
+                loading={reattaching}
+                onClick={() => fileRef.current?.click()}
+              >
+                <RotateCw className="h-4 w-4" /> Reattach edited PDF
+              </Button>
+              <Button onClick={() => goTo('narration')}>
+                Continue to Draft <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
+          {project.review?.total > 0 && (
+            <ReviewSummary review={project.review} />
+          )}
           <ThumbnailStrip project={project} slides={slides} />
         </div>
       )}

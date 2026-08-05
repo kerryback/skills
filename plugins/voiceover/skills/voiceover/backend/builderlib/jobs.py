@@ -8,7 +8,7 @@ import threading
 import traceback
 from pathlib import Path
 
-from . import audio_gen, config, convert, db, events, store, video_gen
+from . import audio_gen, config, convert, db, events, slidematch, store, video_gen
 
 
 def _run_bg(fn, pid, *args):
@@ -44,24 +44,35 @@ def start_conversion(pid: str, source_path: Path, source_type: str):
 def _convert(pid: str, source_path: Path, source_type: str):
     store.set_state(pid, "converting")
     events.emit(pid, "convert", "converting", 0, 1, "Converting upload")
-    # Preserve narration when re-ingesting a deck that already has a script:
-    # keep each slide's text by index so an edited deck doesn't lose its narration.
-    prior = {}
+    # Snapshot the previous ingest before conversion overwrites it, so a deck the
+    # instructor edited and reattached can be matched against what it was. A deck
+    # whose narration.json is unreadable converts as if it were new rather than
+    # failing — losing the old script beats being unable to re-ingest at all.
     try:
-        for s in store.read_narration(pid).get("slides", []):
-            if s.get("narration"):
-                prior[s["index"]] = s["narration"]
+        prior = {s["index"]: s for s in store.read_narration(pid).get("slides", [])}
     except Exception:
-        pass
+        prior = {}
+    prior_fps = store.read_fingerprints(pid)
     had_video = store.video_path(pid).exists()
+    had_script = any(s.get("narration") for s in prior.values())
 
     result = convert.convert(pid, source_path, source_type)
     store.set_deck_name(pid, result["deck_name"])
     slides = result["slides"]
-    for s in slides:
-        if prior.get(s["index"]):
-            s["narration"] = prior[s["index"]]
+    fingerprints = result["fingerprints"]
+
+    review = None
+    if had_script and prior_fps:
+        review = _reingest(pid, slides, prior, prior_fps, fingerprints)
+    elif prior:
+        # A reattach with no script yet (or a deck from before fingerprints
+        # existed): nothing to preserve carefully, so carry by index as before.
+        for s in slides:
+            s["narration"] = prior.get(s["index"], {}).get("narration", "")
+
     store.write_narration(pid, {"slides": slides})
+    store.write_fingerprints(pid, fingerprints)
+    store.set_review(pid, review)
     # Seed config if absent.
     if not store.config_path(pid).exists():
         store.write_config(pid, {})
@@ -70,7 +81,55 @@ def _convert(pid: str, source_path: Path, source_type: str):
         db.update_project(pid, stale=True)
     store.set_state(pid, "converted")
     events.emit(pid, "convert", "converted", 1, 1,
-                f"Converted {len(slides)} slides")
+                _convert_message(len(slides), review))
+
+
+def _reingest(pid: str, slides: list, prior: dict, prior_fps: list,
+              fingerprints: list) -> dict | None:
+    """Carry the previous ingest's narration and audio onto the reattached deck.
+
+    Matching is by content, not index (see slidematch): insert a page and every
+    later slide would otherwise inherit its neighbour's script and its neighbour's
+    MP3. Slides that survive keep their narration; those whose content moved are
+    flagged so the agent knows what to redraft and the instructor sees what to
+    review. Narration on an edited slide is kept rather than blanked — it is the
+    right starting point, and sometimes it still fits.
+    """
+    result = slidematch.align(_with_text(prior_fps, prior),
+                              _with_text(fingerprints, {s["index"]: s for s in slides}))
+    pairs, status = result["pairs"], result["status"]
+
+    for s in slides:
+        j = s["index"]
+        old = pairs.get(j)
+        if old is not None:
+            s["narration"] = prior.get(old, {}).get("narration", "")
+        if status.get(j):
+            s["change"] = status[j]
+
+    # Audio is keyed by index too, so it has to move with the narration.
+    store.remap_audio(pid, pairs)
+
+    summary = result["summary"]
+    if not (summary["edited"] or summary["new"] or summary["removed"]):
+        return None
+    return summary
+
+
+def _with_text(fingerprints: list, slides: dict) -> list:
+    """Attach each slide's page text to its fingerprint. The shas alone can only
+    say same-or-different; the text is what lets slidematch recognize a slide that
+    was reworded rather than replaced (fingerprints.json stays sha-only, since
+    narration.json already holds the text)."""
+    return [dict(fp, text=slides.get(fp["index"], {}).get("slide_text", ""))
+            for fp in fingerprints]
+
+
+def _convert_message(n: int, review: dict | None) -> str:
+    if not review:
+        return f"Converted {n} slides"
+    bits = [f"{review[k]} {k}" for k in ("edited", "new", "removed") if review[k]]
+    return f"Converted {n} slides — {', '.join(bits)}"
 
 
 # --------------------------------------------------------------------------- #
@@ -110,7 +169,7 @@ def _build(pid: str):
     stats = audio_gen.generate(
         html_path, store.audio_dir(pid), store.narration_path(pid),
         store.hashes_path(pid), cfg["voice_id"], cfg["model"],
-        cfg.get("stability", 0.5), cfg.get("similarity_boost", 0.75),
+        {k: cfg[k] for k in audio_gen.VOICE_SETTING_KEYS if k in cfg},
         progress=prog)
 
     # 4. Render the video straight into the instructor's project folder (see

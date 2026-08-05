@@ -8,6 +8,7 @@ pixel-faithful, fully-built PDF. Teachers export to PDF and upload that.
 
 Reuses the vendored PDF converter in backend/converters/.
 """
+import hashlib
 import json
 import re
 import shutil
@@ -87,8 +88,29 @@ def _extract_pdf_text(source_path: Path, n: int) -> list:
     return out[:n]
 
 
+def _fingerprints(deck_dir: Path, images: list, text: list) -> list:
+    """Per-slide content fingerprints, used to match a reattached deck against the
+    previous ingest (see slidematch). Two shas per slide: the rendered page PNG
+    (catches a chart or diagram edit that leaves the words alone) and the page's
+    normalized text (stable when a re-export re-rasterizes identical content)."""
+    out = []
+    for i, rel in enumerate(images):
+        png = deck_dir / rel
+        try:
+            image_sha = hashlib.sha256(png.read_bytes()).hexdigest()
+        except OSError:
+            image_sha = ""
+        words = re.sub(r"\s+", " ", (text[i]["slide_text"] if i < len(text) else "")).strip()
+        out.append({
+            "index": i,
+            "image_sha": image_sha,
+            "text_sha": hashlib.sha256(words.encode("utf-8")).hexdigest() if words else "",
+        })
+    return out
+
+
 def convert(project_id: str, source_path: Path, source_type: str) -> dict:
-    """Run conversion; return {"deck_name", "slides":[...]}.
+    """Run conversion; return {"deck_name", "slides":[...], "fingerprints":[...]}.
 
     slides entries: {index, title, slide_text, narration} (narration empty; it
     is drafted later by the narration agent).
@@ -110,7 +132,8 @@ def convert(project_id: str, source_path: Path, source_type: str) -> dict:
         slides = [{"index": i, "title": text[i]["title"],
                    "slide_text": text[i]["slide_text"], "narration": ""}
                   for i in range(len(images))]
-        return {"deck_name": name, "slides": slides}
+        return {"deck_name": name, "slides": slides,
+                "fingerprints": _fingerprints(deck_dir, images, text)}
 
     raise ValueError(f"Unknown source_type: {source_type}")
 

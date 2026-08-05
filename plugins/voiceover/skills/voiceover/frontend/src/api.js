@@ -38,6 +38,20 @@ export const api = {
     fd.append('file', file)
     return request('api/projects', { method: 'POST', body: fd })
   },
+  // Reattach an edited PDF to an existing deck: same deck, same config, script
+  // and audio carried across slide by slide (see the backend's jobs._reingest).
+  reingest: (id, file) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return request(`api/projects/${id}/reingest`, { method: 'POST', body: fd })
+  },
+  // Mark reattach-flagged slides reviewed without editing them. Omit `indexes`
+  // to clear every flag.
+  clearReview: (id, indexes) =>
+    request(`api/projects/${id}/review/clear`, {
+      method: 'POST',
+      body: { indexes: indexes ?? null },
+    }),
 
   // ---- jobs ----
   build: (id) => request(`api/projects/${id}/build`, { method: 'POST' }),

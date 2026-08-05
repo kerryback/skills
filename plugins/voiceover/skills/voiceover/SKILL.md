@@ -9,7 +9,9 @@ description: >-
   (Claude Code) draft the per-slide narration and the instructor picks a voice and
   generates the video; the finished .mp4 and .txt are saved to the instructor's
   working directory. Each deck is saved by name and can be reopened to edit and
-  regenerate. Requires an ElevenLabs API key and quarto installed.
+  regenerate; an edited PDF can be reattached, and only the slides that actually
+  changed are redrafted and re-voiced. Requires an ElevenLabs API key and quarto
+  installed.
 ---
 
 # voiceover
@@ -98,8 +100,10 @@ absolute path. `<port>` defaults to 8010.
      (NNN is the 1-based, zero-padded page number, e.g. slide-003.png), or read
      that single page of the PDF. Don't render pages whose text is enough.
    - If narration is already present (a reopened deck), leave it unless the
-     instructor asks for changes. If it is empty (a new deck), write spoken
-     narration for every slide following the style rules below — in one pass.
+     instructor asks for changes — or unless slides come back flagged, which is
+     the reattached-deck case in step 5. If it is empty (a new deck), write
+     spoken narration for every slide following the style rules below — in one
+     pass.
    - Save the whole draft in one call (don't PUT slide by slide):
      `PUT http://127.0.0.1:<port>/api/projects/<deck>/narration` with body
      `{ "slides": [ { "index": 0, "narration": "…" }, … ] }`.
@@ -107,7 +111,37 @@ absolute path. `<port>` defaults to 8010.
      step polls). To revise a single slide later, PUT
      `/api/projects/<deck>/narration/<index>` with `{ "narration": "…" }`.
 
-5. Hand off with a clear invitation. Once the draft is in, tell the instructor —
+5. When the instructor edits the PDF and reattaches it, redraft only what
+   changed. They can hand the edited deck back two ways: the Reattach edited PDF
+   button on the app's Upload step, or by asking you to relaunch the skill on the
+   edited file. Relaunching only reopens the same deck if the filename is
+   unchanged — if they saved it under a new name, POST
+   `/api/projects/from-path` with `{"path": "…", "project": "<deck>"}` so it
+   reattaches to the existing deck instead of starting a second one.
+
+   Either way the app matches the new slides against the old ones by content, so
+   narration and already-generated audio follow their slides through insertions
+   and deletions. `GET …/narration` then comes back with:
+   - `review` — `{total, unchanged, edited, new, removed, suspect_rerender}`.
+   - a `change` field of `"edited"` or `"new"` on each slide that moved. Slides
+     without it are untouched: leave them alone.
+
+   Redraft every flagged slide without being asked, then tell the instructor what
+   you changed. An `edited` slide still holds its old script — read the slide's
+   new `slide_text` and rewrite it; a `new` slide is empty. Read the neighbours
+   too: the narration is one continuous lecture, so an inserted or deleted slide
+   usually needs the seam on either side of it adjusted even though those slides
+   are unflagged. Send the whole revision in one bulk PUT. Writing a slide's
+   narration clears its flag automatically.
+
+   One exception: if `suspect_rerender` is true, stop and ask first. It means
+   most slides came back with identical text but a different rendering, which
+   almost always means the PDF was re-exported rather than rewritten — redrafting
+   the whole deck would throw away a good script and re-synthesize every slide
+   for nothing. Ask the instructor what they actually changed, and redraft only
+   that.
+
+6. Hand off with a clear invitation. Once the draft is in, tell the instructor —
    in your own words, in plain language — how to work with it. Make sure they know
    there are two ways to change the script and that both are welcome:
    - Edit any slide's narration directly in the app (it autosaves), or
@@ -116,7 +150,10 @@ absolute path. `<port>` defaults to 8010.
    Then describe the rest of the flow: when it reads well they go to Generate, pick
    a voice (ElevenLabs; default "Sarah"), and build; then Preview to watch. Each
    build writes `<deck-name>.mp4` and `<deck-name>.txt` to their project folder.
-   Leave the launcher running while they work; stop it with Ctrl-C when done.
+   Say too that if they end up editing the slides themselves, they can reattach
+   the new PDF (Upload step, or hand it to you) and keep everything the edit
+   didn't touch. Leave the launcher running while they work; stop it with Ctrl-C
+   when done.
 
    For example, you might say: "I've drafted the narration — it's on the Narration
    step at <url>. Read it over. You can edit any slide right in the app, or just
@@ -125,12 +162,14 @@ absolute path. `<port>` defaults to 8010.
    build; Preview lets you watch it. The finished video and transcript save to this
    folder."
 
-6. Revisions come to you, in chat. When the instructor asks for changes ("tighten
+7. Revisions come to you, in chat. When the instructor asks for changes ("tighten
    slide 3", "warmer tone", "add a worked example on the terminal-value slide"),
    edit the affected slides via the narration API. Keep the style rules. Invite
    them to keep iterating — either way, by editing directly or by asking you.
+   Mention that if they edit the PDF itself, they can reattach it and keep the
+   script they already have.
 
-7. If the server does not come up (port already in use), rerun with a different
+8. If the server does not come up (port already in use), rerun with a different
    port, e.g. `--port 8011`, and use that port in the API calls.
 
 ## Narration style rules

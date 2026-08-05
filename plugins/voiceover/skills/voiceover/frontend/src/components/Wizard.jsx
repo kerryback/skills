@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { api } from '../api'
 import { STEPS, STATE_TO_STEP } from '../constants'
-import { Spinner, StatePill, ErrorBanner } from './ui'
+import { Button, Spinner, StatePill, ErrorBanner } from './ui'
 import { useToast } from './Toast'
 import StepTracker from './StepTracker'
 import UploadStep from './steps/UploadStep'
@@ -98,11 +99,13 @@ export default function Wizard({ projectId, onBack, onSessionExpired }) {
   }
 
   return (
-    <div className="mx-auto flex max-w-[1600px] flex-col gap-6 px-5 py-8 lg:flex-row">
-      <aside className="lg:w-64 lg:flex-shrink-0">
+    <div className="mx-auto flex max-w-[1600px] flex-col gap-4 px-5 py-8 lg:flex-row lg:gap-5">
+      {/* Narrow step rail — the wizard steps need very little width, and the
+          Narration/Generate panes benefit from everything it gives back. */}
+      <aside className="lg:w-44 lg:flex-shrink-0">
         <div className="lg:sticky lg:top-20">
           <div className="mb-4">
-            <h2 className="truncate text-lg font-extrabold tracking-tight text-navy">
+            <h2 className="truncate text-base font-extrabold tracking-tight text-navy">
               {project.name}
             </h2>
             <div className="mt-1.5">
@@ -115,6 +118,19 @@ export default function Wizard({ projectId, onBack, onSessionExpired }) {
             maxReach={maxReach}
             onSelect={goTo}
           />
+
+          {/* Advance-to-Generate lives here rather than above the narration
+              editor, where it read as an instruction to generate before writing
+              anything. NarrationStep flushes unsaved edits on unmount, so
+              leaving from the rail is safe. */}
+          {active === 'narration' && stepIndex('generate') <= maxReach && (
+            <Button
+              className="mt-4 w-full"
+              onClick={() => goTo('generate')}
+            >
+              Continue to Generate <ArrowRight className="h-4 w-4 flex-shrink-0" />
+            </Button>
+          )}
         </div>
       </aside>
 

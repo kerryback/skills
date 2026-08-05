@@ -15,7 +15,7 @@ export default function StepTracker({ active, naturalIdx, maxReach, onSelect }) 
             <li key={step.key} className="relative">
               {!isLast && (
                 <span
-                  className={`absolute left-[1.15rem] top-9 h-[calc(100%-1rem)] w-px ${
+                  className={`absolute left-[0.9rem] top-8 h-[calc(100%-1rem)] w-px ${
                     i < naturalIdx ? 'bg-brand-600/40' : 'bg-line'
                   }`}
                   aria-hidden="true"
@@ -25,7 +25,7 @@ export default function StepTracker({ active, naturalIdx, maxReach, onSelect }) 
                 onClick={() => reachable && onSelect(step.key)}
                 disabled={!reachable}
                 aria-current={isActive ? 'step' : undefined}
-                className={`group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors ${
+                className={`group flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition-colors ${
                   isActive
                     ? 'bg-brand-tint'
                     : reachable
@@ -34,7 +34,7 @@ export default function StepTracker({ active, naturalIdx, maxReach, onSelect }) 
                 }`}
               >
                 <span
-                  className={`relative z-10 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border text-sm font-bold transition-colors ${
+                  className={`relative z-10 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border text-sm font-bold transition-colors ${
                     isComplete
                       ? 'border-brand-600 bg-brand-600 text-white'
                       : isActive

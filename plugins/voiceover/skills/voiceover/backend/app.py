@@ -75,16 +75,50 @@ async def create_project(file: UploadFile = File(...), name: str = Form(...)):
 class FromPathBody(BaseModel):
     path: str
     name: str | None = None
+    project: str | None = None
 
 
 @app.post("/api/projects/from-path")
 async def create_project_from_path(body: FromPathBody):
     """Create a project from a file already on disk. The skill launcher uses this
-    so the instructor never uploads through the browser."""
+    so the instructor never uploads through the browser.
+
+    `project` reattaches the file to an existing deck instead of deriving the deck
+    id from the filename — for an edited deck saved under a new name, which would
+    otherwise start a second deck from scratch."""
     src = Path(body.path).expanduser()
     if not src.is_file():
         raise HTTPException(400, f"file not found: {src}")
+    if body.project:
+        return _reingest_into(body.project, src.name, src.read_bytes())
     return _start_project(src.name, body.name or src.stem, src.read_bytes())
+
+
+def _reingest_into(pid: str, filename: str, data: bytes) -> dict:
+    """Replace an existing deck's PDF and re-convert it in place.
+
+    The deck keeps its id, its config, and its narration: conversion matches the
+    new slides against the previous ingest and carries the script (and the audio)
+    across, flagging what changed (see jobs._reingest)."""
+    proj = db.get_project(pid)
+    if not proj:
+        raise HTTPException(404, "not found")
+    try:
+        source_type = convert.detect_source_type(filename)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    pdir = config.project_dir(pid)
+    pdir.mkdir(parents=True, exist_ok=True)
+    source_path = pdir / f"{pid}{Path(filename).suffix.lower()}"
+    source_path.write_bytes(data)
+    jobs.start_conversion(pid, source_path, source_type)
+    return _project_summary(db.get_project(pid))
+
+
+@app.post("/api/projects/{pid}/reingest")
+async def reingest(pid: str, file: UploadFile = File(...)):
+    """Reattach an edited PDF to this deck (the Upload step's Reattach button)."""
+    return _reingest_into(pid, file.filename or "deck.pdf", await file.read())
 
 
 @app.get("/api/projects/{pid}")
@@ -101,21 +135,31 @@ async def get_project(pid: str):
             "index": i,
             "title": s.get("title", ""),
             "narration": s.get("narration", ""),
+            # "edited" | "new" when a reattached PDF moved this slide's content.
+            "change": s.get("change") or None,
             "image_url": f"api/projects/{pid}/slides/slide-{i + 1:03d}.png" if png.exists() else None,
         })
     return {
         "id": proj["id"], "name": proj["name"], "state": proj["state"],
         "source_type": proj["source_type"], "stale": proj["stale"],
         "slides": slides, "config": store.read_config(pid),
+        "review": store.read_review(pid),
         "deploy": proj.get("deploy", {}), "log": proj.get("log", ""),
     }
 
 
 @app.get("/api/projects/{pid}/narration")
 async def get_narration(pid: str):
+    """narration.json, plus `review` — what the last reattached PDF changed.
+
+    Slides the reattach moved carry `change: "edited" | "new"`; that is how the
+    Claude Code agent knows which slides to redraft rather than rewriting a deck
+    whose script is mostly still good."""
     if not db.get_project(pid):
         raise HTTPException(404, "not found")
-    return store.read_narration(pid)
+    data = store.read_narration(pid)
+    data["review"] = store.read_review(pid)
+    return data
 
 
 class NarrationBody(BaseModel):
@@ -131,13 +175,22 @@ async def put_narration(pid: str, index: int, body: NarrationBody):
     for s in data.get("slides", []):
         if s["index"] == index:
             s["narration"] = body.narration
+            # Rewriting the narration is what a reattach flag was asking for.
+            s.pop("change", None)
             found = True
             break
     if not found:
         raise HTTPException(404, "slide not found")
     store.write_narration(pid, data)
+    _settle_review(pid, data)
     store.touch_stale(pid)
     return {"ok": True}
+
+
+def _settle_review(pid: str, data: dict) -> None:
+    """Drop the reattach banner once no slide is still flagged."""
+    if not any(s.get("change") for s in data.get("slides", [])):
+        store.set_review(pid, None)
 
 
 class NarrationItem(BaseModel):
@@ -165,12 +218,29 @@ async def put_narration_bulk(pid: str, body: NarrationBulkBody):
             unknown.append(item.index)
             continue
         s["narration"] = item.narration
+        s.pop("change", None)
         updated += 1
     if unknown:
         raise HTTPException(404, f"unknown slide index(es): {unknown}")
     store.write_narration(pid, data)
+    _settle_review(pid, data)
     store.touch_stale(pid)
     return {"ok": True, "updated": updated}
+
+
+class ReviewClearBody(BaseModel):
+    indexes: list[int] | None = None
+
+
+@app.post("/api/projects/{pid}/review/clear")
+async def clear_review(pid: str, body: ReviewClearBody):
+    """Mark reattach-flagged slides as reviewed without changing their narration —
+    the instructor deciding the existing script still fits the edited slide.
+    Omit `indexes` to clear every flag."""
+    if not db.get_project(pid):
+        raise HTTPException(404, "not found")
+    cleared = store.clear_flags(pid, body.indexes)
+    return {"ok": True, "cleared": cleared}
 
 
 class ConfigBody(BaseModel):
@@ -178,6 +248,9 @@ class ConfigBody(BaseModel):
     model: str | None = None
     stability: float | None = None
     similarity_boost: float | None = None
+    style: float | None = None
+    use_speaker_boost: bool | None = None
+    speed: float | None = None
 
 
 @app.put("/api/projects/{pid}/config")
@@ -314,7 +387,18 @@ if config.FRONTEND_DIST.exists():
         async def get_response(self, path, scope):
             resp = await super().get_response(path, scope)
             if resp.status_code == 404:
-                return await super().get_response("index.html", scope)
+                resp = await super().get_response("index.html", scope)
+            # index.html must always revalidate. Vite gives every JS/CSS bundle a
+            # content-hashed name, so those are safe to cache forever — but the
+            # HTML that points at them keeps the same URL, and a viewer that
+            # caches it heuristically (VS Code's Simple Browser and other
+            # embedded webviews do) keeps loading the previous build's assets
+            # after an update, which looks exactly like "the app didn't change".
+            ctype = resp.headers.get("content-type", "")
+            if ctype.startswith("text/html"):
+                resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+            elif "/assets/" in scope.get("path", ""):
+                resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
             return resp
 
     app.mount("/", SPAStatic(directory=str(config.FRONTEND_DIST), html=True), name="spa")
