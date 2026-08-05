@@ -161,7 +161,9 @@ Apply, or Discard. Nothing reaches their calendar until that click.
 - `reason` is a short phrase — why you think this one should change. Always give
   one; a proposal without reasons is one the user has to re-derive themselves.
 - For `update`, set `new_title`, `new_start`, `new_end`, `new_description` as
-  needed; omitted fields keep their current value.
+  needed; omitted fields keep their current value. `new_description` is a full
+  overwrite of the event's description, not an append — carry over anything worth
+  keeping. Send `new_start` and `new_end` together when you change either.
 
 Group related changes into one proposal rather than posting several. Say in chat
 what you proposed and that it needs their confirmation.

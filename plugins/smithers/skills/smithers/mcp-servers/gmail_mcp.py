@@ -23,6 +23,7 @@ import pickle
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Optional
 
 import uvicorn
 from mcp.server.fastmcp import FastMCP
@@ -448,17 +449,28 @@ def add_calendar_event(title: str, start_datetime: str, end_datetime: str,
 
 
 @mcp.tool()
-def update_calendar_event(event_id: str, account: str, title: str,
-                          start_datetime: str, end_datetime: str,
-                          description: str = "") -> str:
-    """Update an existing calendar event's title, times, and description."""
+def update_calendar_event(event_id: str, account: str,
+                          title: Optional[str] = None,
+                          start_datetime: Optional[str] = None,
+                          end_datetime: Optional[str] = None,
+                          description: Optional[str] = None) -> str:
+    """Update an existing calendar event's title, times, and description.
+
+    This is a partial update: a field that is left out keeps whatever the event
+    already has. Only description distinguishes "" from omitted --- passing an
+    empty description clears it, while an empty title or time is treated as
+    "leave alone" rather than sent on to Google, which rejects a blank one."""
     try:
         svc = build("calendar", "v3", credentials=get_credentials(account))
         event = svc.events().get(calendarId="primary", eventId=event_id).execute()
-        event["summary"] = title
-        event["description"] = description
-        event["start"] = {"dateTime": start_datetime, "timeZone": TIMEZONE}
-        event["end"] = {"dateTime": end_datetime, "timeZone": TIMEZONE}
+        if title:
+            event["summary"] = title
+        if description is not None:
+            event["description"] = description
+        if start_datetime:
+            event["start"] = {"dateTime": start_datetime, "timeZone": TIMEZONE}
+        if end_datetime:
+            event["end"] = {"dateTime": end_datetime, "timeZone": TIMEZONE}
         svc.events().update(calendarId="primary", eventId=event_id, body=event).execute()
         return json.dumps({"status": "updated", "account": account, "event_id": event_id})
     except Exception as ex:

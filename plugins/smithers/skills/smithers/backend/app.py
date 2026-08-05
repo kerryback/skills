@@ -836,12 +836,16 @@ async def apply_proposal(proposal_id: str, payload: ApplyPayload):
                 out = json.loads(await _call_connector("delete_calendar_event", {
                     "event_id": c["event_id"], "account": c.get("account", "")}))
             else:
+                # Omitted fields go over as null, not "", so the connector leaves
+                # them alone. Sending "" here used to blank the event's start and
+                # end, which Google rejects --- a proposal that changed only the
+                # title failed outright.
                 out = json.loads(await _call_connector("update_calendar_event", {
                     "event_id": c["event_id"], "account": c.get("account", ""),
-                    "title": c.get("new_title", ""),
-                    "start_datetime": c.get("new_start", ""),
-                    "end_datetime": c.get("new_end", ""),
-                    "description": c.get("new_description", "")}))
+                    "title": c.get("new_title"),
+                    "start_datetime": c.get("new_start"),
+                    "end_datetime": c.get("new_end"),
+                    "description": c.get("new_description")}))
             if isinstance(out, dict) and "error" in out:
                 failed.append({"event_id": c["event_id"], "error": out["error"]})
             else:
