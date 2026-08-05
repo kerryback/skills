@@ -1007,6 +1007,8 @@ body {
 .selbar-count { font-size: .82rem; font-weight: 600; color: #64748b; }
 .selbar-btns { margin-left: auto; display: flex; gap: .35rem; flex-wrap: wrap; }
 .selbar-btns .action-btn { margin: 0; }
+.sec-actions { display: flex; gap: .35rem; flex-wrap: wrap; margin: -.5rem 0 .8rem; }
+.sec-actions .action-btn { margin: 0; }
 .evt-check { width: 15px; height: 15px; accent-color: #1a2744; cursor: pointer; flex-shrink: 0; }
 #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: .65rem 1.1rem; background: #1a2744; color: #fff; border-radius: 8px; font-size: .85rem; z-index: 400; display: none; box-shadow: 0 4px 20px rgba(0,0,0,.3); max-width: 300px; }
 .tm-tabs { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
@@ -1046,8 +1048,10 @@ body {
     <button class="nav-tab" data-sec="section-tasks"   onclick="showSection('section-tasks')">Tasks</button>
     <div class="nav-right">
       <button class="nav-action" id="btn-refresh" onclick="refreshSection()" style="visibility:hidden" title="Refresh">&#8635;</button>
-      <button class="nav-action" onclick="openCompose()" title="Write a new email">&#9993; New Email</button>
-      <button class="nav-action" onclick="openEventModal()" title="Add calendar event">&#128197; Add Event</button>
+      <!-- No New Email or Add Event buttons here. Both lived next to the tabs
+           that already own them: Compose (where Clear starts a blank message)
+           and Calendar (which now carries its own Add Event). A nav button
+           beside the tab it duplicates reads as two ways to do one thing. -->
       <span id="server-dot"></span><span id="server-label">offline</span>
     </div>
   </div>
@@ -1068,6 +1072,9 @@ body {
   </section>
   <section id="section-calendar" class="section">
     <h2>Calendar</h2>
+    <div class="sec-actions">
+      <button class="action-btn" onclick="openEventModal()" title="Add calendar event">&#128197; Add Event</button>
+    </div>
     <div id="cal-proposals"></div>
     <div id="cal-selbar" class="selbar" style="display:none">
       <span class="selbar-count" id="cal-selcount">0 selected</span>
@@ -1097,7 +1104,7 @@ body {
       <input type="hidden" id="cmp-thread-id">
       <input type="hidden" id="cmp-draft-id">
       <div class="cmp-ftr">
-        <button class="btn-cancel" onclick="openCompose()">Clear</button>
+        <button class="btn-cancel" onclick="openCompose()" title="Empty the form and start a new message">Clear</button>
         <button class="btn-ok" onclick="sendEmail()">Send</button>
       </div>
     </div>
