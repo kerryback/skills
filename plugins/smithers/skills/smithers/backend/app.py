@@ -159,6 +159,43 @@ def _save_briefing(overview_html: str) -> str:
 
 _briefing_html, _briefing_generated_at = _load_briefing()
 
+# Set when the app is opened (the launcher posts /api/briefing/refresh-request)
+# and cleared when a new briefing arrives.  The app cannot write the briefing
+# itself --- it has no model --- so all it can do is record that one was asked
+# for, show that in the Overview tab, and let Claude Code answer.
+_briefing_requested_at: str | None = None
+# How long the "refreshing" note stays up before we assume nobody is coming.
+BRIEFING_REQUEST_TTL = 15 * 60
+
+
+def _briefing_refresh_pending() -> bool:
+    if not _briefing_requested_at:
+        return False
+    try:
+        asked = dt_cls.fromisoformat(_briefing_requested_at)
+    except ValueError:
+        return False
+    if (dt_cls.now() - asked).total_seconds() > BRIEFING_REQUEST_TTL:
+        return False
+    # A briefing published after the request answers it.
+    if _briefing_generated_at:
+        try:
+            if dt_cls.fromisoformat(_briefing_generated_at) >= asked:
+                return False
+        except ValueError:
+            pass
+    return True
+
+
+def _briefing_is_stale() -> bool:
+    """True when the saved briefing was not generated today."""
+    if not _briefing_generated_at:
+        return True
+    try:
+        return dt_cls.fromisoformat(_briefing_generated_at).date() != date_cls.today()
+    except ValueError:
+        return True
+
 
 # --- Connector access (the app is itself an MCP client of the connector) -----
 
@@ -473,7 +510,7 @@ async def api_accounts():
 async def publish_briefing(payload: BriefingPayload):
     """Claude Code writes the morning overview here after reading the calendar
     and inbox. The app stores and timestamps it; it generates nothing itself."""
-    global _briefing_html, _briefing_generated_at
+    global _briefing_html, _briefing_generated_at, _briefing_requested_at
     reply = (payload.html or "").strip()
     if not reply:
         raise HTTPException(400, "Empty briefing")
@@ -482,7 +519,29 @@ async def publish_briefing(payload: BriefingPayload):
     _briefing_html = (reply[idx:] if idx >= 0
                       else f"<div class='card'>{html_module.escape(reply)}</div>")
     _briefing_generated_at = _save_briefing(_briefing_html)
+    _briefing_requested_at = None          # the open request is answered
     return {"status": "published", "generated_at": _briefing_generated_at}
+
+
+@app.get("/api/briefing/status")
+async def briefing_status():
+    """Whether the briefing on screen is today's, and whether a refresh has been
+    asked for and not yet answered. The launcher reads this on every open."""
+    return {"generated_at": _briefing_generated_at,
+            "stale": _briefing_is_stale(),
+            "refreshing": _briefing_refresh_pending(),
+            "requested_at": _briefing_requested_at}
+
+
+@app.post("/api/briefing/refresh-request")
+async def request_briefing_refresh():
+    """Record that a fresh briefing was asked for --- the launcher posts this
+    every time Smithers is opened. The app writes nothing itself: it shows
+    'refreshing' on the Overview tab until Claude Code POSTs the new briefing."""
+    global _briefing_requested_at
+    _briefing_requested_at = dt_cls.now().isoformat(timespec="seconds")
+    return {"status": "requested", "requested_at": _briefing_requested_at,
+            "generated_at": _briefing_generated_at, "stale": _briefing_is_stale()}
 
 
 @app.get("/api/tasks")
@@ -565,7 +624,8 @@ async def section_overview():
     # header always shows today's real date and how old the briefing under it
     # is --- a briefing left over from a previous day is then obvious.
     meta = {"date": date_cls.today().strftime("%A, %B %-d, %Y"),
-            "generated_at": _briefing_generated_at}
+            "generated_at": _briefing_generated_at,
+            "refreshing": _briefing_refresh_pending()}
     if _briefing_html:
         overview = re.sub(
             r"<p class=[\"']date-display[\"']>.*?</p>", "", _briefing_html, count=1
@@ -938,6 +998,7 @@ body {
 .ov-meta { min-width: 0; }
 .ov-stamp { font-size: .78rem; color: #94a3b8; margin-top: .15rem; }
 .ov-stamp.stale { color: #b45309; font-weight: 600; }
+.ov-stamp.refreshing { color: #2563eb; font-weight: 600; }
 .ov-hint {
   margin-left: auto; flex-shrink: 0; align-self: center; padding: .3rem .7rem;
   background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 6px;
@@ -1210,10 +1271,15 @@ async function loadSection(id) {
 // Today's date always comes from the server; the stamp underneath says when the
 // briefing below it was built, and turns amber once that is not today.
 function renderOverviewMeta(data) {
-  document.getElementById('overview-date').textContent = data.date || '';
+  if (data.date) document.getElementById('overview-date').textContent = data.date;
   const el = document.getElementById('overview-stamp');
+  // Opening Smithers asks Claude Code for a fresh Overview, so say so while the
+  // old one is still on screen rather than letting it look current.
+  const pending = data.refreshing ? ' — Claude Code is refreshing it now' : '';
   if (!data.generated_at) {
-    el.className = 'ov-stamp'; el.textContent = 'Never generated';
+    el.className = 'ov-stamp' + (data.refreshing ? ' refreshing' : '');
+    el.textContent = data.refreshing ? 'Claude Code is writing your Overview…'
+                                     : 'Never generated';
     return;
   }
   const d = new Date(data.generated_at);
@@ -1221,8 +1287,9 @@ function renderOverviewMeta(data) {
   const stale = d.toDateString() !== new Date().toDateString();
   const when = d.toLocaleString('en-US',
     {weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'});
-  el.className = 'ov-stamp' + (stale ? ' stale' : '');
-  el.textContent = 'Generated ' + when + (stale ? ' — Overview was not generated today' : '');
+  el.className = 'ov-stamp' + (data.refreshing ? ' refreshing' : (stale ? ' stale' : ''));
+  el.textContent = 'Generated ' + when +
+    (pending || (stale ? ' — Overview was not generated today' : ''));
 }
 
 async function refreshSection() {
@@ -1253,6 +1320,8 @@ async function pollBriefing() {
       loaded['section-overview'] = false;
       loadSection('section-overview');
       toast('Overview updated');
+    } else {
+      renderOverviewMeta(d);   // keeps the "refreshing" note in step
     }
     lastStamp = d.generated_at || '';
   } catch {}

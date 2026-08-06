@@ -5,7 +5,10 @@ Invoked by the `smithers` skill. It:
   1. ensures the app environment (venv) exists,
   2. starts the Gmail/Calendar connector on 127.0.0.1:<connector-port> (8800),
   3. starts the FastAPI app on http://127.0.0.1:<port> (default 8020),
-  4. opens the app — in an editor tab when running inside Academic Studio,
+  4. asks for a fresh briefing (POST /api/briefing/refresh-request) — opening
+     Smithers is itself the request; Claude Code answers it by rewriting the
+     Overview,
+  5. opens the app — in an editor tab when running inside Academic Studio,
      otherwise in the system browser.
 
 The app holds the mailbox, calendar, tasks, and drafts. It contains no model and
@@ -22,6 +25,7 @@ Usage:
 Runs in the foreground and keeps both servers alive; stop with Ctrl-C.
 """
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -125,6 +129,28 @@ def preflight() -> bool:
     return False
 
 
+def request_briefing_refresh(base: str) -> None:
+    """Opening Smithers is itself a request for a fresh Overview.
+
+    The app has no model, so it cannot write the briefing --- it just records
+    that one was asked for and shows "refreshing" on the Overview tab. The lines
+    printed here are the instruction Claude Code acts on: it re-reads the
+    calendar and inbox and POSTs a new briefing.
+    """
+    try:
+        req = urllib.request.Request(base + "/api/briefing/refresh-request",
+                                     data=b"", method="POST")
+        with urllib.request.urlopen(req, timeout=5) as r:
+            state = json.loads(r.read().decode("utf-8"))
+    except Exception as ex:
+        log(f"Could not request a briefing refresh ({ex}).")
+        return
+    was = state.get("generated_at") or "never"
+    log(f"BRIEFING REFRESH REQUESTED — the Overview on screen is from {was}.")
+    log("Claude Code: regenerate the briefing now (SKILL.md → 'The morning "
+        "briefing') and POST it to /api/briefing.")
+
+
 def wait_up(url: str, timeout: float = 45.0) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -186,6 +212,9 @@ def main():
                 raise SystemExit(
                     f"The app did not come up on port {args.port}. If that port is "
                     "in use, rerun with --port 8021.")
+
+        if configured:
+            request_briefing_refresh(base)
 
         _publish_url(base)
         if _open_in_editor():

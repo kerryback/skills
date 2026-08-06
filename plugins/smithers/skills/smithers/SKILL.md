@@ -93,6 +93,18 @@ It reuses anything already listening rather than starting a second copy, so
 re-running it is safe. If the app is already up (`GET
 http://127.0.0.1:8020/api/ping` returns `{"status":"ok"}`), just use it.
 
+Opening Smithers is a request for a fresh briefing. The launcher posts
+`/api/briefing/refresh-request` on every open — including when the app was
+already running — and prints `BRIEFING REFRESH REQUESTED`. The app cannot write
+the briefing itself, so that request is yours to answer: as soon as the app is
+up, work through "The morning briefing" below and POST the result, without
+waiting to be asked. Until you do, the Overview tab says Claude Code is
+refreshing it, so the stale briefing underneath is not mistaken for today's.
+Two exceptions: skip it if the mailbox isn't connected yet (finish setup first),
+and don't redo it if you already published a briefing minutes ago in the same
+session — check `GET /api/briefing/status`, which reports `generated_at`,
+`stale`, and `refreshing`.
+
 There is a second, optional entry point for people who want Smithers running all
 day with meeting reminders: `scripts/menubar.py`, a macOS menu-bar launcher that
 starts the same connector and app plus `scripts/reminders.py` (Pushover and
@@ -118,6 +130,7 @@ Read:
 | `GET /api/calendar/event/{event_id}?account=` | Full event detail. |
 | `GET /api/tasks` | The task list. |
 | `GET /api/drafts` | Drafts currently waiting in Compose. |
+| `GET /api/briefing/status` | When the briefing was written, whether it is stale, whether a refresh is pending. |
 
 `/api/inbox`, `/api/search`, `/api/contact`, and `/api/meeting-invitations`
 return short snippets, not message content. Whenever you need to know what a
@@ -193,7 +206,8 @@ message if they asked for several.
 
 ## The morning briefing
 
-When the user asks to be briefed:
+Run this whenever the user asks to be briefed, and once on every open of the app
+(see "Launching") whether or not they asked:
 
 1. `GET /api/calendar` for the next 7 days.
 2. For each event with external attendees, `GET /api/contact?email=` for each

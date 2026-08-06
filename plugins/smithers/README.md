@@ -38,9 +38,12 @@ the button.
 
 ## Using it
 
-The app runs at <http://127.0.0.1:8020>. Ask for a briefing and Claude reads the
-last few days of mail and the coming week, then publishes an overview to the app:
-what needs a reply, what's scheduled, what's outstanding.
+The app runs at <http://127.0.0.1:8020>. Opening Smithers is itself the request
+for a briefing: Claude reads the last few days of mail and the coming week and
+publishes a fresh overview — what needs a reply, what's scheduled, what's
+outstanding — without being asked. While it is writing, the Overview tab says so,
+so yesterday's briefing is never mistaken for today's. Asking for a briefing at
+any other time does the same thing.
 
 "Draft a reply to Kelcie" writes into Compose. You open it, change what you want,
 and send it yourself. "What am I walking into with the 2pm" reads the thread

@@ -22,7 +22,8 @@
     {
       "name": "smithers",
       "source": "./plugins/smithers",
-      "description": "A personal email and calendar desk. Claude Code reads your Gmail and Calendar through a local connector, writes an overview of what\u2019s ahead for the next seven days, and parks drafted replies in a Compose tab you review and send yourself. Claude never sends mail and never deletes events \u2014 those stay your actions in the app. Local-first; state and Google tokens live in ~/.smithers."
+      "version": "1.1.0",
+      "description": "A personal email and calendar desk. Claude Code reads your Gmail and Calendar through a local connector, writes a fresh overview of what\u2019s ahead for the next seven days every time you open the app, and parks drafted replies in a Compose tab you review and send yourself. Claude never sends mail and never deletes events \u2014 those stay your actions in the app. Local-first; state and Google tokens live in ~/.smithers."
     },
     {
       "name": "screenshare",
