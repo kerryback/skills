@@ -46,6 +46,14 @@ export default function GenerateStep({ project, refresh, goTo }) {
   const [voices, setVoices] = useState([])
   const [voicesConfigured, setVoicesConfigured] = useState(true)
 
+  // A voice pasted from the ElevenLabs Voice Library, resolved to its name so
+  // the instructor can see what they pasted. `library` holds the resolved voice
+  // once it is accepted; it is offered in the dropdown alongside the account's.
+  const [libraryId, setLibraryId] = useState('')
+  const [library, setLibrary] = useState(null)
+  const [lookingUp, setLookingUp] = useState(false)
+  const [lookupError, setLookupError] = useState('')
+
   const [savedSnapshot, setSavedSnapshot] = useState(() =>
     JSON.stringify({
       voice_id: cfg.voice_id || DEFAULT_TTS.voice_id,
@@ -79,6 +87,41 @@ export default function GenerateStep({ project, refresh, goTo }) {
       alive = false
     }
   }, [])
+
+  // A voice saved on this deck that the account doesn't list is a library voice
+  // chosen earlier. Resolve it so it reads as a name rather than a bare id.
+  useEffect(() => {
+    if (!voicesConfigured || voices.length === 0) return
+    if (library?.voice_id === voiceId) return
+    if (voices.some((v) => v.voice_id === voiceId)) return
+    let alive = true
+    api
+      .getVoice(voiceId)
+      .then((v) => alive && setLibrary(v))
+      .catch(() => {
+        /* leave it showing the raw id */
+      })
+    return () => {
+      alive = false
+    }
+  }, [voicesConfigured, voices, voiceId, library])
+
+  const lookUpLibraryVoice = async () => {
+    const id = libraryId.trim()
+    if (!id) return
+    setLookingUp(true)
+    setLookupError('')
+    try {
+      const v = await api.getVoice(id)
+      setLibrary(v)
+      setVoiceId(v.voice_id)
+      setLibraryId('')
+    } catch (err) {
+      setLookupError(err.message || 'Could not look up that voice.')
+    } finally {
+      setLookingUp(false)
+    }
+  }
 
   const info = modelInfo(model)
 
@@ -157,12 +200,18 @@ export default function GenerateStep({ project, refresh, goTo }) {
                 >
                   {/* Keep the current value selectable even if it isn't in the
                       fetched list (not loaded yet, or a premade voice usable by
-                      ID that the account's voice list doesn't return). */}
-                  {!voices.some((v) => v.voice_id === voiceId) && (
-                    <option value={voiceId}>
-                      {voices.length === 0 ? voiceId : `Current: ${voiceId}`}
-                    </option>
-                  )}
+                      ID that the account's voice list doesn't return). Once it
+                      resolves against the Voice Library it shows as a name. */}
+                  {!voices.some((v) => v.voice_id === voiceId) &&
+                    (library?.voice_id === voiceId ? (
+                      <option value={voiceId}>
+                        {library.name} (Voice Library)
+                      </option>
+                    ) : (
+                      <option value={voiceId}>
+                        {voices.length === 0 ? voiceId : `Current: ${voiceId}`}
+                      </option>
+                    ))}
                   {voices.map((v) => (
                     <option key={v.voice_id} value={v.voice_id}>
                       {v.name}
@@ -179,6 +228,64 @@ export default function GenerateStep({ project, refresh, goTo }) {
               </div>
             )}
           </Field>
+
+          {/* The account lists ~20 premade voices plus your own clones. The rest
+              of ElevenLabs' library — thousands of voices — is browsable only on
+              their site, which is also where you can audition them. Paste the id
+              of one here; text-to-speech takes a library voice directly, with no
+              add-to-my-voices step. */}
+          {voicesConfigured && (
+            <div className="-mt-2">
+              <div className="flex gap-2">
+                <input
+                  className={inputClass}
+                  value={libraryId}
+                  placeholder="Or paste a Voice Library ID"
+                  onChange={(e) => {
+                    setLibraryId(e.target.value)
+                    setLookupError('')
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      lookUpLibraryVoice()
+                    }
+                  }}
+                />
+                <Button
+                  variant="subtle"
+                  onClick={lookUpLibraryVoice}
+                  loading={lookingUp}
+                  disabled={!libraryId.trim() || lookingUp}
+                >
+                  Use
+                </Button>
+              </div>
+
+              {lookupError ? (
+                <p className="mt-1.5 text-xs text-red-600">{lookupError}</p>
+              ) : library && library.voice_id === voiceId ? (
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                  <span className="font-semibold text-navy">{library.name}</span>
+                  {library.labels.length > 0 && (
+                    <span>{library.labels.join(' · ')}</span>
+                  )}
+                  {library.preview_url && (
+                    <audio
+                      controls
+                      src={library.preview_url}
+                      className="h-7 max-w-[13rem]"
+                    />
+                  )}
+                </div>
+              ) : (
+                <p className="mt-1.5 text-xs text-muted">
+                  Browse and audition at elevenlabs.io/app/voice-library, then
+                  copy the voice's ID.
+                </p>
+              )}
+            </div>
+          )}
 
           <Field label="Model" hint="Expressiveness vs. speed">
             <div className="relative">

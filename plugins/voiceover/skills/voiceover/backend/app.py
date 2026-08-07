@@ -314,6 +314,71 @@ async def tts_voices():
     return {"configured": True, "voices": voices}
 
 
+@app.get("/api/tts/voices/{voice_id}")
+async def tts_voice(voice_id: str):
+    """Resolve one voice id to its name, labels and preview clip.
+
+    Two lookups, because neither alone covers both cases. /v1/voices/{id}
+    answers only for voices the account already holds — its premade set and its
+    clones — and 400s on anything else. The Voice Library is reached instead
+    through /v1/shared-voices, whose `search` matches an id exactly.
+
+    Text-to-speech accepts a library voice directly, with no add-to-my-voices
+    step; ElevenLabs files it under the account the first time it is used, so
+    after one build it also answers to the first lookup.
+    """
+    voice_id = voice_id.strip()
+    if not config.ELEVENLABS_API_KEY:
+        raise HTTPException(400, "Add your ElevenLabs API key first.")
+    headers = {"xi-api-key": config.ELEVENLABS_API_KEY}
+    import httpx
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        try:
+            r = await client.get(
+                f"https://api.elevenlabs.io/v1/voices/{voice_id}",
+                headers=headers)
+            if r.status_code == 200:
+                v = r.json()
+                labels = v.get("labels") or {}
+                return {
+                    "voice_id": v.get("voice_id", voice_id),
+                    "name": v.get("name", ""),
+                    "category": v.get("category", ""),
+                    "preview_url": v.get("preview_url", ""),
+                    # Only the labels worth showing, in the order they read best.
+                    "labels": [labels[k] for k in
+                               ("gender", "age", "accent", "language", "use_case")
+                               if labels.get(k)],
+                }
+            if r.status_code in (401, 403):
+                raise HTTPException(400, "ElevenLabs rejected your API key.")
+
+            # Not one of the account's own — try the Voice Library.
+            r = await client.get(
+                "https://api.elevenlabs.io/v1/shared-voices",
+                params={"search": voice_id, "page_size": 1}, headers=headers)
+        except httpx.HTTPError as e:
+            raise HTTPException(502, f"Could not reach ElevenLabs: {e}")
+    if r.status_code != 200:
+        raise HTTPException(502, f"ElevenLabs voice error ({r.status_code})")
+    # `search` is a match, not a lookup, so confirm the hit is the id we asked
+    # for rather than a near miss.
+    hits = [v for v in r.json().get("voices", [])
+            if v.get("voice_id") == voice_id]
+    if not hits:
+        raise HTTPException(404, f"No ElevenLabs voice with id {voice_id}.")
+    v = hits[0]
+    return {
+        "voice_id": v["voice_id"],
+        "name": v.get("name", ""),
+        "category": v.get("category", ""),
+        "preview_url": v.get("preview_url", ""),
+        "labels": [v[k] for k in
+                   ("gender", "age", "accent", "language", "use_case")
+                   if v.get(k)],
+    }
+
+
 @app.post("/api/projects/{pid}/build", status_code=202)
 async def build(pid: str):
     if not db.get_project(pid):

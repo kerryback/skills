@@ -64,6 +64,7 @@ Narration and Generate are both reachable from there (no drafting state).
 - `PUT  /api/projects/{id}/narration/{index}` `{narration}` → 200 (autosave one slide; marks stale)
 - `PUT  /api/projects/{id}/config` `{voice_id,model,stability,similarity_boost,style,use_speaker_boost,speed}` → 200 (all fields optional; marks stale)
 - `GET  /api/tts/voices` → `{configured, voices:[{voice_id,name,category}]}` (account's ElevenLabs voices; `configured:false` when no key)
+- `GET  /api/tts/voices/{voice_id}` → `{voice_id,name,category,preview_url,labels[]}` (resolve one id — the account first, then the Voice Library; 404 when no such voice)
 - `POST /api/projects/{id}/build` → 202; render deck + TTS (only changed slides) + render video
 - `GET  /api/projects/{id}/events` → SSE stream of `{stage,state,done,total,message}` for the active job
 - `GET  /api/projects/{id}/slides/{file}` → PNG (slide image)
@@ -110,6 +111,13 @@ The Preview step plays `GET /api/projects/{id}/video` in a `<video>` tag; there 
 - Voices: fetched live from the account via `GET /api/tts/voices` (ElevenLabs),
   so account + cloned voices appear. Default `voice_id` is `EXAVITQu4vr4xnSDxMaL`
   ("Sarah"). When no `ELEVENLABS_API_KEY` is set the picker prompts for one.
+- The rest of ElevenLabs' Voice Library (~15k voices) is not listed — it is only
+  browsable and auditionable on their site. The picker takes a pasted id instead
+  and resolves it through `GET /api/tts/voices/{voice_id}`, showing the name,
+  labels and preview clip before the instructor commits to it. Text-to-speech
+  accepts a library voice directly, with no add-to-my-voices step; ElevenLabs
+  files it under the account on first use, so afterwards it is in the dropdown
+  and the paste field is not needed again for that voice.
 - Models (`model_id`): `eleven_v3` (default, most expressive),
   `eleven_multilingual_v2` (even, understated), `eleven_turbo_v2_5` (faster),
   `eleven_flash_v2_5` (fastest). v3 is the default because the v2 family's even

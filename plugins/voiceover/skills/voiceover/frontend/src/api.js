@@ -72,6 +72,9 @@ export const api = {
 
   // ---- ElevenLabs voices (account + cloned) for the Generate picker ----
   listVoices: () => request('api/tts/voices'),
+  // Resolve a pasted Voice Library id to its name, labels and preview clip.
+  // Works for any voice in the library, not only the account's own.
+  getVoice: (voiceId) => request(`api/tts/voices/${encodeURIComponent(voiceId)}`),
 
   // ---- ElevenLabs API key (paste-in-app; validated + persisted server-side) ----
   ttsStatus: () => request('api/tts/status'),
