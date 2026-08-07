@@ -61,7 +61,11 @@ A full-bleed dark slide that opens a part of the talk:
 
 ## Callouts and boxes
 
-- `.explainer` — small muted note under content (a caption/aside).
+- `.explainer` — small muted note under content (a caption/aside). Ration it.
+  One per slide across a whole deck is the most common way a cardstock deck goes
+  flat: the notes stop reading as notes, and the audience learns to skip the
+  last line. About one content slide in four. If it carries real weight, put it
+  in the content; if it is narration, put it in `::: {.notes}`.
 - `.highlight-box` — emphasized callout with a blue left border.
 - `.info-box` — light panel with an optional `[Title]{.box-title}`.
 - `.comparison-table` — wraps a Markdown table in the styled comparison look.
@@ -147,6 +151,24 @@ Inline shell command styling: `[quarto render deck.qmd]{.shell-cmd}`.
 - `{.centered-statement}` — large centered single statement, no heading rule.
 - `{.quote-slide}` — dark quote slide (`.quote-text`, `.quote-source`,
   `.amber` for emphasis inside the quote).
+
+## Keeping the deck varied
+
+Cards are the workhorse, which is exactly why a deck drifts into using nothing
+else. The components below the fold — `.stat-cards`, `.timeline`, `.tool-grid`,
+`.comparison-table`, `.six-cards`, `.quote-slide`, and the image layouts — are
+what give a deck more than one silhouette. They tend to go unused not because
+they don't fit but because `.two-cards` always sort of fits.
+
+Two checks worth running on a finished deck:
+
+- Count the wrappers. If one layout carries more than about a third of the
+  content slides, or the same wrapper runs three slides in a row, rework the
+  middle one. Look for content that is really a number (`.stat-cards`), a
+  sequence (`.step-flow`, `.timeline`), or a genuine A-vs-B (`.comparison-table`).
+- Count the pictures. A deck about software with no screenshots in it is
+  describing something it could be showing. Check `images/` for assets the
+  slides never reference.
 
 ## Quick chooser
 

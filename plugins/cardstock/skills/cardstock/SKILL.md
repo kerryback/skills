@@ -90,20 +90,43 @@ Speaker narration goes in a `::: {.notes}` block on a slide. Add it when the
 deck will be presented or narrated — it also feeds the `tutorbot-builder` skill
 if the user later wants a narrated, self-paced version.
 
-### 3 — Render and preview
+### 3 — Render and check every slide
 ```
 quarto render <name>.qmd          # produces <name>.html
 ```
-Open `<name>.html` in a browser to review. In Code mode you can take a
-screenshot to inspect layout. Watch for overflow: fix a dense slide with the
-`.shrink` class, by splitting it into two `##` slides, or by moving detail into
-`::: {.notes}`.
+Reading the `.qmd` will not tell you whether a slide fits. Serve the rendered
+deck over HTTP (reveal decks do not run from `file://`), then screenshot each
+slide at 1920×1080 by navigating to `<url>#/<n>` for `n` from 0 through the
+slide count, and tile the results into one contact sheet. A clipped caption, an
+image that came out too small to read, or a wall of unreadable body text is
+obvious in the tiles and invisible in the source. Then open the few slides that
+look wrong at full size to confirm.
 
-### 4 — Export (optional)
+Fix a dense slide with `.shrink`, by splitting it into two `##` slides, or by
+moving detail into `::: {.notes}`. Note that `.shrink` only fixes *vertical*
+overflow — a slide that is too wide needs a different layout.
+
+### 4 — Say what would make it better
+Do not stop at "it renders." Once the draft is whole, read it as a sequence and
+tell the user, unprompted, what would raise it — a few concrete lines, not a
+survey of everything possible:
+
+- Layouts that repeat, and what to put in their place.
+- Claims the deck asserts but could show: a screenshot of the real tool, a real
+  number from the user's own data, a chart instead of four bullets.
+- Assets already on hand and going unused — check the deck's `images/` folder
+  against what the slides actually reference.
+- Anything running long, thin, or duplicated against a companion deck.
+
+Name the slide, name the change, and offer to make it. When a suggestion needs
+something only the user can supply — a screenshot of their screen, a file, a
+number — say so and offer to do the parts that do not.
+
+### 5 — Export (optional)
 For PDF, PNG images, or an image-based PPTX, read `references/export.md` and use
 decktape on the rendered `.html`.
 
-### 5 — Offer a structural overview (longer decks)
+### 6 — Offer a structural overview (longer decks)
 Once a deck runs long, or after a round of restructuring, offer to generate a
 standalone HTML overview: every section and slide with a one-sentence
 description, plus flags for duplication, overflowing slides, agenda drift, and
@@ -122,6 +145,11 @@ These keep decks rendering cleanly — follow them exactly:
 - A card is a color variant on its own (e.g. `::: {.card-blue}`). There is no
   `.card` class — never pair it with a variant. Each variant carries its own
   padding, rounding, and shadow; inside a wrapper the wrapper restyles it.
+  One exception: a deck built against an older vendored copy of the theme may
+  style `.card` inside the grid wrappers and need `::: {.card .card-blue}`.
+  Before editing an existing deck, open its `.scss` and follow whichever
+  convention that file and its slides already use — a mismatch silently drops
+  the card's padding and title styling.
 - Use **relative paths** for images and assets (`![](images/chart.png)`), never
   absolute paths — the deck folder moves.
 - Preserve the user's wording. When restyling or restructuring a deck, change
@@ -140,6 +168,29 @@ These keep decks rendering cleanly — follow them exactly:
   instead.** A parent bullet with sub-bullets almost always wants to be a card
   per parent, with the sub-points as the card's short bullets or lines. Nested
   lists look cramped and default; cards don't.
+- Vary the layout from slide to slide. A deck whose content slides are mostly
+  the same wrapper reads as a form someone filled in — on a projector the
+  audience sees one silhouette for the whole session. `.two-cards` is the easy
+  default and so the one to ration: no single layout on more than about a third
+  of the content slides, and never the same wrapper three slides running. The
+  same goes for color — a deck that only ever reaches for `.card-blue` and
+  `.card-amber` has a two-color palette by accident, not by choice.
+- Spend the whole vocabulary. `.stat-cards`, `.timeline`, `.comparison-table`,
+  `.step-flow`, `.six-cards`, `.tool-grid`, `.quote-slide`, and the image
+  layouts exist so that a deck has more than one shape. Before writing a fourth
+  `.two-cards`, check `references/components.md` for something that fits the
+  content better — a headline number, a sequence, a real comparison.
+- Use `.explainer` sparingly. It is an aside, and an aside under every slide is
+  not an aside — it flattens emphasis and teaches the audience to skip the last
+  line. Roughly one content slide in four is plenty. If the note is
+  load-bearing, it belongs in the slide's content; if it is narration, it
+  belongs in `::: {.notes}`.
+- A picture is the strongest change of pace available. A screenshot of the real
+  thing, a diagram, or a chart breaks a run of card slides better than any card
+  variant can. If the deck describes software the user actually runs, show it
+  running: `{.top-aligned}` for a wide capture, `{.image-slide}` for a centered
+  one. Prefer a real artifact over a described one — a slide that asserts the
+  tool is good is weaker than one that shows its output.
 - Open major parts with a divider slide: `## Section Title {.section-divider}`.
 - **Prefer SVG or matplotlib images for figures and charts.** The canvas is
   1920×1080 and often projected, so vector art stays sharp — generate charts
