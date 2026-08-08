@@ -36,8 +36,15 @@ the one to edit. `version` is a small integer used for offering brand-new plugin
 once; leave it alone unless you are adding a plugin.
 
 Comparison is a plain numeric dotted compare, no semver prerelease handling, and
-an entry whose `latestVersion` does not match `/^\d[0-9.]*$/` is silently dropped
-from the catalog.
+an entry whose `latestVersion` is present but does not match `/^\d[0-9.]*$/` is
+silently dropped from the catalog.
+
+Leaving the field out entirely is a different thing and is fine. The validator
+only objects to a malformed value, so an entry with no `latestVersion` is kept
+and shows as v1. That is the intended state for standalone-skill entries that
+pin a git tag rather than a release — the `econ-*` skills, for instance — and
+`scripts/sync-plugin-versions.mjs` in `academic_code` deliberately leaves them
+alone. Do not "fix" them by adding a version.
 
 ## Marketplace manifest
 
