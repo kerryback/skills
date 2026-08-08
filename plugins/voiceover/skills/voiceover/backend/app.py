@@ -1,124 +1,86 @@
 """Voiceover Builder — FastAPI backend. Implements CONTRACT.md."""
 import asyncio
 import json
-import re
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from builderlib import config, convert, db, events, jobs, store
+from builderlib import config, db, deck, events, jobs, sources, store
 
 db.init()
 
-# No auth: this runs locally as a skill, launched per-file by the instructor.
-# (If it later becomes a deployable multi-user app, reintroduce a login gate.)
+# No auth: this runs locally as a skill, launched per-deck by the instructor.
 app = FastAPI(title="Voiceover Builder")
 
 
 # --------------------------------------------------------------------------- #
-# Projects
+# Decks
 # --------------------------------------------------------------------------- #
-def _project_summary(p: dict) -> dict:
+def _summary(p: dict) -> dict:
     return {
         "id": p["id"], "name": p["name"], "state": p["state"],
-        "source_type": p["source_type"], "stale": p["stale"],
-        "deploy": {"url": p.get("deploy", {}).get("url", "")},
+        "source_type": p["source_type"], "stale": store.is_stale(p["id"]),
+        "files": store.file_status(p["id"]),
         "updated_at": p["updated_at"],
     }
 
 
 @app.get("/api/projects")
 async def list_projects():
-    return [_project_summary(p) for p in db.list_projects()]
+    return [_summary(p) for p in db.list_projects()]
 
 
-def _start_project(filename: str, name: str, data: bytes) -> dict:
-    """Create (or reopen) a deck from raw bytes and kick off conversion. Shared by
-    the multipart upload and the skill launcher's from-path call.
-
-    A deck's identity is its name: the project id is a filesystem-safe slug of the
-    deck's filename stem, and its folder (config.project_dir) is named the same.
-    Launching the same deck again reopens that folder — conversion preserves any
-    existing narration slide-by-slide (see jobs._convert), so an edited deck keeps
-    its script and the video can be regenerated."""
-    try:
-        source_type = convert.detect_source_type(filename)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    ext = Path(filename).suffix.lower()
-    stem = Path(filename or "deck").stem
-    pid = _deck_slug(stem)
-    pdir = config.project_dir(pid)
-    pdir.mkdir(parents=True, exist_ok=True)
-    source_path = pdir / f"{pid}{ext}"
-    source_path.write_bytes(data)
-    proj = db.get_project(pid)
-    if proj is None:
-        proj = db.create_project(pid, name or stem, source_type, "uploaded")
-    jobs.start_conversion(pid, source_path, source_type)
-    return _project_summary(proj)
-
-
-def _deck_slug(name: str) -> str:
-    """Filesystem-safe, human-readable deck id/folder name from a deck filename."""
-    return re.sub(r"[^A-Za-z0-9._-]+", "-", (name or "deck")).strip("-.") or "deck"
+class OpenBody(BaseModel):
+    source: str
+    pdf: str | None = None
+    name: str | None = None
 
 
 @app.post("/api/projects")
-async def create_project(file: UploadFile = File(...), name: str = Form(...)):
-    return _start_project(file.filename or "deck.pdf", name, await file.read())
+async def open_deck(body: OpenBody):
+    """Open (or reopen) a deck from two files already on disk: the source the
+    instructor writes — .qmd or .pptx, which is where the speaker notes live —
+    and the PDF exported from it, which is where the slide images come from.
 
-
-class FromPathBody(BaseModel):
-    path: str
-    name: str | None = None
-    project: str | None = None
-
-
-@app.post("/api/projects/from-path")
-async def create_project_from_path(body: FromPathBody):
-    """Create a project from a file already on disk. The skill launcher uses this
-    so the instructor never uploads through the browser.
-
-    `project` reattaches the file to an existing deck instead of deriving the deck
-    id from the filename — for an edited deck saved under a new name, which would
-    otherwise start a second deck from scratch."""
-    src = Path(body.path).expanduser()
+    Nothing is uploaded and nothing is copied: the deck folder records the two
+    paths and re-reads them on every load, so editing the deck in Quarto or
+    PowerPoint and reloading is the whole edit cycle.
+    """
+    src = Path(body.source).expanduser()
     if not src.is_file():
-        raise HTTPException(400, f"file not found: {src}")
-    if body.project:
-        return _reingest_into(body.project, src.name, src.read_bytes())
-    return _start_project(src.name, body.name or src.stem, src.read_bytes())
-
-
-def _reingest_into(pid: str, filename: str, data: bytes) -> dict:
-    """Replace an existing deck's PDF and re-convert it in place.
-
-    The deck keeps its id, its config, and its narration: conversion matches the
-    new slides against the previous ingest and carries the script (and the audio)
-    across, flagging what changed (see jobs._reingest)."""
-    proj = db.get_project(pid)
-    if not proj:
-        raise HTTPException(404, "not found")
+        raise HTTPException(400, f"Deck source not found: {src}")
     try:
-        source_type = convert.detect_source_type(filename)
+        sources.detect(src)
     except ValueError as e:
         raise HTTPException(400, str(e))
-    pdir = config.project_dir(pid)
-    pdir.mkdir(parents=True, exist_ok=True)
-    source_path = pdir / f"{pid}{Path(filename).suffix.lower()}"
-    source_path.write_bytes(data)
-    jobs.start_conversion(pid, source_path, source_type)
-    return _project_summary(db.get_project(pid))
+    pdf = Path(body.pdf).expanduser() if body.pdf else deck.resolve_pdf(src)
+    if not pdf.is_file():
+        raise HTTPException(
+            400,
+            f"No PDF found at {pdf}. Export {src.name} to PDF and save it next "
+            "to the deck with the same name.")
+
+    pid = deck.deck_slug(src.stem)
+    config.project_dir(pid).mkdir(parents=True, exist_ok=True)
+    if db.get_project(pid) is None:
+        db.create_project(pid, body.name or src.stem, None, "loading")
+    db.update_project(pid, source_path=str(src.resolve()),
+                      pdf_path=str(pdf.resolve()))
+    jobs.start_load(pid)
+    return _summary(db.get_project(pid))
 
 
-@app.post("/api/projects/{pid}/reingest")
-async def reingest(pid: str, file: UploadFile = File(...)):
-    """Reattach an edited PDF to this deck (the Upload step's Reattach button)."""
-    return _reingest_into(pid, file.filename or "deck.pdf", await file.read())
+@app.post("/api/projects/{pid}/reload", status_code=202)
+async def reload_deck(pid: str):
+    """Re-read the deck and its PDF from disk — after editing the notes, or
+    after re-exporting the PDF."""
+    if not db.get_project(pid):
+        raise HTTPException(404, "not found")
+    jobs.start_load(pid)
+    return {"started": True}
 
 
 @app.get("/api/projects/{pid}")
@@ -126,121 +88,40 @@ async def get_project(pid: str):
     proj = db.get_project(pid)
     if not proj:
         raise HTTPException(404, "not found")
-    narration = store.read_narration(pid)
     slides = []
-    for s in narration.get("slides", []):
+    for s in sorted(store.read_slides(pid).get("slides", []),
+                    key=lambda s: s["index"]):
         i = s["index"]
         png = store.slides_dir(pid) / f"slide-{i + 1:03d}.png"
         slides.append({
             "index": i,
             "title": s.get("title", ""),
-            "narration": s.get("narration", ""),
-            # "edited" | "new" when a reattached PDF moved this slide's content.
-            "change": s.get("change") or None,
-            "image_url": f"api/projects/{pid}/slides/slide-{i + 1:03d}.png" if png.exists() else None,
+            "notes": s.get("notes", ""),
+            "image_url": (f"api/projects/{pid}/slides/slide-{i + 1:03d}.png"
+                          if png.exists() else None),
         })
     return {
         "id": proj["id"], "name": proj["name"], "state": proj["state"],
-        "source_type": proj["source_type"], "stale": proj["stale"],
+        "source_type": proj["source_type"], "stale": store.is_stale(pid),
+        "files": store.file_status(pid),
         "slides": slides, "config": store.read_config(pid),
-        "review": store.read_review(pid),
-        "deploy": proj.get("deploy", {}), "log": proj.get("log", ""),
+        "log": proj.get("log", ""),
     }
 
 
-@app.get("/api/projects/{pid}/narration")
-async def get_narration(pid: str):
-    """narration.json, plus `review` — what the last reattached PDF changed.
-
-    Slides the reattach moved carry `change: "edited" | "new"`; that is how the
-    Claude Code agent knows which slides to redraft rather than rewriting a deck
-    whose script is mostly still good."""
+@app.get("/api/projects/{pid}/notes")
+async def get_notes(pid: str):
+    """The deck's speaker notes, slide by slide, with each slide's text for
+    context. This is what Claude Code reads before drafting; it writes back by
+    editing the deck source, not by calling the app."""
     if not db.get_project(pid):
         raise HTTPException(404, "not found")
-    data = store.read_narration(pid)
-    data["review"] = store.read_review(pid)
-    return data
-
-
-class NarrationBody(BaseModel):
-    narration: str
-
-
-@app.put("/api/projects/{pid}/narration/{index}")
-async def put_narration(pid: str, index: int, body: NarrationBody):
-    if not db.get_project(pid):
-        raise HTTPException(404, "not found")
-    data = store.read_narration(pid)
-    found = False
-    for s in data.get("slides", []):
-        if s["index"] == index:
-            s["narration"] = body.narration
-            # Rewriting the narration is what a reattach flag was asking for.
-            s.pop("change", None)
-            found = True
-            break
-    if not found:
-        raise HTTPException(404, "slide not found")
-    store.write_narration(pid, data)
-    _settle_review(pid, data)
-    store.touch_stale(pid)
-    return {"ok": True}
-
-
-def _settle_review(pid: str, data: dict) -> None:
-    """Drop the reattach banner once no slide is still flagged."""
-    if not any(s.get("change") for s in data.get("slides", [])):
-        store.set_review(pid, None)
-
-
-class NarrationItem(BaseModel):
-    index: int
-    narration: str
-
-
-class NarrationBulkBody(BaseModel):
-    slides: list[NarrationItem]
-
-
-@app.put("/api/projects/{pid}/narration")
-async def put_narration_bulk(pid: str, body: NarrationBulkBody):
-    """Set narration for many slides at once. The Claude Code agent uses this to
-    write a full first draft (and multi-slide revisions) in a single call."""
-    if not db.get_project(pid):
-        raise HTTPException(404, "not found")
-    data = store.read_narration(pid)
-    by_index = {s["index"]: s for s in data.get("slides", [])}
-    updated = 0
-    unknown = []
-    for item in body.slides:
-        s = by_index.get(item.index)
-        if s is None:
-            unknown.append(item.index)
-            continue
-        s["narration"] = item.narration
-        s.pop("change", None)
-        updated += 1
-    if unknown:
-        raise HTTPException(404, f"unknown slide index(es): {unknown}")
-    store.write_narration(pid, data)
-    _settle_review(pid, data)
-    store.touch_stale(pid)
-    return {"ok": True, "updated": updated}
-
-
-class ReviewClearBody(BaseModel):
-    indexes: list[int] | None = None
-
-
-@app.post("/api/projects/{pid}/review/clear")
-async def clear_review(pid: str, body: ReviewClearBody):
-    """Mark reattach-flagged slides as reviewed without changing their narration —
-    the instructor deciding the existing script still fits the edited slide.
-    Omit `indexes` to clear every flag."""
-    if not db.get_project(pid):
-        raise HTTPException(404, "not found")
-    cleared = store.clear_flags(pid, body.indexes)
-    return {"ok": True, "cleared": cleared}
+    meta = store.read_meta(pid)
+    return {
+        "source": meta.get("source_path", ""),
+        "source_type": meta.get("source_type"),
+        "slides": store.read_slides(pid).get("slides", []),
+    }
 
 
 class ConfigBody(BaseModel):
@@ -258,10 +139,12 @@ async def put_config(pid: str, body: ConfigBody):
     if not db.get_project(pid):
         raise HTTPException(404, "not found")
     merged = store.write_config(pid, body.model_dump())
-    store.touch_stale(pid)
     return {"ok": True, "config": merged}
 
 
+# --------------------------------------------------------------------------- #
+# ElevenLabs
+# --------------------------------------------------------------------------- #
 @app.get("/api/tts/status")
 async def tts_status():
     """Whether an ElevenLabs key is configured. Cheap (no network call) so the
@@ -284,7 +167,7 @@ async def set_tts_key(body: KeyBody):
     async with httpx.AsyncClient(timeout=20.0) as client:
         try:
             r = await client.get("https://api.elevenlabs.io/v1/user",
-                                  headers={"xi-api-key": key})
+                                 headers={"xi-api-key": key})
         except httpx.HTTPError as e:
             raise HTTPException(502, f"Could not reach ElevenLabs: {e}")
     if r.status_code in (401, 403):
@@ -379,10 +262,18 @@ async def tts_voice(voice_id: str):
     }
 
 
+# --------------------------------------------------------------------------- #
+# Build
+# --------------------------------------------------------------------------- #
 @app.post("/api/projects/{pid}/build", status_code=202)
 async def build(pid: str):
-    if not db.get_project(pid):
+    proj = db.get_project(pid)
+    if not proj:
         raise HTTPException(404, "not found")
+    if proj["state"] == "loading":
+        raise HTTPException(409, "The deck is still loading.")
+    if proj["state"] == "load_failed":
+        raise HTTPException(409, "The deck could not be loaded — fix that first.")
     jobs.start_build(pid)
     return {"started": True}
 
@@ -434,13 +325,12 @@ async def slide_image(pid: str, fname: str):
 # --------------------------------------------------------------------------- #
 @app.get("/api/projects/{pid}/video")
 async def project_video(pid: str):
-    proj = db.get_project(pid)
-    if not proj:
+    if not db.get_project(pid):
         raise HTTPException(404, "not found")
     path = store.video_path(pid)
     if not path.exists():
         raise HTTPException(404, "not built yet")
-    # Served inline so the Preview step's <video> can stream/seek it (Range-aware).
+    # Served inline so the viewer's <video> can stream/seek it (Range-aware).
     return FileResponse(path, media_type="video/mp4")
 
 

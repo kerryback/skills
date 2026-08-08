@@ -4,27 +4,29 @@
 Invoked by the `voiceover` skill. It:
   1. ensures the app environment (venv) and the built frontend exist,
   2. starts the FastAPI app on http://127.0.0.1:<port> (default 8010),
-  3. if a PDF is given, opens (or reopens) that deck and converts it, then
-     deep-links the browser into it; otherwise opens the home screen, where the
-     instructor picks an existing deck or uploads a new one.
+  3. opens the given deck — a .qmd or .pptx, paired with the PDF exported from
+     it — and deep-links the browser into it.
 
-Each deck lives in its own folder under {project}/.voiceover/decks/<deck-name>
-(the project folder = --output-dir), so relaunching the same deck from the same
-folder reopens it with its narration intact.
+A deck is two files that stay where you keep them: the source you write, which
+is where the speaker notes live, and the PDF, which is where the slide images
+come from. Neither is copied into the app. Editing the deck and pressing Reload
+is the whole edit cycle.
 
-The finished MP4 and transcript are written straight to --output-dir (default: the
-current working directory) each time a build completes, so the outputs sit in the
-project folder where they are easy to find — there is no in-app download.
+Each deck's working files live under {project}/.voiceover/decks/<deck-name>
+(the project folder = --output-dir). The finished MP4 and transcript are written
+straight to --output-dir (default: the current working directory) each time a
+build completes, so the outputs sit where they are easy to find — there is no
+in-app download.
 
 Usage:
-  python scripts/skill_launch.py [/path/to/deck.pdf] [--output-dir DIR] [--port 8010]
+  python scripts/skill_launch.py /path/to/deck.qmd [/path/to/deck.pdf]
+                                 [--output-dir DIR] [--port 8010]
 
 Runs in the foreground and keeps the server alive; stop it with Ctrl-C.
 """
 import argparse
 import json
 import os
-import shutil
 import subprocess
 import sys
 import time
@@ -37,8 +39,10 @@ REPO = Path(__file__).resolve().parent.parent
 BACKEND = REPO / "backend"
 FRONTEND = REPO / "frontend"
 
+SOURCE_EXTS = {".qmd", ".md", ".pptx"}
+
 # Runtime state lives OUTSIDE the skill directory so that (a) reinstalling or
-# updating the skill never wipes projects, and (b) the package source stays clean
+# updating the skill never wipes decks, and (b) the package source stays clean
 # for repackaging. Override the data location with DATA_DIR in the environment.
 # The Python environment is shared and built once, in the user's home.
 HOME_DIR = Path(os.environ.get("VOICEOVER_HOME", Path.home() / ".voiceover"))
@@ -70,15 +74,29 @@ def log(msg):
 
 def ensure_backend_venv() -> Path:
     py = VENV_DIR / "bin" / "python"
-    if py.exists():
+    stamp = VENV_DIR / "requirements.sha"
+    want = _requirements_sha()
+    if py.exists() and stamp.exists() and stamp.read_text().strip() == want:
         return py
-    log("Creating the app environment + installing requirements (first run only)…")
-    VENV_DIR.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run([sys.executable, "-m", "venv", str(VENV_DIR)], check=True)
-    subprocess.run([str(py), "-m", "pip", "install", "-q", "--upgrade", "pip"], check=True)
+    if not py.exists():
+        log("Creating the app environment + installing requirements (first run only)…")
+        VENV_DIR.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run([sys.executable, "-m", "venv", str(VENV_DIR)], check=True)
+        subprocess.run([str(py), "-m", "pip", "install", "-q", "--upgrade", "pip"],
+                       check=True)
+    else:
+        # The skill updated and now wants different packages.
+        log("Updating the app environment…")
     subprocess.run([str(py), "-m", "pip", "install", "-q", "-r",
                     str(BACKEND / "requirements.txt")], check=True)
+    stamp.write_text(want)
     return py
+
+
+def _requirements_sha() -> str:
+    import hashlib
+    return hashlib.sha256(
+        (BACKEND / "requirements.txt").read_bytes()).hexdigest()
 
 
 def ensure_frontend_built():
@@ -92,18 +110,13 @@ def ensure_frontend_built():
 
 
 def preflight():
-    """Surface missing prerequisites up front, with a clear message, instead of a
-    mid-build crash. Neither is fatal: narration can be drafted without Quarto or a
-    key — they're only needed for the Generate/video step."""
-    if shutil.which("quarto") is None:
-        log("WARNING: 'quarto' not found on PATH. The deck can't be rendered into a "
-            "video until Quarto is installed (https://quarto.org/docs/get-started/). "
-            "You can still draft and edit narration now.")
+    """Surface the one missing prerequisite that matters, up front. Reading the
+    deck and reviewing the notes work without a key — it is needed only to
+    generate audio."""
     if not os.environ.get("ELEVENLABS_API_KEY"):
-        log("WARNING: ELEVENLABS_API_KEY not found in the environment. The Generate "
-            "step (text-to-speech) will fail until it is set (a free key from "
-            "elevenlabs.io). Narration itself is written by Claude Code and needs "
-            "no key.")
+        log("NOTE: ELEVENLABS_API_KEY not found in the environment. You can paste "
+            "a key in the app (banner at the top); until then, Generate will not "
+            "run. Reading the deck and reviewing the notes work without it.")
 
 
 def wait_up(base: str, timeout: float = 45.0) -> bool:
@@ -119,48 +132,81 @@ def wait_up(base: str, timeout: float = 45.0) -> bool:
     return False
 
 
-def create_project(base: str, pdf: Path) -> str:
-    body = json.dumps({"path": str(pdf), "name": pdf.stem}).encode()
-    req = urllib.request.Request(base + "/api/projects/from-path", data=body,
+def open_deck(base: str, source: Path, pdf: Path) -> str:
+    body = json.dumps({"source": str(source), "pdf": str(pdf),
+                       "name": source.stem}).encode()
+    req = urllib.request.Request(base + "/api/projects", data=body,
                                  headers={"Content-Type": "application/json"},
                                  method="POST")
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.load(resp)["id"]
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.load(resp)["id"]
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", "replace")
+        try:
+            detail = json.loads(detail).get("detail", detail)
+        except ValueError:
+            pass
+        raise SystemExit(f"Could not open the deck: {detail}")
 
 
-def wait_converted(base: str, pid: str, timeout: float = 180.0):
+def wait_loaded(base: str, pid: str, timeout: float = 180.0):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         with urllib.request.urlopen(f"{base}/api/projects/{pid}", timeout=10) as resp:
-            state = json.load(resp)["state"]
-        if state == "converting_failed":
-            raise SystemExit("Conversion failed — is the file a real PDF slide deck?")
-        if state not in ("uploaded", "converting"):
+            proj = json.load(resp)
+        if proj["state"] == "load_failed":
+            # Not fatal: the app shows the reason and offers Reload, which is
+            # where a fixable mismatch gets fixed.
+            log(f"Could not load the deck: {proj.get('log', '').splitlines()[0]}")
+            return
+        if proj["state"] != "loading":
+            n = len(proj.get("slides", []))
+            narrated = sum(1 for s in proj.get("slides", []) if s.get("notes"))
+            log(f"Loaded {n} slides, {narrated} with speaker notes.")
             return
         time.sleep(1.0)
-    log("Still converting; opening anyway.")
+    log("Still loading; opening anyway.")
+
+
+def resolve_inputs(args) -> tuple:
+    source = Path(args.deck).expanduser().resolve()
+    if not source.is_file():
+        raise SystemExit(f"Deck not found: {source}")
+    if source.suffix.lower() not in SOURCE_EXTS:
+        raise SystemExit(
+            f"Not a deck source: {source.name}. Point this at the deck you wrote "
+            "— a .qmd (Quarto reveal.js) or a .pptx — not at the PDF. The PDF is "
+            "used too, alongside it.")
+    if args.pdf:
+        pdf = Path(args.pdf).expanduser().resolve()
+    else:
+        pdf = source.with_suffix(".pdf")
+    if not pdf.is_file():
+        raise SystemExit(
+            f"No PDF at {pdf}. Export {source.name} to PDF and save it next to "
+            "the deck with the same name (or pass its path as the second "
+            "argument).")
+    return source, pdf
 
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("deck", help="path to the deck you wrote: .qmd or .pptx")
     ap.add_argument("pdf", nargs="?",
-                    help="path to a PDF slide deck. Omit to open the home screen, "
-                         "where you can pick an existing deck or upload a new one.")
+                    help="path to the PDF exported from it (default: the same "
+                         "name with a .pdf extension, next to the deck)")
     ap.add_argument("--output-dir", default=os.getcwd(),
                     help="where finished .mp4/.txt are saved (default: cwd)")
     ap.add_argument("--port", type=int, default=8010)
     args = ap.parse_args()
 
-    pdf = None
-    if args.pdf:
-        pdf = Path(args.pdf).expanduser().resolve()
-        if not pdf.is_file() or pdf.suffix.lower() != ".pdf":
-            raise SystemExit(f"Not a PDF file: {pdf}")
+    source, pdf = resolve_inputs(args)
     output_dir = Path(args.output_dir).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    # Per-project data (each deck's narration/audio/working files) lives beside the
-    # project, in {project}/.voiceover/decks/<name>, so a project folder is
-    # self-contained. Finished MP4s + transcripts go to the project folder itself.
+    # Per-deck working files (page images, audio) live beside the project, in
+    # {project}/.voiceover/decks/<name>, so a project folder is self-contained.
+    # Finished MP4s + transcripts go to the project folder itself.
     data_dir = Path(os.environ.get("DATA_DIR") or (output_dir / ".voiceover")).expanduser()
 
     py = ensure_backend_venv()
@@ -169,7 +215,6 @@ def main():
 
     env = dict(os.environ)
     env["VOICEOVER_OUTPUT_DIR"] = str(output_dir)
-    # Per-project decks + working files live in {project}/.voiceover.
     env["DATA_DIR"] = str(data_dir)
     # Don't scatter __pycache__ into the (possibly read-only / packaged) skill dir.
     env["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -185,16 +230,12 @@ def main():
             raise SystemExit(
                 f"Server did not come up on port {args.port}. If that port is in "
                 "use, rerun with a different one, e.g. --port 8011.")
-        if pdf is not None:
-            pid = create_project(base, pdf)
-            log(f"Opened deck '{pid}' from {pdf.name}. Converting…")
-            wait_converted(base, pid)
-            url = f"{base}/?project={pid}"
-        else:
-            url = base
-            log("No deck given — opening the home screen (pick a deck or upload one).")
-        # Publish the URL so an editor extension (if any) can open it in an in-editor
-        # browser tab; harmless everywhere else.
+        pid = open_deck(base, source, pdf)
+        log(f"Opened '{pid}' from {source.name} + {pdf.name}.")
+        wait_loaded(base, pid)
+        url = f"{base}/?project={pid}"
+        # Publish the URL so an editor extension (if any) can open it in an
+        # in-editor browser tab; harmless everywhere else.
         try:
             HOME_DIR.mkdir(parents=True, exist_ok=True)
             (HOME_DIR / "app-url").write_text(url, encoding="utf-8")

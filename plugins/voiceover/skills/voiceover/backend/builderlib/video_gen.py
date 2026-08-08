@@ -78,7 +78,7 @@ def generate(pid: str, progress=None) -> Path:
     Slide index i uses slides/slide-{i+1:03d}.png and the audio file the manifest
     maps to index i (silent if none). Raises if there are no slide images.
     """
-    slides = sorted(store.read_narration(pid)["slides"], key=lambda s: s["index"])
+    slides = sorted(store.read_slides(pid)["slides"], key=lambda s: s["index"])
     slides_dir = store.slides_dir(pid)
     audio_dir = store.audio_dir(pid)
 

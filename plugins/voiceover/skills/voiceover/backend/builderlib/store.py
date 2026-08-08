@@ -1,6 +1,11 @@
-"""Per-project file I/O: narration.json, config.json, meta.json, paths."""
+"""Per-deck file I/O: slides.json, config.json, meta.json, paths.
+
+A deck folder holds only what the app generates — the parsed slides, the page
+PNGs, the TTS audio and the settings. The deck itself (the .qmd/.pptx and its
+PDF) stays where the instructor keeps it; meta.json records the paths.
+"""
+import hashlib
 import json
-import shutil
 from pathlib import Path
 
 from . import config, db
@@ -16,9 +21,9 @@ DEFAULT_CONFIG = {
     "model": "eleven_v3",
     "stability": 0.5,
     "similarity_boost": 0.75,
-    # Expression controls, exposed in the Generate step. These match ElevenLabs'
-    # own server-side defaults, so they change nothing until the instructor moves
-    # them — the point of sending them is that the knobs become reachable.
+    # Expression controls. These match ElevenLabs' own server-side defaults, so
+    # they change nothing until the instructor moves them — the point of sending
+    # them is that the knobs become reachable.
     "style": 0.0,
     "use_speaker_boost": True,
     "speed": 1.0,
@@ -29,8 +34,8 @@ def pdir(pid: str) -> Path:
     return config.project_dir(pid)
 
 
-def narration_path(pid: str) -> Path:
-    return pdir(pid) / "narration.json"
+def slides_path(pid: str) -> Path:
+    return pdir(pid) / "slides.json"
 
 
 def config_path(pid: str) -> Path:
@@ -41,12 +46,12 @@ def meta_path(pid: str) -> Path:
     return pdir(pid) / "meta.json"
 
 
-def deck_dir(pid: str) -> Path:
-    return pdir(pid) / "deck"
-
-
 def audio_dir(pid: str) -> Path:
     return pdir(pid) / "audio"
+
+
+def slides_dir(pid: str) -> Path:
+    return pdir(pid) / "slides"
 
 
 def output_base(pid: str) -> str:
@@ -69,142 +74,40 @@ def transcript_path(pid: str) -> Path:
     return pdir(pid) / "transcript.txt"
 
 
-def slides_dir(pid: str) -> Path:
-    return pdir(pid) / "slides"
-
-
-def references_dir(pid: str) -> Path:
-    return pdir(pid) / "references"
-
-
-def list_references(pid: str) -> list:
-    """Teacher-uploaded reference files the narration agent may read."""
-    return _list_files(references_dir(pid))
-
-
-def _list_files(d: Path) -> list:
-    if not d.exists():
-        return []
-    return [{"name": p.name, "size": p.stat().st_size}
-            for p in sorted(d.iterdir()) if p.is_file()]
-
-
-def hashes_path(pid: str) -> Path:
-    return pdir(pid) / "audio_hashes.json"
-
-
-def fingerprints_path(pid: str) -> Path:
-    """Per-slide content shas from the last ingest. Kept out of narration.json so
-    the narration payload the agent reads stays about narration."""
-    return pdir(pid) / "fingerprints.json"
-
-
-def read_fingerprints(pid: str) -> list:
-    p = fingerprints_path(pid)
+# --------------------------------------------------------------------------- #
+# Slides (parsed from the source deck)
+# --------------------------------------------------------------------------- #
+def read_slides(pid: str) -> dict:
+    p = slides_path(pid)
     if p.exists():
         try:
-            return json.loads(p.read_text(encoding="utf-8")).get("slides", [])
-        except Exception:
-            return []
-    return []
-
-
-def write_fingerprints(pid: str, slides: list) -> None:
-    fingerprints_path(pid).write_text(
-        json.dumps({"slides": slides}, indent=2), encoding="utf-8")
-
-
-def remap_audio(pid: str, pairs: dict) -> None:
-    """Move each carried-over slide's MP3 and audio hash to its new index.
-
-    Both are keyed by slide index, so a reattached deck that inserts or drops a
-    page would otherwise leave every later slide holding its neighbour's audio —
-    consistent with itself, and wrong. Anything no new slide claims is dropped, so
-    a deleted slide's audio does not linger.
-
-    Staged through a temp dir because the renames overlap: shifting slides 3..n
-    down by one walks each file onto its neighbour.
-    """
-    adir = audio_dir(pid)
-    old_hashes = {}
-    if hashes_path(pid).exists():
-        try:
-            old_hashes = json.loads(hashes_path(pid).read_text(encoding="utf-8"))
-        except Exception:
-            old_hashes = {}
-    if not adir.exists() and not old_hashes:
-        return
-
-    staged = adir.parent / "audio.remap"
-    shutil.rmtree(staged, ignore_errors=True)
-    staged.mkdir(parents=True, exist_ok=True)
-    new_hashes = {}
-    for new_i, old_i in sorted(pairs.items()):
-        src = adir / f"slide-{old_i + 1:03d}.mp3"
-        if src.exists():
-            shutil.copyfile(src, staged / f"slide-{new_i + 1:03d}.mp3")
-        h = old_hashes.get(str(old_i))
-        if h:
-            new_hashes[str(new_i)] = h
-
-    shutil.rmtree(adir, ignore_errors=True)
-    staged.rename(adir)
-    hashes_path(pid).write_text(json.dumps(new_hashes, indent=2), encoding="utf-8")
-
-
-def set_review(pid: str, review: dict | None) -> None:
-    """Record (or clear) what the last reattach changed, for the UI banner."""
-    meta = read_meta(pid)
-    if review:
-        meta["review"] = review
-    else:
-        meta.pop("review", None)
-    meta_path(pid).write_text(json.dumps(meta, indent=2, ensure_ascii=False),
-                              encoding="utf-8")
-
-
-def read_review(pid: str) -> dict:
-    return read_meta(pid).get("review") or {}
-
-
-def clear_flags(pid: str, indexes: list | None = None) -> int:
-    """Drop the `change` flag from slides the instructor (or the agent) has dealt
-    with. `indexes` None clears every flag. Returns how many were cleared."""
-    data = read_narration(pid)
-    wanted = None if indexes is None else set(indexes)
-    cleared = 0
-    for s in data.get("slides", []):
-        if s.get("change") and (wanted is None or s["index"] in wanted):
-            s.pop("change", None)
-            cleared += 1
-    if cleared:
-        write_narration(pid, data)
-        if not any(s.get("change") for s in data.get("slides", [])):
-            set_review(pid, None)
-    return cleared
-
-
-def read_narration(pid: str) -> dict:
-    p = narration_path(pid)
-    if p.exists():
-        return json.loads(p.read_text(encoding="utf-8"))
+            return json.loads(p.read_text(encoding="utf-8"))
+        except ValueError:
+            return {"slides": []}
     return {"slides": []}
 
 
-def write_narration(pid: str, data: dict) -> None:
-    narration_path(pid).write_text(
-        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+def write_slides(pid: str, slides: list) -> None:
+    slides_path(pid).write_text(
+        json.dumps({"slides": slides}, indent=2, ensure_ascii=False),
+        encoding="utf-8")
 
 
+# --------------------------------------------------------------------------- #
+# Config
+# --------------------------------------------------------------------------- #
 def read_config(pid: str) -> dict:
     p = config_path(pid)
     cfg = dict(DEFAULT_CONFIG)
     if p.exists():
-        cfg.update(json.loads(p.read_text(encoding="utf-8")))
+        try:
+            cfg.update(json.loads(p.read_text(encoding="utf-8")))
+        except ValueError:
+            pass
     return cfg
 
 
-def write_config(pid: str, cfg: dict) -> None:
+def write_config(pid: str, cfg: dict) -> dict:
     merged = read_config(pid)
     merged.update({k: v for k, v in cfg.items() if v is not None})
     config_path(pid).write_text(
@@ -212,21 +115,83 @@ def write_config(pid: str, cfg: dict) -> None:
     return merged
 
 
+# --------------------------------------------------------------------------- #
+# Meta
+# --------------------------------------------------------------------------- #
 def read_meta(pid: str) -> dict:
     p = meta_path(pid)
     if p.exists():
-        return json.loads(p.read_text(encoding="utf-8"))
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except ValueError:
+            return {}
     return {}
 
 
-def set_deck_name(pid: str, name: str) -> None:
+def update_meta(pid: str, **fields) -> None:
+    db.update_project(pid, **fields)
+
+
+def source_paths(pid: str) -> tuple:
+    """(source, pdf) as Paths, or (None, None) if the deck has no record yet."""
     meta = read_meta(pid)
-    meta["deck_name"] = name
-    meta_path(pid).write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+    src, pdf = meta.get("source_path"), meta.get("pdf_path")
+    return (Path(src) if src else None, Path(pdf) if pdf else None)
 
 
-def deck_name(pid: str) -> str:
-    return read_meta(pid).get("deck_name", "deck")
+def _mtime(path: Path | None) -> float:
+    try:
+        return path.stat().st_mtime if path else 0.0
+    except OSError:
+        return 0.0
+
+
+def record_files(pid: str) -> None:
+    """Snapshot the two files' mtimes, so a later edit shows up as changed."""
+    src, pdf = source_paths(pid)
+    db.update_project(pid, source_mtime=_mtime(src), pdf_mtime=_mtime(pdf))
+
+
+def file_status(pid: str) -> dict:
+    """Whether either file has been touched since the last load, and whether the
+    PDF predates the deck it is supposed to have come from — the quiet failure
+    where new notes get narrated over old slides."""
+    meta = read_meta(pid)
+    src, pdf = source_paths(pid)
+    src_now, pdf_now = _mtime(src), _mtime(pdf)
+    return {
+        "source": src.name if src else "",
+        "pdf": pdf.name if pdf else "",
+        "source_dir": str(src.parent) if src else "",
+        "source_missing": bool(src and not src.is_file()),
+        "pdf_missing": bool(pdf and not pdf.is_file()),
+        "source_changed": bool(src_now and src_now > meta.get("source_mtime", 0) + 0.5),
+        "pdf_changed": bool(pdf_now and pdf_now > meta.get("pdf_mtime", 0) + 0.5),
+        # A minute of slack: exporting the PDF right after saving the deck is the
+        # normal order, and clock resolution shouldn't raise a false alarm.
+        "pdf_older_than_source": bool(src_now and pdf_now and pdf_now < src_now - 60),
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Build signature — is the rendered video still the one these notes describe?
+# --------------------------------------------------------------------------- #
+def build_signature(pid: str) -> str:
+    """A sha over everything that determines the output: every slide's notes, in
+    order, plus the voice settings. Comparing it to the signature stored at build
+    time answers "is this video current?" without tracking edits one by one."""
+    slides = sorted(read_slides(pid).get("slides", []), key=lambda s: s["index"])
+    cfg = read_config(pid)
+    parts = [f"{s['index']}:{s.get('notes', '')}" for s in slides]
+    parts += [f"{k}={cfg.get(k)}" for k in sorted(DEFAULT_CONFIG)]
+    return hashlib.sha256("\x00".join(parts).encode("utf-8")).hexdigest()
+
+
+def is_stale(pid: str) -> bool:
+    proj = db.get_project(pid)
+    if not proj or proj.get("state") != "built":
+        return False
+    return proj.get("build_sig", "") != build_signature(pid)
 
 
 def set_state(pid: str, state: str, log: str = None) -> None:
@@ -234,9 +199,3 @@ def set_state(pid: str, state: str, log: str = None) -> None:
     if log is not None:
         fields["log"] = log
     db.update_project(pid, **fields)
-
-
-def touch_stale(pid: str) -> None:
-    proj = db.get_project(pid)
-    if proj and proj["state"] == "built":
-        db.update_project(pid, stale=True)

@@ -20,11 +20,10 @@ def _meta_path(pid: str):
 
 def _normalize(meta: dict) -> dict:
     """Fill in defaults so every project dict has a stable shape."""
-    meta.setdefault("stale", False)
-    meta["stale"] = bool(meta.get("stale"))
     meta.setdefault("log", "")
-    meta.setdefault("deploy", {})
     meta.setdefault("source_type", None)
+    meta.setdefault("source_path", "")
+    meta.setdefault("pdf_path", "")
     return meta
 
 
@@ -82,8 +81,6 @@ def update_project(pid: str, **fields) -> None:
     meta = _read(pid)
     if meta is None:
         return
-    if "stale" in fields:
-        fields["stale"] = bool(fields["stale"])
     meta.update(fields)
     meta["updated_at"] = time.time()
     _write(pid, meta)

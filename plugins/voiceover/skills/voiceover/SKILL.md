@@ -1,175 +1,140 @@
 ---
 name: voiceover
 description: >-
-  Turn a PDF slide deck into a narrated MP4 video plus a narration transcript.
-  Use when an instructor wants to narrate/voice a slide deck, "make a narrated
-  video from this PDF", "add AI voiceover to these slides", or "turn this deck
-  into a video with a transcript". Invoke it on a PDF file (or with no file to open
-  the app's home screen): it launches a local app (http://127.0.0.1:8010) where you
-  (Claude Code) draft the per-slide narration and the instructor picks a voice and
-  generates the video; the finished .mp4 and .txt are saved to the instructor's
-  working directory. Each deck is saved by name and can be reopened to edit and
-  regenerate; an edited PDF can be reattached, and only the slides that actually
-  changed are redrafted and re-voiced. Requires an ElevenLabs API key and quarto
-  installed.
+  Turn a slide deck into a narrated MP4 video plus a transcript, and draft the
+  deck's speaker notes. Use when an instructor wants to narrate/voice a deck,
+  "make a narrated video from these slides", "add AI voiceover to this deck",
+  "write speaker notes for this presentation", or "turn this lecture into a
+  video". Works on a Quarto reveal.js .qmd or a PowerPoint .pptx, paired with a
+  PDF exported from it: the notes come from the deck, the slide images from the
+  PDF. You (Claude Code) draft the speaker notes by editing the deck itself;
+  a local app (http://127.0.0.1:8010) shows the slides next to their notes and
+  is where the instructor picks a voice and generates. The finished .mp4 and
+  .txt are saved to the instructor's working directory. Requires an ElevenLabs
+  API key.
 ---
 
 # voiceover
 
 Two roles, don't conflate them:
 - The instructor runs this local app (on their own machine) to author the video.
-  You, Claude Code, write the narration; the instructor reviews it, picks a voice,
-  and generates. The port, the ElevenLabs key, and quarto all matter here.
+  You, Claude Code, write the speaker notes; the instructor reviews them, picks a
+  voice, and generates. The port and the ElevenLabs key matter here.
 - Students run nothing. They receive two files — `<name>.mp4` (the narrated video)
   and `<name>.txt` (the transcript) — and view/read them like any other course
   material. No app, no server, no localhost, no login.
 
-The narration is written by you through the app's API, not by an LLM baked into the
-app — the app makes no model calls of its own. The finished files land in the
-instructor's working directory; the instructor distributes them to students.
+## A deck is two files
 
-## Prerequisites — check first, offer to install what's missing
+The instructor keeps both, in their own folder:
 
-Before launching, verify these and proactively offer to install or set anything
-that's missing. Don't just launch and let it fail later.
+| file | what it gives | edited by |
+| --- | --- | --- |
+| `lecture-3.qmd` or `lecture-3.pptx` | the speaker notes, slide by slide | you, or the instructor in Quarto / PowerPoint |
+| `lecture-3.pdf` | the slide images used in the video | re-exported from the deck |
 
-- Quarto (renders the deck for the video). Check with `command -v quarto` (or
-  `quarto --version`). If it's missing, tell the instructor and offer to install
-  it from https://quarto.org/docs/get-started/; do the install if they agree.
-  Narration drafting works without Quarto, but the Generate step needs it.
-- `ELEVENLABS_API_KEY` in the environment (text-to-speech, Generate step only).
-  Check with `printenv ELEVENLABS_API_KEY`. If it's empty, offer to help set it:
-  they create a free key at elevenlabs.io, then you help export
-  `ELEVENLABS_API_KEY` in their shell profile (or their `~/.env`) so it persists.
-  Narration itself needs no key — you write it.
-- Python is already present (it runs the launcher), and the first launch sets up a
-  small Python environment automatically. ffmpeg is not needed — it ships with the
-  Python dependencies. The frontend ships prebuilt, so Node is not required.
+The app copies neither. It reads them, and re-reads them whenever anyone presses
+Reload. The notes live in the deck, which means they are also the notes the
+instructor sees in PowerPoint's presenter view or reveal's speaker view — the
+same deck can be presented live and shipped as a video.
 
-If Quarto or the key is missing and the instructor just wants to start drafting,
-you can still launch — narration works — but say clearly that the Generate step
-won't run until the missing piece is in place. The launcher also prints these
-warnings at startup as a backstop.
+There is no notes editor in the app, on purpose. Quarto and PowerPoint already
+have one, and the deck file is the single copy.
+
+## Prerequisites — check first, offer to fix
+
+- `ELEVENLABS_API_KEY` in the environment (text-to-speech, generation only).
+  Check with `printenv ELEVENLABS_API_KEY`. If it's empty, say so and offer to
+  help: they create a free key at elevenlabs.io, then either paste it into the
+  app's banner (it is validated and persisted) or you help export
+  `ELEVENLABS_API_KEY` in their shell profile. Drafting notes and reviewing them
+  need no key.
+- Python is already present (it runs the launcher), and the first launch sets up
+  a small Python environment automatically. Quarto is NOT required — the app
+  renders nothing. ffmpeg is not needed either; it ships with the Python
+  dependencies. The frontend ships prebuilt, so Node is not required.
 
 ## What to do
 
-The launcher lives in this skill's own directory. Below, `<skill-dir>` is the
-"Base directory for this skill" reported when the skill is invoked; use that
-absolute path. `<port>` defaults to 8010.
+`<skill-dir>` below is the "Base directory for this skill" reported when the
+skill is invoked; use that absolute path. `<port>` defaults to 8010.
 
-1. Run the prerequisite checks above and offer to fix anything missing.
+1. Identify the two files. The instructor names a deck — take the `.qmd` or
+   `.pptx`, not the PDF. Look for the PDF next to it with the same stem. If it
+   isn't there, ask them to export it (Quarto: render, then print to PDF with
+   `pdf-separate-fragments: false`; PowerPoint: File ▸ Export ▸ PDF) — the app
+   cannot make the images without it.
 
-2. Identify the deck. If the instructor named a PDF, use it (only `.pdf` — export
-   PowerPoint to PDF first). If they just want to start the app — to reopen an
-   existing deck or upload one in the browser — launch with no file.
+   If they hand you a PDF and nothing else, say what's missing: a PDF has no
+   speaker notes, so there is nowhere for the narration to live. Ask for the
+   deck it came from.
 
-3. Launch the app in the background from the instructor's current directory (so
+2. Launch the app in the background from the instructor's current directory (so
    the finished files save there):
 
    ```
-   python3 "<skill-dir>/scripts/skill_launch.py" "<absolute path to the PDF>"   # a specific deck
-   python3 "<skill-dir>/scripts/skill_launch.py"                                # home screen
+   python3 "<skill-dir>/scripts/skill_launch.py" "<absolute path to the .qmd or .pptx>"
+   python3 "<skill-dir>/scripts/skill_launch.py" "<deck>" "<pdf>"   # PDF named differently
    ```
 
-   Run it in the background — it starts a long-lived local server. The first launch
-   sets up the app environment, so it takes a little longer.
-   - With a PDF: the launcher prints `Open: http://127.0.0.1:<port>/?project=<deck>`,
-     where `<deck>` is the deck's id (a slug of its filename). Note it.
-   - With no PDF: it opens the home screen. When the instructor uploads or picks a
-     deck there, get its id from `GET http://127.0.0.1:<port>/api/projects` (the
-     most recently updated entry).
+   Run it in the background — it starts a long-lived local server. The first
+   launch sets up the app environment, so it takes a little longer. It prints
+   `Open: http://127.0.0.1:<port>/?project=<deck>`; note the deck id.
 
-   Decks are saved by name under `{project}/.voiceover/decks/<deck>` (the project
-   folder is where the skill was launched). Launching the same deck again from the
-   same folder reopens it — existing narration is preserved.
+3. Read the deck. `GET http://127.0.0.1:<port>/api/projects/<deck>/notes` returns
+   `{ "slides": [ { "index": 0, "title": "…", "slide_text": "…", "notes": "…" }, … ] }`
+   — indexes 0-based, one per slide, matched one-to-one with the PDF's pages.
+   Draft from `slide_text`; it is far cheaper than rendering images. Only when a
+   slide's `slide_text` is empty or clearly misses the visual content (a chart,
+   a diagram, an all-image slide) read that one page's image at
+   `GET …/api/projects/<deck>/slides/slide-<NNN>.png` (1-based, zero-padded).
 
-4. Draft (or revise) the narration yourself. This is the heart of the skill — do
-   not wait for the instructor and do not expect the app to draft anything.
-   - Work from the extracted slide text, not the PDF images. Once the deck has
-     converted, get the slides:
-     `GET http://127.0.0.1:<port>/api/projects/<deck>/narration` returns
-     `{ "slides": [ { "index": 0, "title": "…", "slide_text": "…", "narration": "…" }, … ] }`
-     (indexes 0-based, one per PDF page; poll until slides appear if it is still
-     converting). Each slide's `slide_text` is the page's text — draft from that.
-     This is far faster than rendering the whole PDF as images; do NOT read the
-     whole PDF up front.
-   - Only when a slide's `slide_text` is empty or clearly missing the visual
-     content (a chart, diagram, or all-image slide) read just that one page's
-     image — the app serves it at
-     `GET http://127.0.0.1:<port>/api/projects/<deck>/slides/slide-<NNN>.png`
-     (NNN is the 1-based, zero-padded page number, e.g. slide-003.png), or read
-     that single page of the PDF. Don't render pages whose text is enough.
-   - If narration is already present (a reopened deck), leave it unless the
-     instructor asks for changes — or unless slides come back flagged, which is
-     the reattached-deck case in step 5. If it is empty (a new deck), write
-     spoken narration for every slide following the style rules below — in one
-     pass.
-   - Save the whole draft in one call (don't PUT slide by slide):
-     `PUT http://127.0.0.1:<port>/api/projects/<deck>/narration` with body
-     `{ "slides": [ { "index": 0, "narration": "…" }, … ] }`.
-     It appears in the instructor's browser within a few seconds (the Narration
-     step polls). To revise a single slide later, PUT
-     `/api/projects/<deck>/narration/<index>` with `{ "narration": "…" }`.
+   If the state is `load_failed`, the deck and the PDF disagree about how many
+   slides there are. The message says which file claims what and what usually
+   causes it. Fix that with the instructor before drafting — everything after the
+   first divergence would be narration attached to the wrong picture.
 
-5. When the instructor edits the PDF and reattaches it, redraft only what
-   changed. They can hand the edited deck back two ways: the Reattach edited PDF
-   button on the app's Upload step, or by asking you to relaunch the skill on the
-   edited file. Relaunching only reopens the same deck if the filename is
-   unchanged — if they saved it under a new name, POST
-   `/api/projects/from-path` with `{"path": "…", "project": "<deck>"}` so it
-   reattaches to the existing deck instead of starting a second one.
+4. Write the notes into the deck itself.
 
-   Either way the app matches the new slides against the old ones by content, so
-   narration and already-generated audio follow their slides through insertions
-   and deletions. `GET …/narration` then comes back with:
-   - `review` — `{total, unchanged, edited, new, removed, suspect_rerender}`.
-   - a `change` field of `"edited"` or `"new"` on each slide that moved. Slides
-     without it are untouched: leave them alone.
+   For a `.qmd`, edit the file: each slide takes a
+   ```
+   ::: {.notes}
+   Spoken narration here.
+   :::
+   ```
+   block. Normal file editing — you can see the whole deck, so write the notes
+   where they belong.
 
-   Redraft every flagged slide without being asked, then tell the instructor what
-   you changed. An `edited` slide still holds its old script — read the slide's
-   new `slide_text` and rewrite it; a `new` slide is empty. Read the neighbours
-   too: the narration is one continuous lecture, so an inserted or deleted slide
-   usually needs the seam on either side of it adjusted even though those slides
-   are unflagged. Send the whole revision in one bulk PUT. Writing a slide's
-   narration clears its flag automatically.
+   For a `.pptx`, use the helper (a .pptx is zipped XML and can't be edited as
+   text):
+   ```
+   echo '{"0": "…", "1": "…"}' | ~/.voiceover/venv/bin/python "<skill-dir>/scripts/deck_notes.py" write "<deck.pptx>"
+   ```
+   Keys are 0-based slide indexes; slides you leave out are untouched. The same
+   script reads notes (`deck_notes.py read <deck>`) if the app isn't running.
 
-   One exception: if `suspect_rerender` is true, stop and ask first. It means
-   most slides came back with identical text but a different rendering, which
-   almost always means the PDF was re-exported rather than rewritten — redrafting
-   the whole deck would throw away a good script and re-synthesize every slide
-   for nothing. Ask the instructor what they actually changed, and redraft only
-   that.
+   Then `POST http://127.0.0.1:<port>/api/projects/<deck>/reload` so the app
+   picks the notes up — or just tell the instructor to press Reload. Notes
+   already present are the instructor's; leave them alone unless asked.
 
-6. Hand off with a clear invitation. Once the draft is in, tell the instructor —
-   in your own words, in plain language — how to work with it. Make sure they know
-   there are two ways to change the script and that both are welcome:
-   - Edit any slide's narration directly in the app (it autosaves), or
-   - Just tell you what to change — "tighten slide 3", "make slide 5 warmer",
-     "add a worked example on the Gordon-growth slide" — and you'll revise it.
-   Then describe the rest of the flow: when it reads well they go to Generate, pick
-   a voice (ElevenLabs; default "Sarah"), and build; then Preview to watch. Each
-   build writes `<deck-name>.mp4` and `<deck-name>.txt` to their project folder.
-   Say too that if they end up editing the slides themselves, they can reattach
-   the new PDF (Upload step, or hand it to you) and keep everything the edit
-   didn't touch. Leave the launcher running while they work; stop it with Ctrl-C
-   when done.
+5. Hand off with a clear invitation. Tell the instructor, in your own words:
+   the notes are on their deck and visible in the app at the URL; they can change
+   any of them by editing the deck (Quarto, or PowerPoint's notes pane) and
+   pressing Reload, or by telling you — "tighten slide 3", "warmer on the intro",
+   "add a worked example on the Gordon-growth slide" — and you'll rewrite them.
+   When it reads well they pick a voice and press Generate; the video appears on
+   the same screen and `<deck>.mp4` + `<deck>.txt` are written to their folder.
 
-   For example, you might say: "I've drafted the narration — it's on the Narration
-   step at <url>. Read it over. You can edit any slide right in the app, or just
-   tell me what to change (e.g. 'tighten slide 3' or 'warmer tone on the intro')
-   and I'll do it. When it sounds right, open Generate, pick a voice, and click
-   build; Preview lets you watch it. The finished video and transcript save to this
-   folder."
+   Say too that if they edit the slides themselves, they should re-export the PDF
+   — the app warns when the PDF is older than the deck, and refuses to build if
+   the slide counts stop matching.
 
-7. Revisions come to you, in chat. When the instructor asks for changes ("tighten
-   slide 3", "warmer tone", "add a worked example on the terminal-value slide"),
-   edit the affected slides via the narration API. Keep the style rules. Invite
-   them to keep iterating — either way, by editing directly or by asking you.
-   Mention that if they edit the PDF itself, they can reattach it and keep the
-   script they already have.
+6. Revisions come to you, in chat. Edit the deck, reload, tell them what changed.
+   Keep the style rules below. Editing a slide's notes changes only that slide's
+   audio: everything else is reused from the last run, so a one-slide fix costs
+   one slide of synthesis.
 
-8. If the server does not come up (port already in use), rerun with a different
+7. If the server does not come up (port already in use), rerun with a different
    port, e.g. `--port 8011`, and use that port in the API calls.
 
 ## Narration style rules
@@ -182,3 +147,9 @@ Write what a good lecturer would say aloud, not slide captions.
   like "Let's", "Now", "Next", "So", "Moving on", or "Let's look at".
 - Never say "this slide" or "welcome"; narrate the content directly.
 - Stay faithful to what each slide actually shows.
+
+One caveat worth raising with the instructor once: these notes are both the
+script the video speaks and the notes they'd see while presenting. Reminders to
+themselves ("slow down here", "ask about 2008") get read aloud. If they want
+notes for presenting that are not narration, this is the wrong tool for that
+deck.

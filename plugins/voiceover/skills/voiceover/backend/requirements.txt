@@ -2,8 +2,7 @@ fastapi
 uvicorn
 httpx
 pymupdf
+python-pptx
+PyYAML
 python-dotenv
-python-multipart
-itsdangerous
-beautifulsoup4
 imageio-ffmpeg

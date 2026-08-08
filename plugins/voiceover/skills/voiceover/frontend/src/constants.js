@@ -1,15 +1,7 @@
 // Shared domain constants mirrored from CONTRACT.md.
-import { Upload, PenLine, Headphones, Play } from 'lucide-react'
 
-export const STEPS = [
-  { key: 'upload', label: 'Upload', icon: Upload },
-  { key: 'narration', label: 'Narration', icon: PenLine },
-  { key: 'generate', label: 'Generate', icon: Headphones },
-  { key: 'preview', label: 'Preview', icon: Play },
-]
-
-// ElevenLabs TTS models offered in the Generate step. Voice IDs are fetched
-// live from the account (GET /api/tts/voices), so cloned voices appear too.
+// ElevenLabs TTS models. Voice IDs are fetched live from the account
+// (GET /api/tts/voices), so cloned voices appear too.
 //
 // Ordered best-first. v3 is the expressive model and the right default for
 // lecture narration: multilingual v2 is stable by design, which on long
@@ -67,20 +59,19 @@ export const DEFAULT_TTS = {
 // Bounds for the expressive controls, mirrored in CONTRACT.md.
 export const SPEED_RANGE = { min: 0.7, max: 1.2, step: 0.05 }
 
-// Map a project's persisted state to the wizard step the user should land on.
-export const STATE_TO_STEP = {
-  uploaded: 'upload',
-  converting: 'upload',
-  converting_failed: 'upload',
-  converted: 'narration',
-  building: 'generate',
-  building_failed: 'generate',
-  built: 'preview',
+// Deck states. Loading reads the deck and its PDF; building makes the video.
+export const STATE_LABELS = {
+  loading: ['bg-blue-50 text-brand-dark', 'Reading the deck…'],
+  ready: ['bg-slate-100 text-slate-600', 'Ready'],
+  load_failed: ['bg-red-50 text-red-600', "Couldn't read the deck"],
+  building: ['bg-blue-50 text-brand-dark', 'Generating…'],
+  building_failed: ['bg-red-50 text-red-600', 'Generation failed'],
+  built: ['bg-green-50 text-green-700', 'Video ready'],
 }
 
 // Terminal states per job stage: success and failure.
 export const JOB_TERMINALS = {
-  convert: { success: 'converted', failure: 'converting_failed' },
+  load: { success: 'ready', failure: 'load_failed' },
   build: { success: 'built', failure: 'building_failed' },
 }
 
@@ -95,21 +86,9 @@ export const estimateSeconds = (text) => {
   return { words, seconds: Math.round((words / WORDS_PER_MINUTE) * 60) }
 }
 
-// Per-slide flags a reattached PDF leaves behind: the slide's content moved, so
-// its narration is carried over but wants another look. `null` means untouched.
-export const CHANGE_LABELS = {
-  edited: { label: 'Edited', dot: 'bg-brand-600' },
-  new: { label: 'New', dot: 'bg-violet-500' },
-}
-
-// "2 slides edited, 1 new, 1 removed" — what the last reattach did to the deck.
-export const describeReview = (review) => {
-  if (!review) return ''
-  const parts = []
-  if (review.edited) parts.push(`${review.edited} edited`)
-  if (review.new) parts.push(`${review.new} new`)
-  if (review.removed) parts.push(`${review.removed} removed`)
-  if (!parts.length) return 'no slides changed'
-  const n = review.edited + review.new
-  return `${parts.join(', ')}${n ? ` of ${review.total} slides` : ''}`
+// "8 min 20 sec" from a count of seconds.
+export const formatDuration = (seconds) => {
+  const m = Math.floor(seconds / 60)
+  const s = Math.round(seconds % 60)
+  return m ? `${m} min ${s} sec` : `${s} sec`
 }

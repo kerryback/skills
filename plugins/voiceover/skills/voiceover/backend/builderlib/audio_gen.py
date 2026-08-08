@@ -1,14 +1,16 @@
 """Per-slide TTS audio generation.
 
-Parses a rendered reveal HTML deck's notes into narration.json and synthesizes
-one ElevenLabs MP3 per narrated slide, parameterized by voice_id + model +
-voice settings. Re-synthesizes only slides whose narration text OR voice
-settings changed since the last build (a per-slide sha256 map is kept in the
-project dir, keyed on narration + voice signature).
+Synthesizes one ElevenLabs MP3 per slide that has speaker notes, parameterized
+by voice_id + model + voice settings.
+
+Each MP3 is named for a sha of the text it speaks plus the voice signature, so
+the audio directory is a content-addressed cache: a rebuild re-synthesizes only
+what actually changed, and — because nothing is keyed by slide position —
+inserting or reordering slides reuses every clip that still says the same thing
+in the same voice.
 """
 import hashlib
 import json
-import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -16,12 +18,6 @@ from pathlib import Path
 import httpx
 
 from . import config
-
-_BACKEND = Path(__file__).resolve().parent.parent
-if str(_BACKEND) not in sys.path:
-    sys.path.insert(0, str(_BACKEND))
-
-from converters import generate_audio_ref as gaudio  # noqa: E402
 
 ELEVEN_TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
 OUTPUT_FORMAT = "mp3_44100_128"
@@ -97,81 +93,80 @@ def synthesize(text: str, out_path: Path, voice_id: str, model: str,
                 f.write(chunk)
 
 
-def generate(deck_html: Path, audio_dir: Path, narration_json: Path,
-             hashes_path: Path, voice_id: str, model: str,
+def generate(slides: list, audio_dir: Path, voice_id: str, model: str,
              settings: dict | None = None, progress=None) -> dict:
-    """Parse deck HTML, (re)synthesize changed slides, write manifest + narration.
+    """(Re)synthesize audio for `slides`, write the manifest, prune the cache.
+
+    `slides` is the parsed deck — {index, notes, ...} — in any order. Slides
+    with no notes get no audio and are shown silently in the video.
 
     progress: optional callable(done, total, message).
-    Returns {"total": int, "narrated": int, "synthesized": int, "skipped": int}.
+    Returns {"total", "narrated", "synthesized", "skipped"}.
     """
-    slides = gaudio.parse_deck(deck_html.read_text(encoding="utf-8"))
-
-    narration_json.write_text(
-        json.dumps({"slides": slides}, indent=2, ensure_ascii=False), encoding="utf-8")
-
-    old_hashes = {}
-    if hashes_path.exists():
-        try:
-            old_hashes = json.loads(hashes_path.read_text(encoding="utf-8"))
-        except Exception:
-            old_hashes = {}
-
     audio_dir.mkdir(parents=True, exist_ok=True)
-    narrated = [s for s in slides if s["narration"]]
-    total = len(narrated)
-    manifest = []
-    new_hashes = {}
-    skipped = 0
-    tasks = []  # (slide, out_path) needing (re)synthesis
-
     merged = _merged_settings(settings)
     sig = _voice_sig(voice_id, model, merged)
 
-    # First pass: build the manifest + hash map and decide which slides to render.
-    for s in slides:
-        entry = {"index": s["index"], "file": None,
-                 "words": len(s["narration"].split())}
-        if s["narration"]:
-            filename = f"slide-{s['index']:03d}.mp3"
-            out_path = audio_dir / filename
+    manifest = []
+    tasks = {}       # filename -> text still to synthesize (deduped)
+    keep = set()
+    narrated = 0
+
+    for s in sorted(slides, key=lambda s: s["index"]):
+        text = (s.get("notes") or "").strip()
+        entry = {"index": s["index"], "file": None, "words": len(text.split())}
+        if text:
+            narrated += 1
+            filename = f"{_sha(text + chr(0) + sig)[:32]}.mp3"
             entry["file"] = filename
-            h = _sha(s["narration"] + "\x00" + sig)
-            new_hashes[str(s["index"])] = h
-            changed = old_hashes.get(str(s["index"])) != h
-            if out_path.exists() and not changed:
-                skipped += 1
-            else:
-                tasks.append((s, out_path))
+            keep.add(filename)
+            if not (audio_dir / filename).exists():
+                tasks[filename] = text
         manifest.append(entry)
 
-    # Second pass: synthesize the changed slides concurrently.
-    lock = threading.Lock()
+    # Two slides with identical notes share one clip, so `skipped` counts every
+    # slide that needed no new request — cache hits and duplicates alike.
+    skipped = narrated - len(tasks)
     done = skipped
+    total = narrated
     if progress:
         progress(done, total, "Generating audio")
 
-    def _render(task):
+    lock = threading.Lock()
+
+    def _render(item):
         nonlocal done
-        s, out_path = task
-        synthesize(s["narration"], out_path, voice_id, model, merged)
+        filename, text = item
+        synthesize(text, audio_dir / filename, voice_id, model, merged)
         with lock:
             done += 1
             if progress:
-                progress(done, total, f"Slide {s['index'] + 1} audio ready")
+                progress(done, total, "Generating audio")
 
     if tasks:
         workers = max(1, min(config.TTS_CONCURRENCY, len(tasks)))
         with ThreadPoolExecutor(max_workers=workers) as ex:
-            futures = [ex.submit(_render, t) for t in tasks]
+            futures = [ex.submit(_render, item) for item in tasks.items()]
             for f in as_completed(futures):
                 exc = f.exception()
                 if exc:
                     raise exc
 
-    synthesized = len(tasks)
+    (audio_dir / "manifest.json").write_text(
+        json.dumps(manifest, indent=2), encoding="utf-8")
+    _prune(audio_dir, keep)
 
-    (audio_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    hashes_path.write_text(json.dumps(new_hashes, indent=2), encoding="utf-8")
-    return {"total": len(slides), "narrated": total,
-            "synthesized": synthesized, "skipped": skipped}
+    return {"total": len(slides), "narrated": narrated,
+            "synthesized": len(tasks), "skipped": skipped}
+
+
+def _prune(audio_dir: Path, keep: set) -> None:
+    """Drop clips no slide points at any more. The cache is only worth keeping
+    for the current deck: an old clip can never be hit again, because its name
+    encodes text that no slide says."""
+    for mp3 in audio_dir.glob("*.mp3"):
+        if mp3.name not in keep:
+            try:
+                mp3.unlink()
+            except OSError:
+                pass

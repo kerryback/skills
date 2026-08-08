@@ -1,33 +1,35 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
+  ChevronDown,
   Headphones,
   RotateCw,
-  ChevronDown,
-  ArrowRight,
+  SlidersHorizontal,
 } from 'lucide-react'
-import { api } from '../../api'
+import { api } from '../api'
 import {
-  ELEVEN_MODELS,
   DEFAULT_TTS,
+  ELEVEN_MODELS,
   JOB_TERMINALS,
   SPEED_RANGE,
   V3_STABILITY_LEVELS,
   modelInfo,
-} from '../../constants'
-import { useJobEvents } from '../../hooks/useJobEvents'
-import { useToast } from '../Toast'
+} from '../constants'
+import { useJobEvents } from '../hooks/useJobEvents'
+import { useToast } from './Toast'
 import {
   Button,
   Card,
+  ErrorBanner,
   Field,
-  inputClass,
-  StepHeader,
   ProgressBar,
   SlideTicks,
-  ErrorBanner,
-} from '../ui'
+  inputClass,
+} from './ui'
 
-export default function GenerateStep({ project, refresh, goTo }) {
+// Voice, read settings, and the Generate button. Everything past the voice and
+// the model sits behind a disclosure: the defaults are right for narration, and
+// a wall of sliders above the button reads as work to do before generating.
+export default function AudioPanel({ project, refresh, onBuilt }) {
   const cfg = project.config || {}
   const [voiceId, setVoiceId] = useState(cfg.voice_id || DEFAULT_TTS.voice_id)
   const [model, setModel] = useState(cfg.model || DEFAULT_TTS.model)
@@ -45,6 +47,7 @@ export default function GenerateStep({ project, refresh, goTo }) {
 
   const [voices, setVoices] = useState([])
   const [voicesConfigured, setVoicesConfigured] = useState(true)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   // A voice pasted from the ElevenLabs Voice Library, resolved to its name so
   // the instructor can see what they pasted. `library` holds the resolved voice
@@ -53,18 +56,6 @@ export default function GenerateStep({ project, refresh, goTo }) {
   const [library, setLibrary] = useState(null)
   const [lookingUp, setLookingUp] = useState(false)
   const [lookupError, setLookupError] = useState('')
-
-  const [savedSnapshot, setSavedSnapshot] = useState(() =>
-    JSON.stringify({
-      voice_id: cfg.voice_id || DEFAULT_TTS.voice_id,
-      model: cfg.model || DEFAULT_TTS.model,
-      stability: cfg.stability ?? DEFAULT_TTS.stability,
-      similarity_boost: cfg.similarity_boost ?? DEFAULT_TTS.similarity_boost,
-      style: cfg.style ?? DEFAULT_TTS.style,
-      use_speaker_boost: cfg.use_speaker_boost ?? DEFAULT_TTS.use_speaker_boost,
-      speed: cfg.speed ?? DEFAULT_TTS.speed,
-    })
-  )
   const [error, setError] = useState('')
 
   const { progress, running, start } = useJobEvents()
@@ -124,8 +115,7 @@ export default function GenerateStep({ project, refresh, goTo }) {
   }
 
   const info = modelInfo(model)
-
-  const config = {
+  const settings = {
     voice_id: voiceId,
     model,
     stability: Number(stability),
@@ -133,17 +123,6 @@ export default function GenerateStep({ project, refresh, goTo }) {
     style: Number(style),
     use_speaker_boost: speakerBoost,
     speed: Number(speed),
-  }
-  const dirty = JSON.stringify(config) !== savedSnapshot
-
-  const saveConfig = async () => {
-    try {
-      await api.saveConfig(project.id, config)
-      setSavedSnapshot(JSON.stringify(config))
-    } catch (err) {
-      toast.error(err.message)
-      throw err
-    }
   }
 
   const generate = async () => {
@@ -155,14 +134,14 @@ export default function GenerateStep({ project, refresh, goTo }) {
       return
     }
     try {
-      if (dirty) await saveConfig()
+      await api.saveConfig(project.id, settings)
       await api.build(project.id)
       start(project.id, {
         terminals: JOB_TERMINALS.build,
         onDone: async () => {
           toast.success('Voiceover generated.')
           await refresh()
-          goTo('preview')
+          onBuilt?.()
         },
         onError: (err, evt) => {
           setError(evt?.message || err.message)
@@ -171,26 +150,21 @@ export default function GenerateStep({ project, refresh, goTo }) {
         },
       })
     } catch (err) {
-      if (err) setError(err.message || String(err))
+      setError(err.message || String(err))
     }
   }
 
   const total = project.slides?.length || progress?.total || 0
   const built = project.state === 'built'
+  const blocked = project.state === 'loading' || project.state === 'load_failed'
 
   return (
-    <div className="animate-fadein">
-      <StepHeader
-        step="3 · Generate"
-        title="Generate voiceover"
-        subtitle="Choose a voice and how expressive the read should be, then build the narrated video."
-      />
-
+    <Card className="p-4">
       <ErrorBanner message={error} />
 
-      <div className="mt-3 grid gap-4 lg:grid-cols-2">
-        <Card className="space-y-5 p-6">
-          <Field label="Voice" hint="From your ElevenLabs account, including cloned voices">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[14rem] flex-1">
+          <Field label="Voice" hint="Your ElevenLabs account, cloned voices included">
             {voicesConfigured ? (
               <div className="relative">
                 <select
@@ -228,19 +202,88 @@ export default function GenerateStep({ project, refresh, goTo }) {
               </div>
             )}
           </Field>
+        </div>
 
+        <div className="min-w-[14rem] flex-1">
+          <Field label="Model" hint="Expressiveness vs. speed">
+            <div className="relative">
+              <select
+                className={`${inputClass} appearance-none pr-9`}
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              >
+                {ELEVEN_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            </div>
+          </Field>
+        </div>
+
+        <Button
+          variant="subtle"
+          onClick={() => setShowAdvanced((s) => !s)}
+          aria-expanded={showAdvanced}
+        >
+          <SlidersHorizontal className="h-4 w-4" /> Read settings
+        </Button>
+
+        <Button
+          size="lg"
+          variant={built ? 'amber' : 'primary'}
+          onClick={generate}
+          loading={running}
+          disabled={!voicesConfigured || blocked || running}
+        >
+          {built ? (
+            <>
+              <RotateCw className="h-4 w-4" /> Regenerate
+            </>
+          ) : (
+            <>
+              <Headphones className="h-4 w-4" /> Generate video
+            </>
+          )}
+        </Button>
+      </div>
+
+      {running && (
+        <div className="mt-4 space-y-3">
+          <ProgressBar progress={progress} tone="amber" />
+          <SlideTicks total={progress?.total || total} done={progress?.done || 0} />
+          <p className="text-xs text-muted">
+            Synthesizing the narration, then rendering the video — a couple of
+            minutes for a long deck. Only notes that changed since the last run
+            are re-synthesized.
+          </p>
+        </div>
+      )}
+
+      {!running && built && (
+        <p className="mt-3 text-xs text-muted">
+          {project.stale
+            ? 'The notes or the voice settings have changed since this video was made — regenerate to update it.'
+            : 'Saved to your project folder as an .mp4 and a .txt transcript.'}
+        </p>
+      )}
+
+      {showAdvanced && (
+        <div className="mt-4 grid gap-5 border-t border-line pt-4 lg:grid-cols-2">
           {/* The account lists ~20 premade voices plus your own clones. The rest
               of ElevenLabs' library — thousands of voices — is browsable only on
               their site, which is also where you can audition them. Paste the id
               of one here; text-to-speech takes a library voice directly, with no
               add-to-my-voices step. */}
           {voicesConfigured && (
-            <div className="-mt-2">
+            <Field label="Voice Library" hint="Paste an ID from elevenlabs.io">
               <div className="flex gap-2">
                 <input
                   className={inputClass}
                   value={libraryId}
-                  placeholder="Or paste a Voice Library ID"
+                  placeholder="e.g. 21m00Tcm4TlvDq8ikWAM"
                   onChange={(e) => {
                     setLibraryId(e.target.value)
                     setLookupError('')
@@ -261,13 +304,12 @@ export default function GenerateStep({ project, refresh, goTo }) {
                   Use
                 </Button>
               </div>
-
               {lookupError ? (
                 <p className="mt-1.5 text-xs text-red-600">{lookupError}</p>
               ) : library && library.voice_id === voiceId ? (
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
                   <span className="font-semibold text-navy">{library.name}</span>
-                  {library.labels.length > 0 && (
+                  {library.labels?.length > 0 && (
                     <span>{library.labels.join(' · ')}</span>
                   )}
                   {library.preview_url && (
@@ -284,25 +326,8 @@ export default function GenerateStep({ project, refresh, goTo }) {
                   copy the voice's ID.
                 </p>
               )}
-            </div>
+            </Field>
           )}
-
-          <Field label="Model" hint="Expressiveness vs. speed">
-            <div className="relative">
-              <select
-                className={`${inputClass} appearance-none pr-9`}
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-              >
-                {ELEVEN_MODELS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-            </div>
-          </Field>
 
           {/* v3 defines three named stability levels; the v2 family takes a
               continuous dial. Showing a slider for v3 would imply precision the
@@ -330,9 +355,8 @@ export default function GenerateStep({ project, refresh, goTo }) {
                 })}
               </div>
               <p className="mt-1.5 text-xs text-muted">
-                {V3_STABILITY_LEVELS.find(
-                  (lv) => Number(stability) === lv.value
-                )?.hint || 'Pick a level.'}
+                {V3_STABILITY_LEVELS.find((lv) => Number(stability) === lv.value)
+                  ?.hint || 'Pick a level.'}
               </p>
             </Field>
           ) : (
@@ -422,61 +446,8 @@ export default function GenerateStep({ project, refresh, goTo }) {
               </span>
             </span>
           </label>
-        </Card>
-
-        <Card className="flex flex-col p-6">
-          <h3 className="text-sm font-bold text-navy">Build the narrated deck</h3>
-          <p className="mt-1 text-sm text-muted">
-            Renders the deck, then synthesizes narration audio for each slide.
-            Only slides whose narration changed are re-synthesized.
-          </p>
-
-          {running ? (
-            <div className="mt-6 space-y-4">
-              <ProgressBar progress={progress} tone="amber" />
-              <SlideTicks
-                total={progress?.total || total}
-                done={progress?.done || 0}
-              />
-              <p className="text-xs text-muted">
-                Generating audio — this can take a couple of minutes for a long
-                deck.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-6 flex flex-1 flex-col justify-end gap-3">
-              {built && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                  {project.stale
-                    ? 'Narration or settings changed since the last build — regenerate to update.'
-                    : 'Already built. Regenerate to apply new settings.'}
-                </div>
-              )}
-              <Button
-                size="lg"
-                variant={built ? 'amber' : 'primary'}
-                onClick={generate}
-                disabled={!voicesConfigured}
-              >
-                {built ? (
-                  <>
-                    <RotateCw className="h-4 w-4" /> Regenerate
-                  </>
-                ) : (
-                  <>
-                    <Headphones className="h-4 w-4" /> Generate voiceover
-                  </>
-                )}
-              </Button>
-              {built && (
-                <Button variant="ghost" onClick={() => goTo('preview')}>
-                  Skip to preview <ArrowRight className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          )}
-        </Card>
-      </div>
-    </div>
+        </div>
+      )}
+    </Card>
   )
 }

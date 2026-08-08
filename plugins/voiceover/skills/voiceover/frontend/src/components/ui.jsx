@@ -1,6 +1,6 @@
-// Small, cohesive UI primitives shared across the wizard.
-import { AlertTriangle, Copy, FileDiff } from 'lucide-react'
-import { describeReview } from '../constants'
+// Small, cohesive UI primitives shared across the app.
+import { AlertTriangle, Copy } from 'lucide-react'
+import { STATE_LABELS } from '../constants'
 
 export function Button({
   children,
@@ -62,23 +62,6 @@ export function Spinner({ className = '' }) {
   )
 }
 
-export function StepHeader({ step, title, subtitle, right }) {
-  return (
-    <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-wide text-brand-700">
-          Step {step}
-        </p>
-        <h1 className="mt-0.5 text-2xl font-extrabold tracking-tight text-navy">
-          {title}
-        </h1>
-        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
-      </div>
-      {right}
-    </div>
-  )
-}
-
 export function Card({ children, className = '' }) {
   return (
     <div
@@ -105,19 +88,10 @@ export const inputClass =
   'w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-slate placeholder:text-muted focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition'
 
 export function StatePill({ state, stale }) {
-  const map = {
-    uploaded: ['bg-slate-100 text-slate-600', 'Uploaded'],
-    converting: ['bg-blue-50 text-brand-dark', 'Converting…'],
-    converting_failed: ['bg-red-50 text-red-600', 'Convert failed'],
-    converted: ['bg-blue-50 text-brand-dark', 'Converted'],
-    drafting: ['bg-blue-50 text-brand-dark', 'Drafting…'],
-    drafting_failed: ['bg-red-50 text-red-600', 'Draft failed'],
-    drafted: ['bg-blue-50 text-brand-dark', 'Drafted'],
-    building: ['bg-blue-50 text-brand-dark', 'Building…'],
-    building_failed: ['bg-red-50 text-red-600', 'Build failed'],
-    built: ['bg-green-50 text-green-700', 'Ready'],
-  }
-  const [cls, label] = map[state] || ['bg-slate-100 text-slate-600', state]
+  const [cls, label] = STATE_LABELS[state] || [
+    'bg-slate-100 text-slate-600',
+    state,
+  ]
   return (
     <span className="inline-flex items-center gap-1.5">
       <span
@@ -127,7 +101,7 @@ export function StatePill({ state, stale }) {
       </span>
       {stale && (
         <span className="text-[0.68rem] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-          Stale
+          Needs regenerating
         </span>
       )}
     </span>
@@ -197,44 +171,6 @@ export function ErrorBanner({ message, onRetry }) {
           Retry
         </Button>
       )}
-    </div>
-  )
-}
-
-// What the last reattached PDF changed. Shown until every flagged slide has been
-// redrafted or waved through, so "which slides do I still need to look at" never
-// depends on remembering what was edited.
-export function ReviewSummary({ review, children }) {
-  if (!review?.total) return null
-  return (
-    <div className="rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <FileDiff
-            className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-700"
-            aria-hidden="true"
-          />
-          <div className="text-sm">
-            <p className="font-semibold text-navy">
-              Reattached deck — {describeReview(review)}
-            </p>
-            <p className="mt-0.5 text-muted">
-              {review.unchanged} slide{review.unchanged === 1 ? '' : 's'} kept
-              their narration and their audio. Flagged slides keep the old script
-              as a starting point — ask Claude to redraft them, or edit them here.
-            </p>
-            {review.suspect_rerender && (
-              <p className="mt-1.5 text-amber-700">
-                Most slides came back with the same words but a different
-                rendering, which usually means the PDF was re-exported rather
-                than rewritten. Check a flagged slide before redrafting the
-                whole deck.
-              </p>
-            )}
-          </div>
-        </div>
-        {children}
-      </div>
     </div>
   )
 }

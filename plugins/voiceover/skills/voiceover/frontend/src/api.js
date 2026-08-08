@@ -1,11 +1,9 @@
 // Small API client. All paths are RELATIVE (no leading slash) so the SPA works
-// behind a proxy / sub-path when served by FastAPI. Cookies carry the session.
+// behind a proxy / sub-path when served by FastAPI.
 
 async function request(path, { method = 'GET', body, headers, raw } = {}) {
   const opts = { method, credentials: 'same-origin', headers: { ...headers } }
-  if (body instanceof FormData) {
-    opts.body = body
-  } else if (body !== undefined) {
+  if (body !== undefined) {
     opts.headers['Content-Type'] = 'application/json'
     opts.body = JSON.stringify(body)
   }
@@ -29,48 +27,19 @@ async function request(path, { method = 'GET', body, headers, raw } = {}) {
 }
 
 export const api = {
-  // ---- projects ----
+  // ---- decks ----
   listProjects: () => request('api/projects'),
   getProject: (id) => request(`api/projects/${id}`),
-  createProject: (name, file) => {
-    const fd = new FormData()
-    fd.append('name', name)
-    fd.append('file', file)
-    return request('api/projects', { method: 'POST', body: fd })
-  },
-  // Reattach an edited PDF to an existing deck: same deck, same config, script
-  // and audio carried across slide by slide (see the backend's jobs._reingest).
-  reingest: (id, file) => {
-    const fd = new FormData()
-    fd.append('file', file)
-    return request(`api/projects/${id}/reingest`, { method: 'POST', body: fd })
-  },
-  // Mark reattach-flagged slides reviewed without editing them. Omit `indexes`
-  // to clear every flag.
-  clearReview: (id, indexes) =>
-    request(`api/projects/${id}/review/clear`, {
-      method: 'POST',
-      body: { indexes: indexes ?? null },
-    }),
+  // Re-read the deck source and its PDF from disk. This is the whole edit
+  // cycle: edit the notes in Quarto/PowerPoint (or ask Claude to), then reload.
+  reload: (id) => request(`api/projects/${id}/reload`, { method: 'POST' }),
+  saveConfig: (id, config) =>
+    request(`api/projects/${id}/config`, { method: 'PUT', body: config }),
 
   // ---- jobs ----
   build: (id) => request(`api/projects/${id}/build`, { method: 'POST' }),
 
-  // ---- narration & config ----
-  // Narration is written and revised by the Claude Code agent (bulk PUT); the
-  // instructor can also hand-edit any slide (per-slide PUT autosave).
-  getNarration: (id) => request(`api/projects/${id}/narration`),
-  saveNarration: (id, index, narration) =>
-    request(`api/projects/${id}/narration/${index}`, {
-      method: 'PUT',
-      body: { narration },
-    }),
-  saveNarrationBulk: (id, slides) =>
-    request(`api/projects/${id}/narration`, { method: 'PUT', body: { slides } }),
-  saveConfig: (id, config) =>
-    request(`api/projects/${id}/config`, { method: 'PUT', body: config }),
-
-  // ---- ElevenLabs voices (account + cloned) for the Generate picker ----
+  // ---- ElevenLabs voices (account + cloned) for the voice picker ----
   listVoices: () => request('api/tts/voices'),
   // Resolve a pasted Voice Library id to its name, labels and preview clip.
   // Works for any voice in the library, not only the account's own.
@@ -83,7 +52,6 @@ export const api = {
 }
 
 // URL helpers (also relative)
-export const slideUrl = (id, file) => `api/projects/${id}/slides/${file}`
 export const videoUrl = (id) => `api/projects/${id}/video`
 export const eventsUrl = (id) => `api/projects/${id}/events`
 
