@@ -96,7 +96,7 @@ one — `pdf_older_than_source`, which is how new notes end up over old slides.
   corresponding PUT: notes are written by editing the deck.
 - `PUT  /api/projects/{id}/config` `{voice_id,model,stability,similarity_boost,style,use_speaker_boost,speed}` → 200 (all fields optional)
 - `GET  /api/tts/status` → `{configured}` (is an ElevenLabs key set)
-- `POST /api/tts/key` `{api_key}` → validates against ElevenLabs, persists to `backend/.env`, updates the live value
+- `POST /api/tts/key` `{api_key}` → validates against ElevenLabs, persists to `~/.voiceover/.env` (outside the skill dir, so a plugin update can't wipe it), updates the live value
 - `GET  /api/tts/voices` → `{configured, voices:[{voice_id,name,category}]}`
 - `GET  /api/tts/voices/{voice_id}` → `{voice_id,name,category,preview_url,labels[]}` (resolve one id — the account first, then the Voice Library; 404 when no such voice)
 - `POST /api/projects/{id}/build` → 202; TTS + video. 409 while loading or after a failed load.

@@ -7,7 +7,7 @@ import { useToast } from './Toast'
 // App-wide notice shown when no ElevenLabs API key is configured. The app still
 // runs (convert, draft/edit narration), but audio and the video can't be
 // generated until a key is added. Rather than making the instructor hand-edit
-// backend/.env, they paste the key here; the server validates it against
+// a file, they paste the key here; the server validates it against
 // ElevenLabs, persists it to .env, and loads it live (no restart). On success we
 // reload so the voice picker and Generate step pick up the now-configured key.
 export default function ApiKeyBanner() {
@@ -60,21 +60,26 @@ export default function ApiKeyBanner() {
               Audio can’t be generated yet — add your ElevenLabs API key
             </p>
             <p className="mt-1 text-xs leading-relaxed text-amber-800">
-              You can still convert a deck and write narration. To generate the
-              voice audio and build the video, this app needs an ElevenLabs key.
-              Don’t have one? Create a free account at{' '}
+              You can still read the deck and review its speaker notes. To
+              generate the voice audio and build the video, this app needs an
+              ElevenLabs key. Don’t have one? Create a free account at{' '}
               <a
-                href="https://elevenlabs.io"
+                href="https://elevenlabs.io/app/settings/api-keys"
                 target="_blank"
                 rel="noreferrer"
                 className="font-medium underline"
               >
                 elevenlabs.io
               </a>
-              , open your profile menu → API Keys, and copy the key. Paste it
-              below — it’s stored locally in{' '}
-              <code className="rounded bg-amber-100 px-1">backend/.env</code> and
-              never leaves your machine except to call ElevenLabs.
+              , then open your profile menu (bottom left) → API Keys → Create API
+              Key, and copy it. Paste it below — it’s stored on your machine in{' '}
+              <code className="rounded bg-amber-100 px-1">~/.voiceover/.env</code>{' '}
+              and never leaves it except to call ElevenLabs.
+            </p>
+            <p className="mt-1.5 text-xs leading-relaxed text-amber-800">
+              The free tier’s monthly quota is measured in minutes of audio, so
+              it is enough to try this out but not to voice a full lecture — if
+              generation fails partway with a quota error, that is why.
             </p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
               <input

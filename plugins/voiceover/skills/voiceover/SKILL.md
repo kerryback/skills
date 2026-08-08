@@ -43,12 +43,28 @@ have one, and the deck file is the single copy.
 
 ## Prerequisites — check first, offer to fix
 
-- `ELEVENLABS_API_KEY` in the environment (text-to-speech, generation only).
-  Check with `printenv ELEVENLABS_API_KEY`. If it's empty, say so and offer to
-  help: they create a free key at elevenlabs.io, then either paste it into the
-  app's banner (it is validated and persisted) or you help export
-  `ELEVENLABS_API_KEY` in their shell profile. Drafting notes and reviewing them
-  need no key.
+- `ELEVENLABS_API_KEY` — the text-to-speech voice, needed only to generate.
+  Check with `printenv ELEVENLABS_API_KEY`. Drafting and reviewing notes need no
+  key, so a missing one is never a reason to delay launching. If it's empty, say
+  so up front and walk them through it — don't just say "you'll need a key":
+
+  1. Sign up (free) at https://elevenlabs.io.
+  2. Profile menu, bottom left → API Keys → Create API Key. Copy it; it starts
+     with `sk_` and is shown once.
+  3. Paste it into the amber banner at the top of the app and press Save key.
+     The app validates it against ElevenLabs before accepting, stores it in
+     `~/.voiceover/.env` (outside the skill, so a plugin update can't wipe it),
+     and enables generation with no restart.
+
+  Offer the alternative if they'd rather have it in the environment for other
+  tools too: help them export `ELEVENLABS_API_KEY` in their shell profile. An
+  exported variable takes precedence over the stored one.
+
+  Mention the quota once, when they first generate rather than at signup: the
+  free tier is measured in minutes of audio per month, which covers trying this
+  out but not voicing a full lecture. If a build fails partway with a quota
+  error, that is what happened — the already-synthesized slides are cached, so
+  resuming after an upgrade re-voices only what's left.
 - Python is already present (it runs the launcher), and the first launch sets up
   a small Python environment automatically. Quarto is NOT required — the app
   renders nothing. ffmpeg is not needed either; it ships with the Python

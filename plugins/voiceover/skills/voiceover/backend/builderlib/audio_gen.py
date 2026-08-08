@@ -73,7 +73,9 @@ def synthesize(text: str, out_path: Path, voice_id: str, model: str,
     nothing is snapped here — the picker offers the defined levels instead.
     """
     if not config.ELEVENLABS_API_KEY:
-        raise RuntimeError("ELEVENLABS_API_KEY is not set (put it in backend/.env).")
+        raise RuntimeError(
+            "ELEVENLABS_API_KEY is not set — paste your key in the app's banner, "
+            "or export it in your shell.")
     merged = _merged_settings(settings)
     url = ELEVEN_TTS_URL.format(voice_id=voice_id)
     headers = {"xi-api-key": config.ELEVENLABS_API_KEY, "accept": "audio/mpeg"}

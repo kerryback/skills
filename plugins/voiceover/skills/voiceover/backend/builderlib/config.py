@@ -1,12 +1,61 @@
-"""Central configuration loaded from backend/.env."""
+"""Central configuration.
+
+The ElevenLabs key a user pastes in the app is stored in ~/.voiceover/.env, NOT
+inside the skill directory. The skill directory is package content: installing or
+updating the plugin replaces it, and a key kept there would silently vanish on
+every update — leaving the person who used the paste-in-app path (rather than
+exporting a shell variable) staring at the key banner again with no explanation.
+Everything else durable already lives in ~/.voiceover for the same reason.
+
+Resolution order, strongest first: a real environment variable, then
+~/.voiceover/.env, then a legacy backend/.env — which is still read so an
+existing install keeps working, and whose key is migrated out on first run.
+"""
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-ENV_FILE = BACKEND_DIR / ".env"
+
+# Durable, user-owned state. Mirrors skill_launch.py's VOICEOVER_HOME.
+HOME_DIR = Path(os.environ.get("VOICEOVER_HOME", Path.home() / ".voiceover"))
+ENV_FILE = HOME_DIR / ".env"
+LEGACY_ENV_FILE = BACKEND_DIR / ".env"
+
+
+def _read_env_file(path: Path) -> dict:
+    values = {}
+    if not path.exists():
+        return values
+    try:
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            name, _, value = line.partition("=")
+            values[name.strip()] = value.strip()
+    except OSError:
+        pass
+    return values
+
+
+def _migrate_legacy_key() -> None:
+    """Move a key left in the skill directory by an older version into the home
+    file, once. The old file is left alone: the skill directory may be read-only,
+    and a stale copy is harmless now that the home file is read first."""
+    if _read_env_file(ENV_FILE).get("ELEVENLABS_API_KEY"):
+        return
+    legacy = _read_env_file(LEGACY_ENV_FILE).get("ELEVENLABS_API_KEY")
+    if legacy:
+        _upsert_env("ELEVENLABS_API_KEY", legacy)
+
+
+# load_dotenv never overwrites an existing environment variable, so loading the
+# home file first gives it precedence over the legacy one.
+HOME_DIR.mkdir(parents=True, exist_ok=True)
 load_dotenv(ENV_FILE)
+load_dotenv(LEGACY_ENV_FILE)
 
 # DATA_DIR is the app's home (the launcher points it at ~/.voiceover). Each deck
 # lives in its own folder under DATA_DIR/decks, named after the deck, so relaunching
@@ -43,7 +92,7 @@ def project_dir(project_id: str) -> Path:
 
 
 def _upsert_env(name: str, value: str) -> None:
-    """Set (or replace) `name=value` in backend/.env, preserving other lines."""
+    """Set (or replace) `name=value` in ~/.voiceover/.env, preserving other lines."""
     line = f"{name}={value}"
     lines = []
     found = False
@@ -61,10 +110,21 @@ def _upsert_env(name: str, value: str) -> None:
 
 
 def set_elevenlabs_key(key: str) -> None:
-    """Persist the ElevenLabs key to backend/.env and update the live value, so a
-    key pasted in the app takes effect immediately with no server restart."""
+    """Persist the ElevenLabs key to ~/.voiceover/.env and update the live value,
+    so a key pasted in the app takes effect immediately with no server restart —
+    and survives a skill update, which replaces the skill directory."""
     global ELEVENLABS_API_KEY
     key = (key or "").strip()
     ELEVENLABS_API_KEY = key
     os.environ["ELEVENLABS_API_KEY"] = key
     _upsert_env("ELEVENLABS_API_KEY", key)
+
+
+# Runs last: the migration writes through _upsert_env, defined above. A key found
+# only in the old location is copied to the home file and loaded live, so an
+# upgrade from 1.x doesn't send the user back to the key banner.
+_migrate_legacy_key()
+if not ELEVENLABS_API_KEY:
+    ELEVENLABS_API_KEY = _read_env_file(ENV_FILE).get("ELEVENLABS_API_KEY", "")
+    if ELEVENLABS_API_KEY:
+        os.environ["ELEVENLABS_API_KEY"] = ELEVENLABS_API_KEY

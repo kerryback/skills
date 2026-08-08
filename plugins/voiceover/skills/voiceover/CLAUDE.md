@@ -145,6 +145,18 @@ and `DEFAULT_VOICE_SETTINGS` and it flows through naming, the API payload, and
 staleness automatically. `_merged_settings` only substitutes defaults for `None`,
 so an explicit `false` (speaker boost off) survives.
 
+The ElevenLabs key lives in ~/.voiceover/.env, never in the skill directory.
+The skill directory is package content — installing or updating the plugin
+replaces it. Version 1.x wrote a pasted key to `backend/.env`, inside that
+directory, so an update silently deleted it and dropped the user back at the key
+banner with no explanation. It hit exactly the people who used the paste-in-app
+path rather than exporting a shell variable. `config.py` now resolves the key
+from, strongest first: a real environment variable, `~/.voiceover/.env`, then a
+legacy `backend/.env` whose key is copied out on first run. The old file is read
+but never written and never deleted — the skill directory may be read-only, and
+a stale copy is harmless once the home file wins. Do not move it back, and do not
+put anything else durable under the skill directory.
+
 ## Gotchas / operational notes
 
 - The local dev backend runs without `--reload`, so code changes need a manual
@@ -159,6 +171,10 @@ so an explicit `false` (speaker boost off) survives.
   It tracks fenced code blocks (so a `##` comment inside a Python block is not a
   slide break) and nested `:::` divs. It is not a full Pandoc; the slide-count
   check is the backstop that catches anything it gets wrong.
+- A build that dies partway (an ElevenLabs quota error is the usual way) leaves
+  the clips it finished on disk under their content-addressed names, so retrying
+  after an upgrade re-synthesizes only what's left. The manifest and the prune
+  both run after synthesis, so a failed run changes nothing else.
 - Notes are both the spoken script and what the instructor sees while presenting.
   That is the point, but it means "remember to slow down" gets read aloud. Worth
   saying once to a new user; don't build a filter for it.

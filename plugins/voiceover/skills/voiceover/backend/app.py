@@ -159,7 +159,8 @@ class KeyBody(BaseModel):
 @app.post("/api/tts/key")
 async def set_tts_key(body: KeyBody):
     """Validate an ElevenLabs key against the API and, if good, persist it to
-    backend/.env and load it live — so the instructor never edits a file."""
+    ~/.voiceover/.env and load it live — so the instructor never edits a file,
+    and the key survives a skill update."""
     key = (body.api_key or "").strip()
     if not key:
         raise HTTPException(400, "Enter your ElevenLabs API key.")
