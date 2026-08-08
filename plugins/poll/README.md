@@ -43,6 +43,17 @@ cloudflared and any problems in a poll file, each with what to run next.
 | `/poll <a file>` | a poll you had Claude write earlier |
 | `/poll` | bring the room up; join link on the projector, nothing loaded |
 
+`/poll` reads the question type off the phrasing. To say it outright instead,
+there is a command per type — type `/poll:` and the menu lists them:
+
+```
+/poll:word-cloud  what stuck from today?
+/poll:scale       how solid do you feel about duration?
+/poll:number      guess the current 10-year Treasury yield
+/poll:rank        T-bills, 5-year notes, 30-year Treasuries, least to most rate risk
+/poll:choice      is duration higher for the 3% or the 8% coupon?
+```
+
 And before class, in ordinary conversation: "write me a poll on duration for
 Thursday" gets you a small JSON file in your course folder, which is what the
 second row runs.

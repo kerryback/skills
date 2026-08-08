@@ -27,6 +27,12 @@ Three ways in, and they are the same session underneath:
 The third is ordinary conversation, not a command. What this skill gives it is
 the schema in section 4, so the file you write actually loads.
 
+`/poll` works out the question type from how the sentence is phrased. When the
+instructor would rather say than be guessed at, there is a command per type —
+`/poll:word-cloud`, `/poll:scale`, `/poll:number`, `/poll:rank`,
+`/poll:choice` — and each carries the same instruction: the type is settled,
+don't re-infer it from the wording.
+
 ## What to do with the argument
 
 1. Empty → `start`. Bring the room up with nothing loaded, so the join link is
@@ -78,7 +84,8 @@ Reading the sentence:
   word", "in a word", "what comes to mind" → `wordcloud`. "How confident", "1
   to 5", "how solid do you feel" → `scale`. "Guess", "estimate", "what percent",
   "how many" → `number`. "Order these", "rank" → `rank`. "Pick all that apply" →
-  `choice` with `"multi": true`.
+  `choice` with `"multi": true`. Unless a `/poll:<type>` command already settled
+  it, in which case use that type and don't second-guess the wording.
 - Mark `answer` when the question has a right answer. Paris is Paris. This is
   not cosmetic: a marked answer hides the distribution while voting is open and
   adds a Reveal, so getting it wrong changes how the question behaves in the
