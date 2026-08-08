@@ -65,7 +65,7 @@ second row runs.
     {"type": "choice", "text": "Two bonds, same maturity. Which has the higher duration?",
      "options": ["The 8% coupon bond", "The 3% coupon bond", "They are equal"],
      "answer": 1},
-    {"type": "wordcloud", "text": "One word: what does convexity buy you?"},
+    {"type": "wordcloud", "text": "Short answer: what does convexity buy you?"},
     {"type": "scale", "text": "How solid do you feel about duration?",
      "min_label": "Lost", "max_label": "Solid"}
   ]
@@ -111,7 +111,7 @@ the students who most need to commit to an answer are the ones who follow it.
 | type | students see | projector shows |
 | --- | --- | --- |
 | `choice` | tappable options | bar per option, correct one green when revealed |
-| `wordcloud` | a text box | words sized by how many said them |
+| `wordcloud` | a text box | short answers sized by how many said them |
 | `scale` | a row of numbers | distribution and the mean |
 | `number` | a number box | histogram, mean, median, true answer marked |
 | `rank` | a reorderable list | options by average position |

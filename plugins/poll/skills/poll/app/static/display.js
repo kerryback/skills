@@ -156,7 +156,11 @@ function drawCloud(box, question, results) {
     const word = el("span", null, entry.word);
     // Scale by the square root of the weight: linear scaling makes the top
     // word enormous and everything else unreadable.
-    const size = 1.1 + Math.sqrt(entry.weight) * 3.6;
+    let size = 1.1 + Math.sqrt(entry.weight) * 3.6;
+    // A two- or three-word answer is already several times wider than a single
+    // word, so at the same point size it would swamp the cloud on width alone.
+    const words = entry.word.split(" ").length;
+    if (words > 1) size /= words === 2 ? 1.4 : 1.75;
     word.style.fontSize = `${size}rem`;
     word.style.color = CLOUD_COLOURS[index % CLOUD_COLOURS.length];
     word.title = `${entry.count}`;

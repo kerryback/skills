@@ -24,6 +24,8 @@ STOPWORDS = {
 WORD = re.compile(r"[^\W\d_]+(?:['’-][^\W\d_]+)*", re.UNICODE)
 
 MAX_CLOUD_WORDS = 40
+# Up to this many words counts as one answer rather than several.
+MAX_PHRASE_WORDS = 3
 HISTOGRAM_BINS = 12
 
 
@@ -31,11 +33,41 @@ def _words(text: str) -> list[str]:
     return [w.lower() for w in WORD.findall(text or "")]
 
 
+def _trim(words: list[str]) -> list[str]:
+    """Drop stopwords from the ends, keep the ones in the middle.
+
+    "the duration" should land on the same entry as "duration", but "cost of
+    capital" is not improved by losing its "of".
+    """
+    start, end = 0, len(words)
+    while start < end and words[start] in STOPWORDS:
+        start += 1
+    while end > start and words[end - 1] in STOPWORDS:
+        end -= 1
+    return words[start:end]
+
+
 def _wordcloud(answers: list[Any]) -> dict[str, Any]:
     counts: Counter[str] = Counter()
     for answer in answers:
+        words = _trim(_words(str(answer)))
+        # "risk risk risk" is one student being emphatic, not a three-word
+        # answer, and it should land on the same entry as a plain "risk".
+        words = [w for i, w in enumerate(words) if i == 0 or w != words[i - 1]]
+        if not words:
+            continue
+
+        if len(words) <= MAX_PHRASE_WORDS:
+            # Keep a short answer whole. "interest rate risk" is one idea, and
+            # splitting it puts a bare "risk" on the screen next to everyone
+            # else's -- the cloud gets tidier and says less.
+            counts[" ".join(words)] += 1
+            continue
+
+        # Past a few words it is a sentence, which would match nobody else and
+        # would draw as an unreadable ribbon. Fall back to its content words.
         seen = set()
-        for word in _words(str(answer)):
+        for word in words:
             # One student saying "risk risk risk" should count once, or a single
             # enthusiastic response skews the whole cloud.
             if len(word) < 2 or word in STOPWORDS or word in seen:

@@ -80,8 +80,8 @@ Reading the sentence:
 
 - Options after the question, comma-separated with a trailing "or", are the
   options. Capitalise them; they are going on a projector.
-- Type follows the phrasing. Options listed or an either/or → `choice`. "One
-  word", "in a word", "what comes to mind" → `wordcloud`. "How confident", "1
+- Type follows the phrasing. Options listed or an either/or → `choice`. "Short
+  answer", "in a word", "what comes to mind" → `wordcloud`. "How confident", "1
   to 5", "how solid do you feel" → `scale`. "Guess", "estimate", "what percent",
   "how many" → `number`. "Order these", "rank" → `rank`. "Pick all that apply" →
   `choice` with `"multi": true`. Unless a `/poll:<type>` command already settled
@@ -156,7 +156,7 @@ to — `class-4-duration.json` — so it can be run again next term.
      "options": ["The 8% coupon bond", "The 3% coupon bond", "They are equal"],
      "answer": 1},
 
-    {"type": "wordcloud", "text": "One word: what does convexity buy you?"},
+    {"type": "wordcloud", "text": "Short answer: what does convexity buy you?"},
 
     {"type": "scale", "text": "How solid do you feel about duration right now?",
      "min": 1, "max": 5, "min_label": "Lost", "max_label": "Solid"},
@@ -195,8 +195,11 @@ python3 "<skill-dir>/scripts/poll.py" check <file>
 - Keep options short. They are read from the back of a room, off a projector.
 - Two to four options for a concept check. Ten is unreadable and the app refuses
   more than ten anyway.
-- A word cloud wants one word. Say so in the question — "One word:" — or you get
-  sentences and the cloud turns to mush.
+- A word cloud wants a short answer, and the question should say so — "Short
+  answer:" — or you get sentences and the cloud turns to mush. Don't demand a
+  single word: two or three stay together as one entry, so "interest rate risk"
+  lands whole rather than as a bare "risk", and nobody has to squeeze an idea
+  into a word that doesn't fit it.
 - Ask a scale question before deciding whether to move on. It is the cheapest
   way to find out you have lost the room.
 
@@ -218,7 +221,7 @@ do on question 3" without opening it.
 | type | students see | projector shows |
 | --- | --- | --- |
 | `choice` | tappable options, A/B/C | bar per option, correct one green when revealed |
-| `wordcloud` | a text box | words sized by how many said them |
+| `wordcloud` | a text box | answers sized by how many said them |
 | `scale` | a row of numbers | distribution plus the mean |
 | `number` | a number box | histogram, mean, median, true answer marked |
 | `rank` | a reorderable list | options by average position |
@@ -239,7 +242,9 @@ do on question 3" without opening it.
   screen, not in the URL.
 - Nothing is stored between sessions. Stop the app and the answers are gone
   unless the CSV was saved.
-- Word clouds drop common English filler and count a word once per student, so
-  one enthusiastic student typing "risk risk risk" doesn't distort the picture.
+- Word clouds keep an answer of up to three words whole and only break longer
+  ones into their content words, drop common English filler from the ends, and
+  collapse a repeated word, so one enthusiastic student typing "risk risk risk"
+  lands on the same entry as everyone who wrote "risk".
 - A fixed room code, for a room you poll every week, goes in
   `~/.poll/config.json` as `{"code": "4271"}`.

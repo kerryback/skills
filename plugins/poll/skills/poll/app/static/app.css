@@ -261,28 +261,36 @@ body.display {
 }
 
 .join-url {
-  margin: 0.3rem 0 1.4rem;
-  font-size: clamp(1.3rem, 3.2vw, 2.8rem);
+  margin: 0.3rem 0 1rem;
+  font-size: clamp(1rem, 2.1vw, 1.8rem);
   font-weight: 700;
   color: #fff;
   word-break: break-all;
 }
 
 .join-code {
-  margin: 0.3rem 0 1.4rem;
-  font-size: clamp(1.8rem, 4vw, 3.2rem);
+  margin: 0.2rem 0 1.2rem;
+  font-size: clamp(1.3rem, 2.5vw, 2.1rem);
   font-weight: 800;
   letter-spacing: 0.1em;
   color: var(--gold);
   line-height: 1;
 }
 
-/* The QR is the thing students actually use, so it gets the room's attention.
-   The code is a short thing to type once they are on the page; it does not need
-   to be legible from the back row. */
+/* The QR is what students actually use, so it gets the room. The URL and the
+   code are the fallback for someone who can't scan, and they only have to be
+   readable, not commanding.
+
+   Half the screen height, rather than a fixed ceiling in rem: a rem cap looks
+   generous while authoring on a laptop and turns into a postage stamp on a
+   1920-wide projector. Sizing off vh rather than vw is also what keeps it from
+   pushing the code off the bottom; the vw term only binds on a screen too
+   narrow for half its height to fit across. */
 .join-qr {
-  width: clamp(11rem, 26vw, 20rem);
-  height: clamp(11rem, 26vw, 20rem);
+  width: min(50vh, 42vw);
+  height: min(50vh, 42vw);
+  min-width: 11rem;
+  min-height: 11rem;
   border-radius: 12px;
   background: #fff;
   padding: 0.6rem;
