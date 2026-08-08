@@ -10,10 +10,10 @@ const LETTERS = "ABCDEFGHIJ";
 function participantId() {
   let id = null;
   try {
-    id = localStorage.getItem("polls-id");
+    id = localStorage.getItem("poll-id");
     if (!id) {
       id = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-      localStorage.setItem("polls-id", id);
+      localStorage.setItem("poll-id", id);
     }
   } catch {
     id = Math.random().toString(36).slice(2); // private browsing: fine, just per-tab

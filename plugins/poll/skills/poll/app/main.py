@@ -27,8 +27,8 @@ from .session import Session
 
 BASE_DIR = Path(__file__).resolve().parent
 
-CODE = os.environ.get("POLLS_CODE") or config.room_code()
-DISPLAY_KEY = os.environ.get("POLLS_DISPLAY_KEY") or secrets.token_urlsafe(12)
+CODE = os.environ.get("POLL_CODE") or config.room_code()
+DISPLAY_KEY = os.environ.get("POLL_DISPLAY_KEY") or secrets.token_urlsafe(12)
 
 session = Session(CODE)
 
@@ -73,12 +73,16 @@ def healthz():
 
 
 @app.post("/api/deck")
-async def set_deck(payload: dict, key: str = ""):
-    """Load a poll file. Claude calls this after writing one.
+async def add_deck(payload: dict, key: str = ""):
+    """Add a prepared poll file to the session -- `/poll <filename>`.
 
-    A bad file is rejected with every problem listed at once, and the poll that
-    was already loaded is left alone -- so a typo mid-class cannot wipe out the
-    questions that are working.
+    The questions append; the pointer does not move. Loading a file at the top
+    of class leaves the join screen up, and loading one mid-class doesn't yank
+    the projector off the question the room is answering.
+
+    A bad file is rejected with every problem listed at once, and the session is
+    left exactly as it was -- so a typo mid-class cannot disturb the questions
+    that are working.
     """
     _require_key(key)
     path = str(payload.get("path") or "").strip()
@@ -89,13 +93,49 @@ async def set_deck(payload: dict, key: str = ""):
     except deck_mod.DeckError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
 
-    session.load(loaded)
+    first = session.extend(loaded["questions"], loaded["title"], loaded["path"])
     await session.broadcast()
     return {
-        "title": loaded["title"],
-        "questions": len(loaded["questions"]),
+        "title": session.deck["title"],
+        "added": len(loaded["questions"]),
+        "first": first,
+        "total": len(session.deck["questions"]),
         "types": [q["type"] for q in loaded["questions"]],
     }
+
+
+@app.post("/api/question")
+async def add_question(payload: dict, key: str = ""):
+    """Put one question on the projector now -- `/poll <question>`.
+
+    Unlike a file, this jumps straight to what it just added and opens voting.
+    That is the whole point: the instructor said the question out loud ten
+    seconds ago and the room is waiting.
+    """
+    _require_key(key)
+    raw = payload.get("question") if "question" in payload else payload
+    try:
+        question = deck_mod.normalise_question(raw)
+    except deck_mod.DeckError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+    index = session.extend([question])
+    await session.goto(index)
+    return {
+        "index": index,
+        "total": len(session.deck["questions"]),
+        "type": question["type"],
+        "text": question["text"],
+    }
+
+
+@app.post("/api/reset")
+async def reset(key: str = ""):
+    """Empty the session. Explicit only -- nothing else here discards answers."""
+    _require_key(key)
+    session.reset()
+    await session.broadcast()
+    return {"ok": True}
 
 
 @app.get("/api/state")

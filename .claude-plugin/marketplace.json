@@ -31,9 +31,9 @@
       "description": "Let students put their own screen on the classroom projector. Claude runs a small WebRTC relay on the classroom computer and publishes it over a Cloudflare Quick Tunnel, so students join from an https link on their own laptops, pick a screen, window or tab, and wait in a queue while the instructor chooses who is shown. Video goes browser to browser \u2014 direct when the campus network allows it, through a TURN relay when segmentation blocks the direct path. Nothing is recorded and nothing is written to disk. Runs on Windows, macOS or Linux; on a locked-down classroom machine it can fetch its own cloudflared without admin rights."
     },
     {
-      "name": "polls",
-      "source": "./plugins/polls",
-      "description": "Live in-class polls with the results on the projector. Claude writes the questions \u2014 from your slides, your notes, or a sentence \u2014 and the app runs them: multiple choice, word clouds, confidence scales, numeric estimates and rankings, each drawn live as answers arrive. Students answer from their own devices over a Cloudflare Quick Tunnel. Anonymous by design: no names, no roster, nothing stored per student, and concept-check results stay hidden while voting is open so the room doesn't follow the leading bar. Needs cloudflared."
+      "name": "poll",
+      "source": "./plugins/poll",
+      "description": "Put a question to the class and show the answers on the projector. Type `/poll What's the capital of France? Paris, Topeka or Frankfurt` and it goes up immediately \u2014 Claude reads the sentence, works out that it is multiple choice and which option is right, and the app runs it: multiple choice, word clouds, confidence scales, numeric estimates and rankings, each drawn live as answers arrive. `/poll <file>` runs a poll written before class instead, and both land in one session and one results file. Students answer from their own devices over a Cloudflare Quick Tunnel. Anonymous by design: no names, no roster, nothing stored per student, and concept-check results stay hidden while voting is open so the room doesn't follow the leading bar. Needs cloudflared."
     },
     {
       "name": "cardstock",

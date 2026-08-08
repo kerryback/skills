@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""Launch the classroom polling app.
+"""Launch the classroom polling app and hold the session open.
 
-Invoked by the `polls` skill. It:
-  1. ensures the app environment (a venv in ~/.polls) exists,
+Normally started for you by `poll.py`, not run by hand. It:
+  1. ensures the app environment (a venv in ~/.poll) exists,
   2. starts the FastAPI server on http://127.0.0.1:<port> (default 8050),
   3. opens a Cloudflare Quick Tunnel so students get an https:// link,
-  4. opens the display page on the classroom computer.
+  4. opens the display page on the classroom computer,
+  5. writes ~/.poll/session.json so a later `/poll` can find all of that again.
+
+That last step is what makes a second question instant. The tunnel takes several
+seconds to come up and hands out a fresh random hostname every time, so the
+session has to outlive any one question -- otherwise students would re-scan a QR
+code for each one, which is worse than the web form this replaces.
 
 The tunnel is what students actually connect to. A campus LAN address usually
 won't reach student wifi, and even where it would, a random https hostname is
@@ -33,6 +39,7 @@ import platform
 import re
 import secrets
 import shutil
+import signal
 import subprocess
 import sys
 import tarfile
@@ -47,8 +54,9 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent
 REQUIREMENTS = SKILL_DIR / "requirements.txt"
 
-HOME_DIR = Path(os.environ.get("POLLS_HOME", Path.home() / ".polls"))
+HOME_DIR = Path(os.environ.get("POLL_HOME", Path.home() / ".poll"))
 VENV_DIR = HOME_DIR / "venv"
+STATE_PATH = HOME_DIR / "session.json"
 
 IS_WINDOWS = os.name == "nt"
 MIN_PYTHON = (3, 10)
@@ -63,7 +71,7 @@ sys.dont_write_bytecode = True
 
 
 def log(message: str) -> None:
-    print(f"[polls] {message}", flush=True)
+    print(f"[poll] {message}", flush=True)
 
 
 def ensure_venv() -> Path:
@@ -129,7 +137,7 @@ def install_hint() -> list[str]:
 
 
 def install_cloudflared() -> str:
-    """Download cloudflared into ~/.polls/bin -- no installer, no admin rights."""
+    """Download cloudflared into ~/.poll/bin -- no installer, no admin rights."""
     asset = release_asset()
     if asset is None:
         raise SystemExit(
@@ -208,7 +216,7 @@ def check(poll: str | None = None) -> int:
             rows.append((False, f"Poll file {poll} has problems", str(exc)))
             blocking += 1
 
-    print("\npolls readiness\n")
+    print("\npoll readiness\n")
     for ok, label, detail in rows:
         print(f"  {'OK  ' if ok else 'FIX '} {label}")
         for line in (detail or "").splitlines():
@@ -253,6 +261,10 @@ def start_tunnel(port: int, on_url) -> subprocess.Popen | None:
         log("cloudflared is not here, so students have no link to open.")
         for line in install_hint():
             log(line)
+        # Say so in the session file too. Otherwise `/poll` sits waiting the
+        # full tunnel timeout for a hostname that is never coming, and then
+        # reports a blank link without saying why it is blank.
+        write_state(tunnel_error="cloudflared is not installed, so students have no link to open.")
         return None
 
     process = subprocess.Popen(
@@ -271,19 +283,62 @@ def start_tunnel(port: int, on_url) -> subprocess.Popen | None:
                 if match:
                     found = True
                     on_url(match.group(0))
+                    continue
+            # Keep cloudflared's complaints. A quick tunnel can print a hostname
+            # and then fail to register it, which looks from the classroom like a
+            # link that simply doesn't work; the reason belongs in the log.
+            if any(flag in line for flag in ("ERR", "WRN", "error", "failed")):
+                log(f"cloudflared: {line.rstrip()}")
 
     threading.Thread(target=reader, daemon=True).start()
     return process
 
 
+def write_state(**fields: object) -> None:
+    """Record the running session so a later `/poll` can find it.
+
+    This is the whole reason a second question is instant: port, display key and
+    student link survive between separate invocations, so nothing has to be
+    started or re-scanned to ask one more thing.
+    """
+    HOME_DIR.mkdir(parents=True, exist_ok=True)
+    current: dict = {}
+    try:
+        with STATE_PATH.open() as fh:
+            current = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        pass
+    current.update(fields)
+    tmp = STATE_PATH.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(current, indent=2))
+    tmp.replace(STATE_PATH)
+
+
+def on_terminate(signum, frame) -> None:
+    """Turn SIGTERM into an ordinary exit so the cleanup below actually runs.
+
+    Without this, `poll.py stop` kills this process where it stands, leaving
+    uvicorn holding the port and a session file describing a room that is gone.
+    """
+    raise SystemExit(0)
+
+
+def clear_state() -> None:
+    try:
+        STATE_PATH.unlink()
+    except OSError:
+        pass
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--poll", help="path to the poll file to load at startup")
+    parser.add_argument("--poll", help="path to a poll file to load at startup")
     parser.add_argument("--port", type=int, default=8050)
+    parser.add_argument("--workdir", help="the instructor's folder; where the CSV lands")
     parser.add_argument("--no-tunnel", action="store_true", help="local only; students can't join")
     parser.add_argument("--no-open", action="store_true", help="don't open the display")
     parser.add_argument("--install-cloudflared", action="store_true",
-                        help="download cloudflared into ~/.polls/bin, then launch")
+                        help="download cloudflared into ~/.poll/bin, then launch")
     parser.add_argument("--check", action="store_true",
                         help="report what is set up and what to fix, without launching")
     args = parser.parse_args()
@@ -294,15 +349,19 @@ def main() -> None:
     if args.install_cloudflared:
         install_cloudflared()
 
+    signal.signal(signal.SIGTERM, on_terminate)
+
     python = ensure_venv()
 
-    code = os.environ.get("POLLS_CODE") or room_code()
+    code = os.environ.get("POLL_CODE") or room_code()
     display_key = secrets.token_urlsafe(12)
+    workdir = str(Path(args.workdir).expanduser().resolve()) if args.workdir else os.getcwd()
 
     env = dict(os.environ)
     env["PYTHONDONTWRITEBYTECODE"] = "1"
-    env["POLLS_CODE"] = code
-    env["POLLS_DISPLAY_KEY"] = display_key
+    env["POLL_CODE"] = code
+    env["POLL_DISPLAY_KEY"] = display_key
+    env["POLL_WORKDIR"] = workdir
 
     base = f"http://127.0.0.1:{args.port}"
     display_url = f"{base}/display?key={display_key}"
@@ -323,13 +382,24 @@ def main() -> None:
                 "in use, rerun with a different one, e.g. --port 8051."
             )
 
+        write_state(
+            port=args.port,
+            base=base,
+            display_key=display_key,
+            display_url=display_url,
+            code=code,
+            workdir=workdir,
+            pid=os.getpid(),
+            tunnel_url="",
+        )
+
         if args.poll:
             try:
                 loaded = post_json(
                     f"{base}/api/deck?key={display_key}",
                     {"path": str(Path(args.poll).expanduser().resolve())},
                 )
-                log(f"Loaded \"{loaded['title']}\" — {loaded['questions']} questions")
+                log(f"Loaded \"{loaded['title']}\" — {loaded['added']} questions")
             except urllib.error.HTTPError as exc:
                 body = exc.read().decode(errors="replace")
                 log(f"Could not load that poll file: {body}")
@@ -339,6 +409,7 @@ def main() -> None:
         if not args.no_tunnel:
             def announce(url: str) -> None:
                 log(f"Students answer at: {url}")
+                write_state(tunnel_url=url)
                 try:
                     post_json(f"{base}/api/tunnel?key={display_key}", {"url": url})
                 except Exception as exc:
@@ -355,6 +426,7 @@ def main() -> None:
         log("Leave this running for the whole class. Press Ctrl-C to stop.")
         server.wait()
     finally:
+        clear_state()
         for process in (tunnel, server):
             if process is not None and process.poll() is None:
                 process.terminate()

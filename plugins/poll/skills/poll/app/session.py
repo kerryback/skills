@@ -41,9 +41,36 @@ class Session:
 
     # --- deck -------------------------------------------------------------
 
-    def load(self, deck: dict[str, Any]) -> None:
-        self.deck = deck
-        self.responses = [{} for _ in deck["questions"]]
+    def extend(
+        self,
+        questions: list[dict[str, Any]],
+        title: str = "",
+        path: str = "",
+    ) -> int:
+        """Append questions to the session and return the index of the first.
+
+        Everything appends -- a prepared file and a question typed mid-class go
+        into the same growing list. One class is one session, so nothing the
+        instructor types can wipe out answers already given, and the CSV at the
+        end covers the whole meeting rather than whichever file was loaded last.
+        """
+        if self.deck is None:
+            self.deck = {"title": title, "questions": [], "path": path}
+        first = len(self.deck["questions"])
+        self.deck["questions"].extend(questions)
+        self.responses.extend({} for _ in questions)
+        # The first file to arrive names the session and decides where the CSV
+        # lands; later ones join it rather than renaming it underneath.
+        if title and not self.deck["title"]:
+            self.deck["title"] = title
+        if path and not self.deck.get("path"):
+            self.deck["path"] = path
+        return first
+
+    def reset(self) -> None:
+        """Throw the session away. Only ever on the instructor's say-so."""
+        self.deck = None
+        self.responses = []
         self.index = -1
         self.open = False
         self.revealed = False

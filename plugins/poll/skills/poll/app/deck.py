@@ -145,6 +145,22 @@ def normalise(raw: Any) -> dict[str, Any]:
     return {"title": str(raw.get("title", "")).strip(), "questions": clean}
 
 
+def normalise_question(raw: Any) -> dict[str, Any]:
+    """Validate one question on its own -- what `/poll <question>` produces.
+
+    Same checks as a file, so a question typed mid-class cannot put something on
+    the projector that a prepared file would have been refused for. Only the
+    "question 1:" prefix goes, since there is no question 2 to tell it from.
+    """
+    try:
+        return normalise({"questions": [raw]})["questions"][0]
+    except DeckError as exc:
+        cleaned = "\n".join(
+            line.removeprefix("question 1: ") for line in str(exc).splitlines()
+        )
+        raise DeckError(cleaned) from None
+
+
 def load(path: str | Path) -> dict[str, Any]:
     target = Path(path).expanduser()
     if not target.is_file():

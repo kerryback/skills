@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import io
+import os
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -60,7 +61,11 @@ def write_csv(session: Any, when: date | None = None) -> str:
     if deck is None:
         raise ValueError("No poll is loaded.")
 
-    source = Path(deck["path"])
+    # A session built from a file is named after it. A session of questions
+    # typed during class has no file, so it lands in the folder the instructor
+    # launched from -- their course folder, not the skill's.
+    path = deck.get("path")
+    source = Path(path) if path else Path(os.environ.get("POLL_WORKDIR", ".")) / "poll.json"
     day = (when or date.today()).isoformat()
     target = source.with_name(f"{source.stem}-results-{day}.csv")
 

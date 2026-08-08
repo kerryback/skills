@@ -1,13 +1,16 @@
-"""Settings for the polls app.
+"""Settings for the poll app.
 
-There is very little here. Polls need no relay and no credentials -- answers are
-short bits of text and numbers going one way over the same connection that
+There is very little here. Polling needs no relay and no credentials -- answers
+are short bits of text and numbers going one way over the same connection that
 served the page -- so the only thing worth keeping between launches is a fixed
 room code.
 
-    ~/.polls/config.json
+    ~/.poll/config.json
 
     {"code": "4271"}
+
+A fixed code is worth setting if you poll the same room every week: students
+learn it once instead of reading it off the screen every time.
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ import secrets
 from pathlib import Path
 from typing import Any
 
-HOME_DIR = Path(os.environ.get("POLLS_HOME", Path.home() / ".polls"))
+HOME_DIR = Path(os.environ.get("POLL_HOME", Path.home() / ".poll"))
 CONFIG_PATH = HOME_DIR / "config.json"
 
 
