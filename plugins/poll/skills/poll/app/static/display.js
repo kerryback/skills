@@ -3,7 +3,10 @@
 
 const $ = (sel) => document.querySelector(sel);
 
-const state = { ws: null, current: null };
+// showJoin is the instructor putting the join screen back up over a live
+// question, for the student who walked in late. It is a view on this projector
+// only -- voting stays open underneath and nobody's answer is disturbed.
+const state = { ws: null, current: null, showJoin: false };
 
 const CLOUD_COLOURS = [
   "#f8fafc", "#93c5fd", "#fbbf24", "#86efac", "#c4b5fd",
@@ -61,9 +64,17 @@ function render(s) {
   }
   $("#join-here").textContent = s.here ? `${s.here} connected` : "";
 
+  // What the server says is live, and what this projector is showing, are two
+  // different questions once the join screen can be summoned back.
   const asking = s.loaded && s.index >= 0 && s.question;
-  $("#join").hidden = asking;
-  $("#asked").hidden = !asking;
+  const showingJoin = state.showJoin || !asking;
+  $("#join").hidden = !showingJoin;
+  $("#asked").hidden = showingJoin;
+  $("#join-live").hidden = !(state.showJoin && asking);
+  if (state.showJoin && asking) {
+    $("#join-live").textContent =
+      `Question ${s.index + 1} is up — join now and you can still answer it`;
+  }
 
   if (asking) {
     $("#counter").textContent = `Question ${s.index + 1} of ${s.count}`;
@@ -87,6 +98,8 @@ function render(s) {
   $("#status").className = "pill" + (s.open ? " open" : "");
   $("#tally").textContent = asking ? `${s.responses} answered · ${s.here} here` : "";
 
+  $("#join-screen").textContent = state.showJoin ? "Back to question" : "Join screen";
+  $("#join-screen").disabled = !asking;
   $("#toggle-open").textContent = s.open ? "Close voting" : "Open voting";
   $("#toggle-open").disabled = !asking;
   $("#toggle-results").textContent = s.show_results ? "Hide results" : "Show results";
@@ -234,9 +247,17 @@ function drawRank(box, question, results) {
 function step(delta) {
   const s = state.current;
   if (!s || !s.loaded) return;
+  // Moving on means the latecomer is in and the room is back to work.
+  state.showJoin = false;
   send({ type: "goto", index: Math.max(-1, Math.min(s.index + delta, s.count - 1)) });
 }
 
+function toggleJoin() {
+  state.showJoin = !state.showJoin;
+  if (state.current) render(state.current);
+}
+
+$("#join-screen").addEventListener("click", toggleJoin);
 $("#prev").addEventListener("click", () => step(-1));
 $("#next").addEventListener("click", () => step(1));
 $("#toggle-open").addEventListener("click", () =>
@@ -272,6 +293,7 @@ document.addEventListener("keydown", (event) => {
     o: () => $("#toggle-open").click(),
     h: () => $("#toggle-results").click(),
     r: () => $("#reveal").click(),
+    j: toggleJoin,
   };
   const action = keys[event.key];
   if (action) {

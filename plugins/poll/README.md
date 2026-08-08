@@ -86,6 +86,10 @@ Space or → moves to the next question, ← goes back, `o` opens and closes vot
 `h` shows or hides results, `r` reveals the answer. The control bar hides itself
 so the projector stays clean.
 
+`j` puts the join screen back up for whoever walked in late — QR, link and code
+over the live question, voting still open underneath, so they can join and
+answer the one the room is already on. Moving to the next question takes it down.
+
 Voting opens with each question. A question that has a right answer shows only a
 count while voting is open, and the distribution once you close it. That is on
 purpose: a bar chart growing live tells the room what the popular answer is, and

@@ -269,26 +269,37 @@ body.display {
 }
 
 .join-code {
-  margin: 0.3rem 0 1.2rem;
-  font-size: clamp(3rem, 8vw, 7rem);
+  margin: 0.3rem 0 1.4rem;
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
   font-weight: 800;
   letter-spacing: 0.1em;
   color: var(--gold);
   line-height: 1;
 }
 
+/* The QR is the thing students actually use, so it gets the room's attention.
+   The code is a short thing to type once they are on the page; it does not need
+   to be legible from the back row. */
 .join-qr {
-  width: 8rem;
-  height: 8rem;
-  border-radius: 8px;
+  width: clamp(11rem, 26vw, 20rem);
+  height: clamp(11rem, 26vw, 20rem);
+  border-radius: 12px;
   background: #fff;
-  padding: 0.3rem;
+  padding: 0.6rem;
 }
 
 .here {
   margin: 1.2rem 0 0;
   color: #64748b;
   font-size: 1rem;
+}
+
+/* Only shown when the join screen has been summoned back over a live question,
+   so a latecomer knows there is something to answer the moment they are in. */
+.join-live {
+  margin: 0.6rem 0 0;
+  color: var(--gold);
+  font-size: clamp(0.95rem, 1.6vw, 1.25rem);
 }
 
 .asked {

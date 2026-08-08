@@ -116,9 +116,16 @@ beats the buttons:
 | o | open or close voting |
 | h | show or hide results |
 | r | reveal the answer |
+| j | put the join screen back up, and take it down again |
 
 The control bar hides itself and comes back when the mouse moves, so the
 projector stays clean.
+
+`j` is for the student who walked in late. It puts the QR, link and room code
+back over whatever question is live, says which question that is so they know
+there is something to answer, and leaves voting open underneath — they can join
+and answer the question the room is already on. Moving to another question takes
+it down on its own.
 
 Voting opens automatically with each question. A question with a right answer
 shows only a count while voting is open — closing voting or pressing `h` shows
