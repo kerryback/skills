@@ -279,6 +279,37 @@ $card-purple-title: #7c3aed;
   .accent { color: #b91c1c; font-weight: 700; }
 }
 
+// ── Punchline ──
+// The takeaway that lands at the end of a slide -- one or two sentences, said
+// once, after the setup above it has been made. Named for the job it does
+// rather than the color it is painted, so every punchline in a deck matches
+// and a slide reads as what it means.
+//
+// Same navy as .card-dark by design; what distinguishes it is the space above.
+// A punchline butted against the content it concludes reads as one more card
+// instead of the line that closes the argument.
+//
+// Not to be confused with .explainer, which is the small grey aside that
+// supports the slide without concluding it. An explainer stays on screen the
+// whole time; a punchline is what you hold back:
+//   ::: {.punchline .fragment}
+.punchline {
+  background: $dark-navy;
+  color: #fff;
+  border-radius: 22px;
+  padding: 1.2em 1.5em;
+  margin-top: 1.1em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  line-height: 1.5;
+
+  // Amber is the emphasis color on navy, matching .card-dark.
+  .accent { color: $amber; font-weight: 700; }
+  code { color: #93c5fd; }
+
+  // A punchline is the last thing on the slide; nothing should trail it.
+  p:last-child { margin-bottom: 0; }
+}
+
 // ── Info card (standalone) ──
 .info-card {
   background: $light-blue-tint;
@@ -415,6 +446,7 @@ $card-purple-title: #7c3aed;
       right: -0.8em;
       top: 50%;
       transform: translateY(-50%);
+      transform-origin: left center;
       font-size: 1.4em;
       color: $bright-blue;
       font-weight: 700;
@@ -422,6 +454,25 @@ $card-purple-title: #7c3aed;
 
     &:last-child::after {
       display: none;
+    }
+
+    // ── Growing arrows in a fragmented flow ──
+    // An arrow belongs to the card on its left but means "and then the next
+    // one," so it should not be on screen before that next card is. Reveal
+    // only ever adds .visible to the fragment itself, so the card looks
+    // *forward* with :has() to a next sibling that has arrived, and draws its
+    // arrow out from the left edge when it does.
+    //
+    // Scoped to .fragment so an unfragmented flow keeps its static arrows.
+    &.fragment::after {
+      opacity: 0;
+      transform: translateY(-50%) scaleX(0.2);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    &.fragment:has(+ .step-card.visible)::after {
+      opacity: 1;
+      transform: translateY(-50%) scaleX(1);
     }
   }
 }

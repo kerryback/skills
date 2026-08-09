@@ -185,6 +185,19 @@ These keep decks rendering cleanly — follow them exactly:
   line. Roughly one content slide in four is plenty. If the note is
   load-bearing, it belongs in the slide's content; if it is narration, it
   belongs in `::: {.notes}`.
+- Tell an explainer from a punchline before choosing either. A punchline is the
+  claim the slide is built toward; it gets `.punchline` (dark navy), and it is
+  the one thing worth holding back with `.fragment`. An explainer is a caveat,
+  a source note, or a figure caption; it supports the slide without concluding
+  it and stays on screen throughout. Do not dress a footnote as a punchline —
+  that spends the slide's loudest element on a detail — and do not bury a real
+  takeaway in small grey type. `.punchline` replaces the older habit of ending a
+  slide with a bare `::: {.card .card-dark}`. See `references/components.md`.
+- Fragments are for sequence, not decoration. The two places they earn their
+  keep are a `.step-flow` walked a step at a time (the arrows draw themselves
+  as each step lands) and a `.punchline` held until the setup above it has been
+  made. Resist walking bullet lists — that is the PowerPoint habit the card
+  layouts exist to replace.
 - A picture is the strongest change of pace available. A screenshot of the real
   thing, a diagram, or a chart breaks a run of card slides better than any card
   variant can. If the deck describes software the user actually runs, show it

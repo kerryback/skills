@@ -66,6 +66,7 @@ A full-bleed dark slide that opens a part of the talk:
   flat: the notes stop reading as notes, and the audience learns to skip the
   last line. About one content slide in four. If it carries real weight, put it
   in the content; if it is narration, put it in `::: {.notes}`.
+- `.punchline` — dark navy block for the line the slide is built toward.
 - `.highlight-box` — emphasized callout with a blue left border.
 - `.info-box` — light panel with an optional `[Title]{.box-title}`.
 - `.comparison-table` — wraps a Markdown table in the styled comparison look.
@@ -79,6 +80,41 @@ The key point you want to land, in one or two lines.
 A quieter note that adds context without competing for attention.
 :::
 ```
+
+### Explainer or punchline?
+
+These two look nothing alike and are constantly confused, because both sit at
+the bottom of a slide. The test is whether the line concludes the slide or
+merely supports it.
+
+A punchline is the claim the slide exists to make — "an agent is not a
+different technology," "the best guardrail is a tool the agent does not have."
+It gets the dark block, and it is the one thing on a cardstock slide worth
+holding back:
+
+```
+::: {.punchline .fragment}
+The skill is not prompting --- it is describing the goal well and
+judging the result. [Delegation, not dictation.]{.accent}
+:::
+```
+
+An explainer is a caveat, a source note, a mechanical detail, or a figure
+caption. It supports the slide without concluding it, so it should be on screen
+the whole time — fragmenting a footnote just makes people wait for something
+that was never the point.
+
+Two failure modes, both common. Dressing a footnote as a punchline spends the
+slide's strongest visual on a detail and drains the emphasis from the slides
+that have earned it. Leaving a real punchline in small grey type buries the
+one sentence the audience should remember. When a line does both jobs at once
+— skill attribution followed by a real claim, say — split it: the attribution
+stays an explainer, the claim becomes the punchline.
+
+`.punchline` supersedes writing a bare `::: {.card .card-dark}` at the end of a
+slide, which is what decks did before the class existed. It is the same navy;
+the difference is that it is named for its job and carries the space above it
+that separates a conclusion from one more card.
 
 ## Code, prompt, and response boxes
 
@@ -107,7 +143,10 @@ Inline shell command styling: `[quarto render deck.qmd]{.shell-cmd}`.
 
 - `.stat-cards` — big-number metric cards (`.stat-number` + `.stat-label`).
 - `.step-flow` (4 steps), `.step-flow-5`, `.step-flow-6` — arrowed process flow
-  with `.step-card` (`.step-icon`, `.step-title`, `.step-desc`).
+  with `.step-card` (`.step-icon`, `.step-title`, `.step-desc`). Add `.fragment`
+  to each `.step-card` to walk the flow a step at a time; the connecting arrows
+  then draw themselves out as each next step lands, instead of standing there
+  pointing at nothing. A numbered sequence is the layout that most wants this.
 - `.timeline` — horizontal timeline of `.timeline-item`s.
 - `.tool-grid` — 5-up grid of `.tool-card` icon tiles.
 
@@ -182,5 +221,7 @@ Two checks worth running on a finished deck:
 | A row of tools or logos | `.tool-grid` |
 | A side-by-side comparison table | `.comparison-table` |
 | One line that must land | `.highlight-box` or `{.centered-statement}` |
+| The takeaway a slide is built toward | `.punchline` (add `.fragment`) |
+| A caveat, source note, or figure caption | `.explainer` (no fragment) |
 | A quotation | `{.quote-slide}` |
 | A slide that overflows | add `{.shrink}` or split into two `##` slides |

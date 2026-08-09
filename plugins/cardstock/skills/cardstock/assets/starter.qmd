@@ -66,6 +66,50 @@ State the one idea for this slide here — one or two lines, no more.
 :::
 :::
 
+## How it works
+
+::: {.step-flow-3}
+::: {.step-card .fragment}
+::: {.step-icon}
+1
+:::
+::: {.step-title}
+First step
+:::
+::: {.step-desc}
+Drop `.fragment` from these cards if you would rather show the whole flow at once
+:::
+:::
+::: {.step-card .fragment}
+::: {.step-icon}
+2
+:::
+::: {.step-title}
+Second step
+:::
+::: {.step-desc}
+With fragments on, each arrow draws itself as the next step arrives
+:::
+:::
+::: {.step-card .fragment}
+::: {.step-icon}
+3
+:::
+::: {.step-title}
+Third step
+:::
+::: {.step-desc}
+Reserved space means nothing shifts on screen as the steps land
+:::
+:::
+:::
+
+::: {.punchline .fragment}
+The line this slide was built toward goes here --- held back until the setup
+above it has landed. Use `.punchline` for the claim; use `.explainer` for a
+caveat or a caption, and leave that one [on screen throughout.]{.accent}
+:::
+
 ## A figure
 
 ![](images/your_chart.svg)
