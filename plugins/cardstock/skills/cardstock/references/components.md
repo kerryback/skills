@@ -142,7 +142,8 @@ Inline shell command styling: `[quarto render deck.qmd]{.shell-cmd}`.
 ## Data-forward layouts
 
 - `.stat-cards` — big-number metric cards (`.stat-number` + `.stat-label`).
-- `.step-flow` (4 steps), `.step-flow-5`, `.step-flow-6` — arrowed process flow
+- `.step-flow` (4 steps), `.step-flow-2`, `.step-flow-3`, `.step-flow-5`,
+  `.step-flow-6` — arrowed process flow
   with `.step-card` (`.step-icon`, `.step-title`, `.step-desc`). Add `.fragment`
   to each `.step-card` to walk the flow a step at a time; the connecting arrows
   then draw themselves out as each next step lands, instead of standing there
@@ -191,6 +192,29 @@ Inline shell command styling: `[quarto render deck.qmd]{.shell-cmd}`.
 - `{.quote-slide}` — dark quote slide (`.quote-text`, `.quote-source`,
   `.amber` for emphasis inside the quote).
 
+## Long listings you can scroll
+
+Some content is too long for a slide and should not be cut: a full system
+prompt, a whole SKILL.md, a long transcript. `.prompt-scroll` makes the block
+itself scroll inside the slide, with a scrollbar that is visible before you
+touch it — macOS hides overlay scrollbars until something moves, so a clipped
+block otherwise looks like it simply ends.
+
+The wrapper is the scroller, so give it a height inline and let the content
+overflow:
+
+```
+```{=html}
+<div class="prompt-scroll" style="height:620px">
+<pre>...the long text...</pre>
+</div>
+```
+```
+
+Use it sparingly — one per deck is usually plenty. A slide the audience has to
+scroll is a slide they cannot read from the back of the room; it earns its place
+when the point *is* that the thing is long.
+
 ## Keeping the deck varied
 
 Cards are the workhorse, which is exactly why a deck drifts into using nothing
@@ -216,7 +240,7 @@ Two checks worth running on a finished deck:
 | Two contrasting ideas (problem/solution, before/after) | `.two-cards` |
 | Three or four parallel points | `.three-cards` / `.four-cards` |
 | A headline number or two | `.stat-cards` |
-| A process or pipeline | `.step-flow` / `-5` / `-6` |
+| A process or pipeline | `.step-flow` / `-2` / `-3` / `-5` / `-6` |
 | Dates / evolution over time | `.timeline` |
 | A row of tools or logos | `.tool-grid` |
 | A side-by-side comparison table | `.comparison-table` |

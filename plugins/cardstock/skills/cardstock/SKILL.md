@@ -144,12 +144,14 @@ These keep decks rendering cleanly — follow them exactly:
   code blocks; a language tag can fight the highlighter.
 - A card is a color variant on its own (e.g. `::: {.card-blue}`). There is no
   `.card` class — never pair it with a variant. Each variant carries its own
-  padding, rounding, and shadow; inside a wrapper the wrapper restyles it.
-  One exception: a deck built against an older vendored copy of the theme may
-  style `.card` inside the grid wrappers and need `::: {.card .card-blue}`.
-  Before editing an existing deck, open its `.scss` and follow whichever
-  convention that file and its slides already use — a mismatch silently drops
-  the card's padding and title styling.
+  padding, rounding, and shadow, and the grid wrappers style the variants
+  directly, so a bare variant is fully styled whether it stands alone or sits in
+  a `.two-cards`/`.three-cards`/`.four-cards` grid.
+  One exception: a deck built against a vendored theme older than 1.3.0 keyed
+  those wrapper rules off a literal `.card` class, so there `::: {.card-blue}`
+  silently lost its bold card title and its smaller list text. Before editing an
+  existing deck, check whether its `.scss` mentions `.card` at all; if it does,
+  follow whichever convention that file and its slides already use.
 - Use **relative paths** for images and assets (`![](images/chart.png)`), never
   absolute paths — the deck folder moves.
 - Preserve the user's wording. When restyling or restructuring a deck, change

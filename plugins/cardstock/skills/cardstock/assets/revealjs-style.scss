@@ -279,6 +279,20 @@ $card-purple-title: #7c3aed;
   .accent { color: #b91c1c; font-weight: 700; }
 }
 
+// ── Card titles ──
+// The wrapper rules above give a title its weight only for cards inside a
+// .two-cards/.three-cards/.four-cards grid. A card standing alone outside any
+// wrapper matched none of them, so its title got the variant's color and
+// nothing else -- no weight, no block display, no space beneath it. This is the
+// floor for every card title, wherever it sits; the wrappers still win on
+// font-size, being more specific.
+.card-title {
+  display: block;
+  font-weight: 700;
+  font-size: 0.9em;
+  margin-bottom: 0.5em;
+}
+
 // ── Punchline ──
 // The takeaway that lands at the end of a slide -- one or two sentences, said
 // once, after the setup above it has been made. Named for the job it does
@@ -1147,6 +1161,32 @@ $card-purple-title: #7c3aed;
   }
 }
 
+.step-flow-3 {
+  @extend .step-flow;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2em;
+
+  .step-card {
+    padding: 1.4em 1.2em;
+
+    .step-title { font-size: 0.95em; margin-bottom: 0.45em; }
+    .step-desc { font-size: 0.78em; line-height: 1.5; }
+  }
+}
+
+.step-flow-2 {
+  @extend .step-flow;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2.4em;
+
+  .step-card {
+    padding: 1.4em 1.4em;
+
+    .step-title { font-size: 1em; margin-bottom: 0.45em; }
+    .step-desc { font-size: 0.82em; line-height: 1.5; }
+  }
+}
+
 // ── Speaker notes (shown in presenter view) ──
 .reveal aside.notes {
   font-size: 0.6em;
@@ -1234,4 +1274,86 @@ $card-purple-title: #7c3aed;
   border-radius: 4px;
   font-weight: 600;
   font-size: 0.95em;
+}
+
+
+// ── Visible scrollbars ──
+// macOS hides overlay scrollbars until something scrolls, so a long block looks
+// like it simply ends where it is clipped, with no handle to grab in class.
+// These stay on screen. min-height on the thumb matters more than it looks: the
+// system-prompt block is ~150 screens tall, so a proportional thumb would come
+// out about four pixels.
+@mixin visible-scrollbar {
+  &::-webkit-scrollbar {
+    width: 14px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #0f172a;
+    border-radius: 7px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 7px;
+    min-height: 48px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+  }
+}
+
+// ── Long prompt/skill listings (.prompt-scroll) ──
+// The wrapper div is the scroller: fixed height, overflow-y:auto, set inline on
+// the element. Without this the theme's `.reveal pre` rules cap the pre inside
+// it at 600px and give it its own scrollbar, so the bar ends up floating inside
+// the panel instead of on its edge, with a dead strip below it. Let the pre run
+// to full height and the wrapper does the scrolling. Font size is deliberately
+// left alone so the text stays the size it has been presented at.
+.prompt-scroll {
+  @include visible-scrollbar;
+
+  pre {
+    max-height: none;
+    overflow: visible;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+    border-radius: 0;
+    width: 100%;
+  }
+}
+
+// Firefox only. It ignores ::-webkit-scrollbar, but setting scrollbar-color
+// unscoped would make Chromium switch to standard overlay scrollbars and drop
+// every rule above, which is how this went wrong the first time.
+@supports (-moz-appearance: none) {
+  .reveal pre,
+  .prompt-scroll {
+    scrollbar-width: auto;
+    scrollbar-color: #94a3b8 #0f172a;
+  }
+}
+
+// ── Mode cards (Claude Desktop mode slides) ──
+.mode-cards {
+  .card-blue, .card-amber, .card-teal { padding: 0.8em 1.4em 1em; }
+  .card-blue p, .card-amber p, .card-teal p { font-size: 0.8em; margin: 0.25em 0; }
+  .card-title { font-size: 0.95em; }
+  figure { margin: 0.4em 0 0; }
+
+  .mode-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5em;
+    align-items: center;
+  }
+
+  .mode-split figure { margin: 0; }
+
+  .two-cards .card-amber,
+  .two-cards .card-teal { display: flex; align-items: center; }
+  .two-cards .mode-split { width: 100%; }
 }
