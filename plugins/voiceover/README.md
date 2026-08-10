@@ -64,6 +64,6 @@ you'd actually say and let it rewrite the passage.
 
 ## Your own voice
 
-If you'd rather the video sounded like you than like a stock voice, the
-`cloning` plugin walks through cloning your voice on ElevenLabs. The voice it
-produces shows up in this app's voice list.
+If you'd rather the video sounded like you than like a stock voice, clone your
+voice on ElevenLabs — a cloned voice shows up in this app's voice list alongside
+the stock ones, labelled as yours.

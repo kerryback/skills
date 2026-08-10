@@ -62,11 +62,6 @@
       "description": "Write and edit academic prose that reads as human, not machine-generated: varied sentence rhythm, no formulaic AI tells (delve, however-at-every-turn, the not-X-but-Y contrast, three-item everything), and structure driven by the argument rather than a template. Defaults to scholarly register (journal articles, working papers, referee reports, grant proposals). Works when drafting fresh and when revising a draft."
     },
     {
-      "name": "cloning",
-      "source": "./plugins/cloning",
-      "description": "Clone your own voice on ElevenLabs, end to end: account and plan setup for newcomers, a reading script drafted from your own slides and papers so the clone learns your vocabulary and teaching cadence, guidance for recording it fresh in one sitting, and an automated ffmpeg QC pass that catches bad audio before you spend your one professional cloning slot, and verification of the finished voice."
-    },
-    {
       "name": "elegant-pdf",
       "source": "./plugins/elegant-pdf",
       "description": "Create elegant, branded documents from a small HTML design system rendered to PDF or image with headless Chrome \u2014 one-page flyers/announcements (2x JPEG or clickable PDF) and multi-page programs, reports, and handbooks (clickable PDF with cover, running footer, and page numbers). Default palette is Rice Business navy + gold; recolor by editing one block."

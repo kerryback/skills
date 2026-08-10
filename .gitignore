@@ -16,5 +16,9 @@
 .DS_Store
 *.swp
 
+# Kept locally, not published: taken out of the marketplace, and the folder
+# stays here so it can be worked on (or put back) without living on GitHub.
+plugins/cloning/
+
 # Browser-tool scratch: screenshots, console logs, and files it downloaded.
 .playwright-mcp/
