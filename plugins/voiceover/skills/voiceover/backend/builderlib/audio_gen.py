@@ -1,7 +1,7 @@
 """Per-slide TTS audio generation.
 
-Synthesizes one ElevenLabs MP3 per slide that has speaker notes, parameterized
-by voice_id + model + voice settings.
+Synthesizes one ElevenLabs MP3 per slide that has narration, parameterized by
+voice_id + model + voice settings.
 
 Each MP3 is named for a sha of the text it speaks plus the voice signature, so
 the audio directory is a content-addressed cache: a rebuild re-synthesizes only
@@ -99,8 +99,8 @@ def generate(slides: list, audio_dir: Path, voice_id: str, model: str,
              settings: dict | None = None, progress=None) -> dict:
     """(Re)synthesize audio for `slides`, write the manifest, prune the cache.
 
-    `slides` is the parsed deck — {index, notes, ...} — in any order. Slides
-    with no notes get no audio and are shown silently in the video.
+    `slides` is the deck's narration — {index, narration, ...} — in any order.
+    Slides with no narration get no audio and are shown silently in the video.
 
     progress: optional callable(done, total, message).
     Returns {"total", "narrated", "synthesized", "skipped"}.
@@ -115,7 +115,7 @@ def generate(slides: list, audio_dir: Path, voice_id: str, model: str,
     narrated = 0
 
     for s in sorted(slides, key=lambda s: s["index"]):
-        text = (s.get("notes") or "").strip()
+        text = (s.get("narration") or "").strip()
         entry = {"index": s["index"], "file": None, "words": len(text.split())}
         if text:
             narrated += 1
@@ -126,7 +126,7 @@ def generate(slides: list, audio_dir: Path, voice_id: str, model: str,
                 tasks[filename] = text
         manifest.append(entry)
 
-    # Two slides with identical notes share one clip, so `skipped` counts every
+    # Two slides with identical narration share one clip, so `skipped` counts every
     # slide that needed no new request — cache hits and duplicates alike.
     skipped = narrated - len(tasks)
     done = skipped

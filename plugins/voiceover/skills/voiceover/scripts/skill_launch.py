@@ -4,13 +4,16 @@
 Invoked by the `voiceover` skill. It:
   1. ensures the app environment (venv) and the built frontend exist,
   2. starts the FastAPI app on http://127.0.0.1:<port> (default 8010),
-  3. opens the given deck — a .qmd or .pptx, paired with the PDF exported from
-     it — and deep-links the browser into it.
+  3. opens the given deck — a PDF — and deep-links the browser into it.
 
-A deck is two files that stay where you keep them: the source you write, which
-is where the speaker notes live, and the PDF, which is where the slide images
-come from. Neither is copied into the app. Editing the deck and pressing Reload
-is the whole edit cycle.
+The deck is optional: with none named, the app opens on its Upload screen and the
+instructor drops a PDF in there instead. Either way the deck ends up in the same
+place, and `GET /api/projects` is how the agent finds out which one it is.
+
+A deck is one file: the PDF you exported from your slides. The app copies it
+into the deck folder, renders a page image per slide, and holds the narration
+itself, so the whole edit cycle is typing in the app (or asking Claude) and
+uploading the PDF again when the slides themselves change.
 
 Each deck's working files live under {project}/.voiceover/decks/<deck-name>
 (the project folder = --output-dir). The finished MP4 and transcript are written
@@ -19,8 +22,8 @@ build completes, so the outputs sit where they are easy to find — there is no
 in-app download.
 
 Usage:
-  python scripts/skill_launch.py /path/to/deck.qmd [/path/to/deck.pdf]
-                                 [--output-dir DIR] [--port 8010]
+  python scripts/skill_launch.py [/path/to/deck.pdf] [--output-dir DIR]
+                                 [--port 8010]
 
 Runs in the foreground and keeps the server alive; stop it with Ctrl-C.
 """
@@ -39,7 +42,8 @@ REPO = Path(__file__).resolve().parent.parent
 BACKEND = REPO / "backend"
 FRONTEND = REPO / "frontend"
 
-SOURCE_EXTS = {".qmd", ".md", ".pptx"}
+PPTX_EXTS = {".pptx", ".ppt", ".key"}
+DECK_EXTS = {".qmd", ".md", ".html"}
 
 # Runtime state lives OUTSIDE the skill directory so that (a) reinstalling or
 # updating the skill never wipes decks, and (b) the package source stays clean
@@ -111,12 +115,12 @@ def ensure_frontend_built():
 
 def preflight():
     """Surface the one missing prerequisite that matters, up front. Reading the
-    deck and reviewing the notes work without a key — it is needed only to
+    deck and writing the narration work without a key — it is needed only to
     generate audio."""
     if not os.environ.get("ELEVENLABS_API_KEY"):
         log("NOTE: ELEVENLABS_API_KEY not found in the environment. You can paste "
             "a key in the app (banner at the top); until then, Generate will not "
-            "run. Reading the deck and reviewing the notes work without it.")
+            "run. Writing and reviewing the narration work without it.")
 
 
 def wait_up(base: str, timeout: float = 45.0) -> bool:
@@ -132,9 +136,8 @@ def wait_up(base: str, timeout: float = 45.0) -> bool:
     return False
 
 
-def open_deck(base: str, source: Path, pdf: Path) -> str:
-    body = json.dumps({"source": str(source), "pdf": str(pdf),
-                       "name": source.stem}).encode()
+def open_deck(base: str, pdf: Path) -> str:
+    body = json.dumps({"pdf": str(pdf), "name": pdf.stem}).encode()
     req = urllib.request.Request(base + "/api/projects", data=body,
                                  headers={"Content-Type": "application/json"},
                                  method="POST")
@@ -156,52 +159,55 @@ def wait_loaded(base: str, pid: str, timeout: float = 180.0):
         with urllib.request.urlopen(f"{base}/api/projects/{pid}", timeout=10) as resp:
             proj = json.load(resp)
         if proj["state"] == "load_failed":
-            # Not fatal: the app shows the reason and offers Reload, which is
-            # where a fixable mismatch gets fixed.
-            log(f"Could not load the deck: {proj.get('log', '').splitlines()[0]}")
+            # Not fatal: the app shows the reason and offers Upload, which is
+            # where a bad file gets replaced.
+            log(f"Could not read the PDF: {proj.get('log', '').splitlines()[0]}")
             return
         if proj["state"] != "loading":
             n = len(proj.get("slides", []))
-            narrated = sum(1 for s in proj.get("slides", []) if s.get("notes"))
-            log(f"Loaded {n} slides, {narrated} with speaker notes.")
+            narrated = sum(1 for s in proj.get("slides", []) if s.get("narration"))
+            log(f"Read {n} slides, {narrated} with narration.")
             return
         time.sleep(1.0)
     log("Still loading; opening anyway.")
 
 
-def resolve_inputs(args) -> tuple:
-    source = Path(args.deck).expanduser().resolve()
-    if not source.is_file():
-        raise SystemExit(f"Deck not found: {source}")
-    if source.suffix.lower() not in SOURCE_EXTS:
-        raise SystemExit(
-            f"Not a deck source: {source.name}. Point this at the deck you wrote "
-            "— a .qmd (Quarto reveal.js) or a .pptx — not at the PDF. The PDF is "
-            "used too, alongside it.")
-    if args.pdf:
-        pdf = Path(args.pdf).expanduser().resolve()
-    else:
-        pdf = source.with_suffix(".pdf")
+def resolve_pdf(args) -> Path | None:
+    """The one input, with a useful complaint for the two near misses: being
+    handed the deck someone wrote (export it first) rather than a PDF, and being
+    pointed at a PDF that has a sibling of the same name they may have meant.
+
+    None when no deck was named — the app opens on its Upload screen.
+    """
+    if not args.deck:
+        return None
+    pdf = Path(args.deck).expanduser().resolve()
+    ext = pdf.suffix.lower()
+    if ext in PPTX_EXTS or ext in DECK_EXTS:
+        sibling = pdf.with_suffix(".pdf")
+        hint = (f" Its PDF looks like it is already there: {sibling}."
+                if sibling.is_file() else
+                " Export it to PDF first — in PowerPoint, File ▸ Export ▸ Create "
+                "PDF/XPS; in Quarto, render the deck and print to PDF with "
+                "`pdf-separate-fragments: false`.")
+        raise SystemExit(f"Voiceover takes the PDF, not {pdf.name}.{hint}")
+    if ext != ".pdf":
+        raise SystemExit(f"Not a PDF: {pdf.name}. Voiceover takes a PDF deck.")
     if not pdf.is_file():
-        raise SystemExit(
-            f"No PDF at {pdf}. Export {source.name} to PDF and save it next to "
-            "the deck with the same name (or pass its path as the second "
-            "argument).")
-    return source, pdf
+        raise SystemExit(f"PDF not found: {pdf}")
+    return pdf
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("deck", help="path to the deck you wrote: .qmd or .pptx")
-    ap.add_argument("pdf", nargs="?",
-                    help="path to the PDF exported from it (default: the same "
-                         "name with a .pdf extension, next to the deck)")
+    ap.add_argument("deck", nargs="?",
+                    help="path to the deck's PDF (omit to upload one in the app)")
     ap.add_argument("--output-dir", default=os.getcwd(),
                     help="where finished .mp4/.txt are saved (default: cwd)")
     ap.add_argument("--port", type=int, default=8010)
     args = ap.parse_args()
 
-    source, pdf = resolve_inputs(args)
+    pdf = resolve_pdf(args)
     output_dir = Path(args.output_dir).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     # Per-deck working files (page images, audio) live beside the project, in
@@ -230,10 +236,14 @@ def main():
             raise SystemExit(
                 f"Server did not come up on port {args.port}. If that port is in "
                 "use, rerun with a different one, e.g. --port 8011.")
-        pid = open_deck(base, source, pdf)
-        log(f"Opened '{pid}' from {source.name} + {pdf.name}.")
-        wait_loaded(base, pid)
-        url = f"{base}/?project={pid}"
+        if pdf:
+            pid = open_deck(base, pdf)
+            log(f"Opened '{pid}' from {pdf.name}.")
+            wait_loaded(base, pid)
+            url = f"{base}/?project={pid}"
+        else:
+            log("No deck named — the app opens on Upload; drop a PDF there.")
+            url = f"{base}/"
         # Publish the URL so an editor extension (if any) can open it in an
         # in-editor browser tab; harmless everywhere else.
         try:

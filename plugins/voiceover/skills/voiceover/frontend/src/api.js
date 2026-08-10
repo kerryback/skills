@@ -3,7 +3,9 @@
 
 async function request(path, { method = 'GET', body, headers, raw } = {}) {
   const opts = { method, credentials: 'same-origin', headers: { ...headers } }
-  if (body !== undefined) {
+  if (body instanceof FormData) {
+    opts.body = body
+  } else if (body !== undefined) {
     opts.headers['Content-Type'] = 'application/json'
     opts.body = JSON.stringify(body)
   }
@@ -30,14 +32,45 @@ export const api = {
   // ---- decks ----
   listProjects: () => request('api/projects'),
   getProject: (id) => request(`api/projects/${id}`),
-  // Re-read the deck source and its PDF from disk. This is the whole edit
-  // cycle: edit the notes in Quarto/PowerPoint (or ask Claude to), then reload.
+  // Start a new deck from a PDF chosen in the browser — the Upload screen with
+  // no deck open, which is where a bare launch begins.
+  createDeck: (file) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return request('api/projects/upload', { method: 'POST', body: fd })
+  },
+  // Upload an edited PDF into an existing deck: same deck, same settings, script
+  // carried across slide by slide by content (see the backend's jobs._carry_over).
+  uploadPdf: (id, file) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return request(`api/projects/${id}/pdf`, { method: 'POST', body: fd })
+  },
+  // Re-read the PDF from the path the deck was opened with — for a deck the
+  // instructor re-exported in place.
   reload: (id) => request(`api/projects/${id}/reload`, { method: 'POST' }),
   saveConfig: (id, config) =>
     request(`api/projects/${id}/config`, { method: 'PUT', body: config }),
 
   // ---- jobs ----
   build: (id) => request(`api/projects/${id}/build`, { method: 'POST' }),
+
+  // ---- narration ----
+  // The script lives in the app. Claude writes it in bulk; the instructor edits
+  // any slide by hand, autosaved a slide at a time.
+  getNarration: (id) => request(`api/projects/${id}/narration`),
+  saveNarration: (id, index, narration) =>
+    request(`api/projects/${id}/narration/${index}`, {
+      method: 'PUT',
+      body: { narration },
+    }),
+  // Mark re-upload-flagged slides reviewed without editing them. Omit `indexes`
+  // to clear every flag.
+  clearReview: (id, indexes) =>
+    request(`api/projects/${id}/review/clear`, {
+      method: 'POST',
+      body: { indexes: indexes ?? null },
+    }),
 
   // ---- ElevenLabs voices (account + cloned) for the voice picker ----
   listVoices: () => request('api/tts/voices'),

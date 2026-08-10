@@ -11,19 +11,15 @@ chatbot, no hosting, and no in-app download.
 
 ## What a deck is
 
-Two files, both owned by the instructor and never copied into the app:
+One file: the PDF the instructor exported from their slides, arriving either as a
+path (the launcher, when the skill was invoked on a deck) or as a browser upload
+(the Upload screen, when it wasn't). The app copies it into the deck folder
+(`deck.pdf`) and renders one page image per slide.
 
-| file | supplies | who edits it |
-| --- | --- | --- |
-| `<name>.qmd` (Quarto reveal) or `<name>.pptx` | speaker notes, slide titles, slide text | Claude Code, or the instructor in Quarto / PowerPoint |
-| `<name>.pdf` exported from it | one page image per slide | re-exported by the instructor |
-
-The app reads both on load and re-reads them on Reload. It writes to neither.
-There is no in-app notes editor and no narration-writing API: the deck file is
-the single copy of the notes.
-
-A bare PDF is rejected — it has no speaker notes, so there is nothing to narrate
-and nowhere to put a draft.
+The narration is the app's own — `narration.json` in the deck folder — because a
+PDF has nowhere to keep it. Two authors write to that one copy: the instructor,
+in the Narration text screen (autosaved per slide), and Claude Code, through the
+narration API. Non-PDF input is refused with an instruction to export first.
 
 ## Auth model
 
@@ -34,23 +30,23 @@ and nowhere to put a draft.
 ```
 backend/            FastAPI app (this contract's server)
 frontend/           React + Vite + Tailwind SPA -> builds to frontend/dist
-scripts/            skill_launch.py (start the app), deck_notes.py (read/write notes)
+scripts/            skill_launch.py (start the app)
 
 {project}/                    the instructor's project folder (VOICEOVER_OUTPUT_DIR)
-  <deck>.qmd | <deck>.pptx    the deck — speaker notes live here
-  <deck>.pdf                  the exported PDF — slide images come from here
+  <deck>.pdf                  the deck the instructor exported (read, never written)
   <deck>.mp4                  finished narrated video (build output — the deliverable)
   <deck>.txt                  finished narration transcript (build output)
   .voiceover/                 per-project app data (DATA_DIR); no database
     decks/<deck>/             one folder per deck, named after it (the deck id)
-      slides/slide-NNN.png    per-slide images rendered from the PDF (1-based)
-      slides.json             {"slides":[{index,title,slide_text,notes}]} — the
-                              last read of the source deck
+      deck.pdf                the app's copy of the ingested PDF
+      slides/slide-NNN.png    per-slide images rendered from it (1-based)
+      narration.json          {"slides":[{index,title,slide_text,narration,change?}]}
+      fingerprints.json       {"slides":[{index,image_sha,text_sha}]} — last ingest
       config.json             {voice_id, model, stability, similarity_boost,
                               style, use_speaker_boost, speed}
       audio/<sha>.mp3 + manifest.json
-      meta.json               {id,name,state,source_type,source_path,pdf_path,
-                              source_mtime,pdf_mtime,build_sig,log,timestamps}
+      meta.json               {id,name,state,source_type,source_path,upload_name,
+                              source_mtime,build_sig,review,log,timestamps}
 ```
 The deck folders under `.voiceover/decks` ARE the registry — the app lists decks
 by scanning them and reading each `meta.json`. There is no database.
@@ -58,42 +54,62 @@ by scanning them and reading each `meta.json`. There is no database.
 ## Deck states
 
 `loading → ready → building → built`, plus `load_failed | building_failed`, each
-carrying a `log`. `ready` means the notes and the page images are in hand and
-agree on how many slides there are. `built` means the MP4 is ready.
+carrying a `log`. `ready` means the page images and the narration are in hand.
+`built` means the MP4 is ready.
 
 Staleness is computed, not stored: `store.build_signature` shas every slide's
-notes plus the voice settings; `_build` stamps it into `build_sig`; `is_stale`
-compares. So editing the deck and reloading makes a built video stale without any
-edit bookkeeping.
+narration plus the voice settings; `_build` stamps it into `build_sig`;
+`is_stale` compares. So an edit or a settings change makes a built video stale
+with no edit bookkeeping.
 
-## The slide-count check
+## Carrying the script across a new upload
 
-`deck.load` refuses when the source's slide count and the PDF's page count
-differ — every slide after the first divergence would narrate the wrong picture.
-The error names both files, both counts, and the usual cause:
-- `.qmd` with more PDF pages than slides: reveal exports one page per fragment
-  step unless `pdf-separate-fragments: false` is set under `format: revealjs:`.
-- `.pptx` with fewer PDF pages than slides: hidden slides, which PowerPoint
-  leaves out of an exported PDF.
+A re-uploaded PDF is aligned against the previous ingest by content, never by
+index — insert one page and every later slide would otherwise inherit its
+neighbour's script. `slidematch.align` runs a cascade of image sha → text sha →
+text similarity → position (see its module docstring), and `jobs._carry_over`
+moves each surviving slide's narration onto its new index, flagging what moved:
 
-`GET /api/projects/{id}` also reports softer drift in `files`: either file
-changed since the app read it (`source_changed`, `pdf_changed`) and — the quiet
-one — `pdf_older_than_source`, which is how new notes end up over old slides.
+- `change: "new"` — nothing matched it; it has no narration yet.
+- `change: "edited"` — matched on weaker evidence than an identical render; it
+  keeps the old script as a starting point.
+- `review` (on the deck) — `{total, unchanged, edited, new, removed,
+  suspect_rerender}`. `suspect_rerender` means most matches were same-words /
+  different-pixels, i.e. a re-export rather than a rewrite.
+
+Flags clear when the slide is edited (`PUT …/narration…`) or waved through
+(`POST …/review/clear`); the review disappears when no flag is left.
+
+Audio needs no equivalent: clips are named for the text they speak, so a script
+that lands on a different slide brings its audio with it.
 
 ## REST API (all JSON; all under /api; no auth — local app)
 
-- `GET  /api/projects` → `[{id,name,state,source_type,stale,files,updated_at}]`
-- `POST /api/projects` `{source, pdf?, name?}` → deck summary; starts a load.
-  `source` is a path to a `.qmd` or `.pptx` already on disk; `pdf` defaults to
-  the same path with a `.pdf` extension. 400 if either file is missing or the
-  source is an unsupported type. Re-opening the same source reopens the same
-  deck (id = slug of the filename stem).
-- `POST /api/projects/{id}/reload` → 202; re-reads the source and the PDF.
-- `GET  /api/projects/{id}` → `{id,name,state,source_type,stale,files,
-  slides:[{index,title,notes,image_url}],config,log}`
-- `GET  /api/projects/{id}/notes` → `{source,source_type,slides:[{index,title,
-  slide_text,notes}]}` — what Claude Code reads before drafting. There is no
-  corresponding PUT: notes are written by editing the deck.
+- `GET  /api/projects` → `[{id,name,state,stale,files,updated_at}]`
+- `POST /api/projects` `{pdf, name?, project?}` → deck summary; starts an ingest.
+  `pdf` is a path to a PDF already on disk (the launcher's route). 400 if it is
+  missing or not a PDF. Re-opening the same PDF reopens the same deck (id = slug
+  of the filename stem); `project` re-reads into a named deck instead, for a
+  re-export saved under a different filename.
+- `POST /api/projects/upload` (multipart `file`) → 202; start a new deck from a
+  PDF chosen in the browser — the Upload screen with no deck open, which is how a
+  bare launch (no deck named) gets its slides. Deck id = slug of the filename
+  stem, so the same deck reopens rather than duplicating.
+- `POST /api/projects/{id}/pdf` (multipart `file`) → 202; upload into an existing
+  deck. Same deck, same settings, script carried across.
+- `POST /api/projects/{id}/reload` → 202; re-read the PDF from the path the deck
+  was opened with. 409 for a deck whose PDF arrived by upload (no path to go back
+  to) or whose path is gone.
+- `GET  /api/projects/{id}` → `{id,name,state,stale,files,
+  slides:[{index,title,narration,change,image_url}],config,review,log,updated_at}`
+- `GET  /api/projects/{id}/narration` → `{slides:[{index,title,slide_text,
+  narration,change?}],review}` — what Claude Code reads before drafting.
+- `PUT  /api/projects/{id}/narration/{index}` `{narration}` → 200; one slide (the
+  editor's autosave). 404 for an index this deck doesn't have.
+- `PUT  /api/projects/{id}/narration` `{slides:[{index,narration}]}` → `{written}`;
+  several at once (how Claude delivers a draft). Slides not named are untouched.
+- `POST /api/projects/{id}/review/clear` `{indexes?}` → `{cleared}`; drop change
+  flags without editing ("keep as is"). Omit `indexes` to clear all.
 - `PUT  /api/projects/{id}/config` `{voice_id,model,stability,similarity_boost,style,use_speaker_boost,speed}` → 200 (all fields optional)
 - `GET  /api/tts/status` → `{configured}` (is an ElevenLabs key set)
 - `POST /api/tts/key` `{api_key}` → validates against ElevenLabs, persists to `~/.voiceover/.env` (outside the skill dir, so a plugin update can't wipe it), updates the live value
@@ -104,21 +120,16 @@ one — `pdf_older_than_source`, which is how new notes end up over old slides.
 - `GET  /api/projects/{id}/slides/{file}` → PNG (slide image)
 - `GET  /api/projects/{id}/video` → the rendered MP4 (served inline, Range-aware; 404 until built) — for the in-app player only
 
-## Editing notes (there is no notes API)
-
-Claude Code drafts and revises by editing the deck:
-- `.qmd` — edit the file; each slide takes a `::: {.notes}` … `:::` block.
-- `.pptx` — `scripts/deck_notes.py write <deck>` with `{index: notes}` on stdin
-  (zipped XML can't be text-edited). The same script reads notes without the app.
-
-Then `POST …/reload`, or the instructor presses Reload.
+`files` (on a deck) is `{pdf, source_path, source_dir, missing, changed,
+uploaded}`: `changed` means the PDF on disk has moved on since the app read it
+(the instructor re-exported in place), which is what `POST …/reload` is for.
 
 ## Audio cache
 
-`audio_gen` names each MP3 `sha(notes + voice signature).mp3` and writes
+`audio_gen` names each MP3 `sha(narration + voice signature).mp3` and writes
 `manifest.json` mapping slide index → filename. Nothing is keyed by slide
 position, so inserting or reordering slides re-synthesizes nothing, and two
-slides with identical notes share a clip. Unreferenced clips are pruned after
+slides with identical narration share a clip. Unreferenced clips are pruned after
 each build.
 
 ## Output delivery (no in-app download)
@@ -158,28 +169,43 @@ download button.
 - React + Vite + Tailwind. Builds to `frontend/dist`; FastAPI serves it at `/`
   (SPA fallback). API calls use RELATIVE paths (`api/...`) so it works behind a
   proxy/sub-path.
-- One screen, no wizard and no navigation. The launcher opens `/?project=<id>`.
-  Top to bottom: thumbnail strip (amber dot = no notes), then the slide image —
-  or the finished video, via a Slide/Video toggle — on the left with that slide's
-  speaker notes read-only on the right, then the audio panel (voice, model,
-  Generate, a disclosure holding the read settings and the Voice Library field,
-  and the SSE progress bar with per-slide ticks).
-- The header carries the deck name, both filenames, the state pill, and Reload.
-  Drift in either file raises a banner above the strip with its own Reload; a
-  failed load replaces the deck view with the reason and a retry.
-- Opening `/` with no `?project=` lists the decks this folder knows about. There
-  is no upload — a deck is opened by launching the skill on it.
+- Four screens plus Generate, all in one row in the top bar, in the order things
+  happen for a new deck: `Upload · Narration text · Audio settings · [Generate] ·
+  Preview`. They are places, not steps: nothing is gated on anything else, and the
+  app routes the instructor only twice — after an upload (→ Narration text) and on
+  pressing Generate (→ Preview).
+  - Upload — drop zone / picker. With a deck open it uploads into that deck and
+    says what survives; with none open (a bare launch) it starts a new deck and
+    also lists the decks this folder already knows. Shows a "read it again" offer
+    when the PDF on disk changed since the app read it.
+  - Narration text — thumbnail strip (amber dot = no narration, coloured tag =
+    changed in the last upload), the slide on the left, its script in an
+    autosaving textarea on the right, and the review banner above when an upload
+    left flags.
+  - Audio settings — voice, Voice Library lookup, model, and the read settings.
+    Autosaved, debounced; no apply step.
+  - Preview — the finished video, or an empty state with a Generate button.
+- Both incremental paths are stated where they are used, because "will this throw
+  away my work?" is the question that stops people using either: the Upload
+  screen says a page that didn't change keeps its narration and its audio, and
+  Generate says only slides whose narration changed are spoken again.
+- The header also carries the deck name, the PDF's filename and the state pill.
+  Build progress (SSE, with per-slide ticks) renders under it on whichever screen
+  is showing; a failed build keeps its reason on screen until the next run.
+- Opening `/` with no `?project=` is the Upload screen alone. Uploading there
+  stamps `?project=<id>` into the URL, so a reload — or handing the link to
+  Claude — reopens the same deck.
 
 ## Build job (backend)
 
-1. Synthesize audio for every slide with notes, using `config.voice_id` +
+1. Synthesize audio for every slide with narration, using `config.voice_id` +
    `config.model` + voice settings (ElevenLabs). Clips are content-addressed, so
    only text that is new in this voice is sent.
 2. Render `video.mp4` (`video_gen.generate`): each slide's PNG shown for its
    narration length + a 1.5s pause (silent slides dwell 4s), segments normalized
    to 1920×1080/25fps and concatenated. Uses ffmpeg from the `imageio-ffmpeg`
    wheel — no system ffmpeg.
-3. Write the transcript (`jobs._write_transcript`): the per-slide notes,
+3. Write the transcript (`jobs._write_transcript`): the per-slide narration,
    snapshotted so it matches this build.
 4. Outputs are already in place: both were rendered straight to
    `VOICEOVER_OUTPUT_DIR`; `jobs._announce_outputs` just reports where.
@@ -190,7 +216,7 @@ The slide images come from the instructor's PDF.
 
 ## Env (backend)
 
-`ELEVENLABS_API_KEY` (TTS) is the only key — notes come from the deck, so there
+`ELEVENLABS_API_KEY` (TTS) is the only key — the app makes no LLM calls, so there
 is no `ANTHROPIC_API_KEY`. `DATA_DIR` (per-project deck folders + working files;
 the launcher sets `{project}/.voiceover`). Optional: `TTS_CONCURRENCY` (default
 5, capped by your ElevenLabs account's concurrency limit), `VIDEO_CONCURRENCY`

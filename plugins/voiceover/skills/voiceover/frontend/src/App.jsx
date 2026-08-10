@@ -1,26 +1,55 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, FileText, Headphones, RotateCw } from 'lucide-react'
+import {
+  AlertTriangle,
+  Film,
+  Headphones,
+  PenLine,
+  RotateCw,
+  Sliders,
+  Upload,
+} from 'lucide-react'
 import { api } from './api'
 import { JOB_TERMINALS } from './constants'
 import { useJobEvents } from './hooks/useJobEvents'
 import { ToastProvider, useToast } from './components/Toast'
-import { Button, Card, ErrorBanner, ProgressBar, Spinner, StatePill } from './components/ui'
+import {
+  Button,
+  Card,
+  ErrorBanner,
+  ProgressBar,
+  SlideTicks,
+  Spinner,
+  StatePill,
+} from './components/ui'
 import ApiKeyBanner from './components/ApiKeyBanner'
-import DeckView from './components/DeckView'
+import NarrationView from './components/NarrationView'
+import PreviewView from './components/PreviewView'
+import UploadView from './components/UploadView'
+import VoiceView from './components/VoiceView'
 
-// The launcher opens the app at /?project=<id>. There is no home screen and no
-// in-app upload: a deck is two files in the instructor's own folder, so it is
-// opened by launching the skill on it, not by picking it here.
+// The launcher opens the app at /?project=<id> when it was given a deck. Launched
+// bare, it opens at / and the deck arrives through the Upload screen.
 const initialProject = () =>
   new URLSearchParams(window.location.search).get('project') || null
 
-// How often to re-read the deck's state. This is how notes drafted by Claude,
-// and edits made in Quarto or PowerPoint, announce themselves.
+// How often to re-read the deck. This is how narration Claude writes through the
+// API shows up while the instructor watches.
 const POLL_MS = 4000
+
+// The screens, in the order they sit in the top bar. Left to right is the order
+// things happen in for a new deck — but they are places, not steps: nothing is
+// gated, and a finished deck is edited by going straight to whichever one.
+const SCREENS = [
+  { key: 'upload', label: 'Upload', icon: Upload },
+  { key: 'narration', label: 'Narration text', icon: PenLine },
+  { key: 'voice', label: 'Audio settings', icon: Sliders },
+  { key: 'preview', label: 'Preview', icon: Film, after: 'generate' },
+]
 
 function Shell() {
   const [projectId, setProjectId] = useState(initialProject)
   const [project, setProject] = useState(null)
+  const [screen, setScreen] = useState('narration')
   const [error, setError] = useState('')
   const { progress, running, start } = useJobEvents()
   const toast = useToast()
@@ -44,33 +73,73 @@ function Shell() {
     return () => clearInterval(iv)
   }, [refresh])
 
-  const reload = useCallback(async () => {
-    if (!projectId) return
+  // A deck uploaded in the app becomes this session's deck, and the URL says so
+  // — reloading the tab (or handing the link to Claude) reopens the same deck.
+  const openDeck = useCallback((pid) => {
+    setProjectId(pid)
+    setProject(null)
+    setScreen('narration')
+    const url = new URL(window.location.href)
+    url.searchParams.set('project', pid)
+    window.history.replaceState({}, '', url)
+  }, [])
+
+  const generate = useCallback(async () => {
+    if (!project) return
     try {
-      await api.reload(projectId)
-      start(projectId, {
-        terminals: JOB_TERMINALS.load,
+      const status = await api.ttsStatus()
+      if (!status.configured) {
+        toast.error(
+          'Add your ElevenLabs API key first — the banner at the top of the page.'
+        )
+        return
+      }
+      await api.build(project.id)
+      setScreen('preview')
+      start(project.id, {
+        terminals: JOB_TERMINALS.build,
         onDone: async () => {
-          const p = await refresh()
-          const n = p?.slides?.length || 0
-          const narrated = (p?.slides || []).filter((s) => s.notes?.trim()).length
-          toast.success(`Reloaded — ${n} slides, ${narrated} with notes.`)
-        },
-        onError: async () => {
+          toast.success('Voiceover generated.')
           await refresh()
-          toast.error("Couldn't read the deck.")
+        },
+        onError: async (err, evt) => {
+          toast.error(evt?.message || err.message)
+          await refresh()
         },
       })
     } catch (err) {
       toast.error(err.message)
     }
-  }, [projectId, refresh, start, toast])
+  }, [project, refresh, start, toast])
 
-  if (!projectId) return <NoDeck onOpen={setProjectId} />
+  // No deck yet: the top bar would have nothing to act on, so the Upload screen
+  // is the whole app until a PDF arrives.
+  if (!projectId) {
+    return (
+      <div className="min-h-full flex flex-col">
+        <BareBar />
+        <ApiKeyBanner />
+        <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-8">
+          <UploadView refresh={async () => null} onOpen={openDeck} />
+        </main>
+      </div>
+    )
+  }
+
+  const busy = running || project?.state === 'loading'
+  const built = project?.state === 'built'
 
   return (
     <div className="min-h-full flex flex-col">
-      <TopBar project={project} onReload={reload} reloading={running} />
+      <TopBar
+        project={project}
+        screen={screen}
+        onScreen={setScreen}
+        onGenerate={generate}
+        generating={running}
+        busy={busy}
+        built={built}
+      />
       <ApiKeyBanner />
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-5 py-5">
         <ErrorBanner message={error} onRetry={refresh} />
@@ -81,22 +150,50 @@ function Shell() {
           </div>
         ) : (
           <div className="space-y-3">
-            <FileNotices project={project} onReload={reload} />
-
             {running && (
-              <Card className="p-4">
-                <ProgressBar progress={progress} />
+              <Card className="space-y-3 p-4">
+                <ProgressBar progress={progress} tone="amber" />
+                <SlideTicks
+                  total={progress?.total || project.slides?.length || 0}
+                  done={progress?.done || 0}
+                />
+                <p className="text-xs text-muted">
+                  Speaking the narration, then rendering the video — a couple of
+                  minutes for a long deck. Only slides whose narration changed
+                  since the last run are spoken again; the rest are reused.
+                </p>
               </Card>
             )}
 
+            {/* A failed build is usually the ElevenLabs quota, and the reason
+                only ever appeared as a toast — gone by the time anyone reads
+                the state pill. Keep it on screen until the next run. */}
+            {project.state === 'building_failed' && !running && (
+              <BuildFailed project={project} onRetry={generate} />
+            )}
+
             {project.state === 'load_failed' ? (
-              <LoadFailed project={project} onReload={reload} />
+              <LoadFailed
+                project={project}
+                onReupload={() => setScreen('upload')}
+              />
             ) : project.state === 'loading' && !project.slides?.length ? (
               <div className="flex items-center justify-center gap-2 py-24 text-muted">
-                <Spinner className="h-5 w-5 text-brand-blue" /> Reading the deck…
+                <Spinner className="h-5 w-5 text-brand-blue" /> Reading the PDF…
               </div>
+            ) : screen === 'upload' ? (
+              <UploadView
+                project={project}
+                refresh={refresh}
+                onOpen={openDeck}
+                onDone={() => setScreen('narration')}
+              />
+            ) : screen === 'narration' ? (
+              <NarrationView project={project} />
+            ) : screen === 'voice' ? (
+              <VoiceView project={project} />
             ) : (
-              <DeckView project={project} refresh={refresh} />
+              <PreviewView project={project} onGenerate={generate} />
             )}
           </div>
         )}
@@ -105,113 +202,153 @@ function Shell() {
   )
 }
 
-function TopBar({ project, onReload, reloading }) {
-  const files = project?.files
+function Brand({ children }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-navy/40 bg-navy text-white">
-      <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-5 py-2.5">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/10">
-            <Headphones className="h-4 w-4" />
+    <div className="flex min-w-0 items-center gap-2.5">
+      <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white/10">
+        <Headphones className="h-4 w-4" />
+      </span>
+      <div className="min-w-0">{children}</div>
+    </div>
+  )
+}
+
+function BareBar() {
+  return (
+    <header className="border-b border-navy/40 bg-navy text-white">
+      <div className="mx-auto flex max-w-3xl items-center gap-3 px-5 py-2.5">
+        <Brand>
+          <span className="block text-sm font-extrabold leading-tight tracking-tight">
+            Voiceover
           </span>
-          <div className="min-w-0">
-            <span className="block truncate text-sm font-extrabold leading-tight tracking-tight">
-              {project?.name || 'Voiceover'}
-            </span>
-            {files?.source && (
-              <span
-                className="block truncate text-[0.7rem] text-white/60"
-                title={files.source_dir}
-              >
-                {files.source} + {files.pdf}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {project && <StatePill state={project.state} stale={project.stale} />}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="border-white/30 text-white hover:bg-white/10"
-            onClick={onReload}
-            loading={reloading}
-            title="Re-read the deck and its PDF from disk"
-          >
-            <RotateCw className="h-4 w-4" /> Reload
-          </Button>
-        </div>
+          <span className="block text-[0.7rem] text-white/60">
+            Upload a PDF to begin
+          </span>
+        </Brand>
       </div>
     </header>
   )
 }
 
-// The two ways the pair of files goes quietly wrong: one of them changed since
-// the app read it, or the PDF is older than the deck it supposedly came from —
-// which is how new notes end up narrating old slides.
-function FileNotices({ project, onReload }) {
-  const f = project.files || {}
-  const changed = f.source_changed || f.pdf_changed
-  if (!changed && !f.pdf_older_than_source && !f.source_missing && !f.pdf_missing)
-    return null
-
-  if (f.source_missing || f.pdf_missing) {
-    return (
-      <Notice tone="red">
-        {f.source_missing ? f.source : f.pdf} is no longer where the app found it.
-        Put it back, or relaunch the skill on the deck's new location.
-      </Notice>
-    )
-  }
-
+function TopBar({
+  project,
+  screen,
+  onScreen,
+  onGenerate,
+  generating,
+  busy,
+  built,
+}) {
+  const files = project?.files
+  const changed = files?.changed && !files?.missing
   return (
-    <Notice
-      tone={changed ? 'brand' : 'amber'}
-      action={
-        <Button variant="subtle" size="sm" onClick={onReload}>
-          <RotateCw className="h-4 w-4" /> Reload
-        </Button>
-      }
-    >
-      {changed ? (
-        <>
-          {[f.source_changed && f.source, f.pdf_changed && f.pdf]
-            .filter(Boolean)
-            .join(' and ')}{' '}
-          changed on disk since this was read.
-        </>
-      ) : (
-        <>
-          {f.pdf} is older than {f.source}. If you edited the slides, re-export
-          the PDF — otherwise the video will show the old slides.
-        </>
-      )}
-    </Notice>
+    <header className="sticky top-0 z-30 border-b border-navy/40 bg-navy text-white">
+      <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-5 py-2.5">
+        <Brand>
+          <span className="block truncate text-sm font-extrabold leading-tight tracking-tight">
+            {project?.name || 'Voiceover'}
+          </span>
+          {files?.pdf && (
+            <span
+              className="block truncate text-[0.7rem] text-white/60"
+              title={files.source_dir || files.pdf}
+            >
+              {files.pdf}
+            </span>
+          )}
+        </Brand>
+
+        {/* Generate sits in the row with the screens, between Audio settings and
+            Preview — where it falls in the order of doing things, and reachable
+            from wherever you are. */}
+        <nav className="flex flex-wrap items-center gap-1">
+          {SCREENS.map((s) => {
+            const active = screen === s.key
+            const Icon = s.icon
+            return (
+              <span key={s.key} className="flex items-center gap-1">
+                {s.after === 'generate' && (
+                  <Button
+                    variant={built ? 'amber' : 'primary'}
+                    size="sm"
+                    className="mx-1"
+                    onClick={onGenerate}
+                    loading={generating}
+                    disabled={busy || !project?.slides?.length}
+                    title="Speak the narration and render the video. Only slides whose narration changed are spoken again."
+                  >
+                    {built ? (
+                      <>
+                        <RotateCw className="h-3.5 w-3.5" /> Regenerate
+                      </>
+                    ) : (
+                      <>
+                        <Headphones className="h-3.5 w-3.5" /> Generate
+                      </>
+                    )}
+                  </Button>
+                )}
+                <button
+                  onClick={() => onScreen(s.key)}
+                  aria-current={active ? 'page' : undefined}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    active
+                      ? 'bg-white text-navy'
+                      : 'text-white/75 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" /> {s.label}
+                  {/* The one thing worth a dot up here: the PDF on disk moved on
+                      without the app. */}
+                  {s.key === 'upload' && changed && (
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-accent-500"
+                      aria-label="The PDF changed on disk"
+                    />
+                  )}
+                </button>
+              </span>
+            )
+          })}
+        </nav>
+
+        {project && <StatePill state={project.state} stale={project.stale} />}
+      </div>
+    </header>
   )
 }
 
-function Notice({ tone, children, action }) {
-  const tones = {
-    brand: 'border-brand-200 bg-brand-50/70 text-slate',
-    amber: 'border-amber-200 bg-amber-50 text-amber-800',
-    red: 'border-red-200 bg-red-50 text-red-700',
-  }
+function BuildFailed({ project, onRetry }) {
+  const message = (project.log || '').split('\n')[0]
+  const quota = /quota|credit|402|429/i.test(message)
   return (
-    <div
-      className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm ${tones[tone]}`}
-    >
-      <span className="flex items-center gap-2">
-        <AlertTriangle className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-        {children}
+    <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      <span className="flex min-w-0 items-start gap-2">
+        <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+        <span className="min-w-0">
+          <span className="block font-semibold">Generation failed</span>
+          <span className="block whitespace-pre-wrap break-words text-red-600/90">
+            {message || 'The video could not be generated.'}
+          </span>
+          {quota && (
+            <span className="mt-1 block text-red-600/90">
+              The slides already spoken are cached, so trying again after topping
+              up re-synthesizes only what is left.
+            </span>
+          )}
+        </span>
       </span>
-      {action}
+      <Button variant="danger" size="sm" onClick={onRetry}>
+        <RotateCw className="h-4 w-4" /> Try again
+      </Button>
     </div>
   )
 }
 
-// A load failure is nearly always the slide-count check, and its message says
-// what to go fix — so show it plainly rather than as a stack trace.
-function LoadFailed({ project, onReload }) {
+// A PDF that can't be read is nearly always a file that isn't really a PDF, or
+// one that is encrypted. Say what happened and point at the one screen that can
+// fix it.
+function LoadFailed({ project, onReupload }) {
   const message = (project.log || '').split('\n')[0]
   return (
     <Card className="p-6">
@@ -219,76 +356,19 @@ function LoadFailed({ project, onReload }) {
         <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-extrabold tracking-tight text-navy">
-            Couldn&apos;t read this deck
+            Couldn&apos;t read this PDF
           </h2>
           <p className="mt-1.5 whitespace-pre-wrap text-sm text-slate">
-            {message || 'The deck could not be read.'}
+            {message || 'The PDF could not be read.'}
           </p>
           <div className="mt-4">
-            <Button onClick={onReload}>
-              <RotateCw className="h-4 w-4" /> Try again
+            <Button onClick={onReupload}>
+              <Upload className="h-4 w-4" /> Upload a PDF
             </Button>
           </div>
         </div>
       </div>
     </Card>
-  )
-}
-
-// Opening the app bare (no ?project=) isn't the normal path, but it shouldn't be
-// a dead end: list the decks this folder already knows about.
-function NoDeck({ onOpen }) {
-  const [decks, setDecks] = useState(null)
-  useEffect(() => {
-    api
-      .listProjects()
-      .then(setDecks)
-      .catch(() => setDecks([]))
-  }, [])
-
-  return (
-    <div className="mx-auto max-w-2xl px-5 py-16">
-      <h1 className="text-2xl font-extrabold tracking-tight text-navy">
-        Voiceover
-      </h1>
-      <p className="mt-2 text-sm text-muted">
-        A deck is two files you keep yourself: the one you wrote — a Quarto
-        <code className="mx-1">.qmd</code> or a
-        <code className="mx-1">.pptx</code>, where the speaker notes live — and
-        the PDF you exported from it, which supplies the slide images. Open one
-        by launching the skill on it; ask Claude, or run{' '}
-        <code>skill_launch.py lecture.qmd</code>.
-      </p>
-
-      {decks === null ? (
-        <div className="mt-6 flex items-center gap-2 text-muted">
-          <Spinner className="h-5 w-5 text-brand-blue" /> Loading…
-        </div>
-      ) : decks.length === 0 ? (
-        <p className="mt-6 text-sm text-muted">No decks opened yet.</p>
-      ) : (
-        <Card className="mt-6 divide-y divide-line">
-          {decks.map((d) => (
-            <button
-              key={d.id}
-              onClick={() => onOpen(d.id)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50"
-            >
-              <FileText className="h-4 w-4 flex-shrink-0 text-muted" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-navy">
-                  {d.name}
-                </span>
-                <span className="block truncate text-xs text-muted">
-                  {d.files?.source}
-                </span>
-              </span>
-              <StatePill state={d.state} stale={d.stale} />
-            </button>
-          ))}
-        </Card>
-      )}
-    </div>
   )
 }
 

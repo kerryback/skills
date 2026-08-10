@@ -1,36 +1,26 @@
-import { useEffect, useState } from 'react'
-import {
-  ChevronDown,
-  Headphones,
-  RotateCw,
-  SlidersHorizontal,
-} from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Check, ChevronDown } from 'lucide-react'
 import { api } from '../api'
 import {
   DEFAULT_TTS,
   ELEVEN_MODELS,
-  JOB_TERMINALS,
   SPEED_RANGE,
   V3_STABILITY_LEVELS,
   modelInfo,
 } from '../constants'
-import { useJobEvents } from '../hooks/useJobEvents'
 import { useToast } from './Toast'
-import {
-  Button,
-  Card,
-  ErrorBanner,
-  Field,
-  ProgressBar,
-  SlideTicks,
-  inputClass,
-} from './ui'
+import { Card, ErrorBanner, Field, Spinner, inputClass } from './ui'
 
-// Voice, read settings, and the Generate button. Everything past the voice and
-// the model sits behind a disclosure: the defaults are right for narration, and
-// a wall of sliders above the button reads as work to do before generating.
-export default function AudioPanel({ project, refresh, onBuilt }) {
+const AUTOSAVE_MS = 500
+
+// Audio settings: which voice, which model, and how it reads. Settings autosave
+// the way the narration does — Generate lives in the top bar, so there is no
+// "apply" step to forget, and a settings change makes the built video stale on
+// its own (store.build_signature covers them).
+export default function VoiceView({ project }) {
   const cfg = project.config || {}
+  const toast = useToast()
+
   const [voiceId, setVoiceId] = useState(cfg.voice_id || DEFAULT_TTS.voice_id)
   const [model, setModel] = useState(cfg.model || DEFAULT_TTS.model)
   const [stability, setStability] = useState(
@@ -47,7 +37,8 @@ export default function AudioPanel({ project, refresh, onBuilt }) {
 
   const [voices, setVoices] = useState([])
   const [voicesConfigured, setVoicesConfigured] = useState(true)
-  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
 
   // A voice pasted from the ElevenLabs Voice Library, resolved to its name so
   // the instructor can see what they pasted. `library` holds the resolved voice
@@ -56,10 +47,6 @@ export default function AudioPanel({ project, refresh, onBuilt }) {
   const [library, setLibrary] = useState(null)
   const [lookingUp, setLookingUp] = useState(false)
   const [lookupError, setLookupError] = useState('')
-  const [error, setError] = useState('')
-
-  const { progress, running, start } = useJobEvents()
-  const toast = useToast()
 
   // Fetch the account's ElevenLabs voices (includes cloned voices).
   useEffect(() => {
@@ -97,6 +84,36 @@ export default function AudioPanel({ project, refresh, onBuilt }) {
     }
   }, [voicesConfigured, voices, voiceId, library])
 
+  const settings = useMemo(
+    () => ({
+      voice_id: voiceId,
+      model,
+      stability: Number(stability),
+      similarity_boost: Number(similarity),
+      style: Number(style),
+      use_speaker_boost: speakerBoost,
+      speed: Number(speed),
+    }),
+    [voiceId, model, stability, similarity, style, speakerBoost, speed]
+  )
+
+  // Autosave. Debounced, because the sliders fire on every pixel.
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    setSaved(false)
+    const t = setTimeout(() => {
+      api
+        .saveConfig(project.id, settings)
+        .then(() => setSaved(true))
+        .catch((err) => setError(err.message))
+    }, AUTOSAVE_MS)
+    return () => clearTimeout(t)
+  }, [project.id, settings])
+
   const lookUpLibraryVoice = async () => {
     const id = libraryId.trim()
     if (!id) return
@@ -107,6 +124,7 @@ export default function AudioPanel({ project, refresh, onBuilt }) {
       setLibrary(v)
       setVoiceId(v.voice_id)
       setLibraryId('')
+      toast.success(`Voice set to ${v.name}.`)
     } catch (err) {
       setLookupError(err.message || 'Could not look up that voice.')
     } finally {
@@ -115,56 +133,28 @@ export default function AudioPanel({ project, refresh, onBuilt }) {
   }
 
   const info = modelInfo(model)
-  const settings = {
-    voice_id: voiceId,
-    model,
-    stability: Number(stability),
-    similarity_boost: Number(similarity),
-    style: Number(style),
-    use_speaker_boost: speakerBoost,
-    speed: Number(speed),
-  }
-
-  const generate = async () => {
-    setError('')
-    if (!voicesConfigured) {
-      setError(
-        'Add your ElevenLabs API key (banner at the top of the page) before generating.'
-      )
-      return
-    }
-    try {
-      await api.saveConfig(project.id, settings)
-      await api.build(project.id)
-      start(project.id, {
-        terminals: JOB_TERMINALS.build,
-        onDone: async () => {
-          toast.success('Voiceover generated.')
-          await refresh()
-          onBuilt?.()
-        },
-        onError: (err, evt) => {
-          setError(evt?.message || err.message)
-          toast.error('Generation failed.')
-          refresh()
-        },
-      })
-    } catch (err) {
-      setError(err.message || String(err))
-    }
-  }
-
-  const total = project.slides?.length || progress?.total || 0
-  const built = project.state === 'built'
-  const blocked = project.state === 'loading' || project.state === 'load_failed'
 
   return (
-    <Card className="p-4">
+    <div className="animate-fadein space-y-3">
       <ErrorBanner message={error} />
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[14rem] flex-1">
-          <Field label="Voice" hint="Your ElevenLabs account, cloned voices included">
+      <Card className="p-5">
+        <div className="mb-4 flex items-baseline justify-between">
+          <h2 className="text-base font-extrabold tracking-tight text-navy">
+            Voice
+          </h2>
+          {saved && (
+            <span className="flex items-center gap-1.5 text-xs font-medium text-green-600">
+              <Check className="h-3.5 w-3.5" strokeWidth={3} /> Settings saved
+            </span>
+          )}
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Field
+            label="Voice"
+            hint="Your ElevenLabs account, cloned voices included"
+          >
             {voicesConfigured ? (
               <div className="relative">
                 <select
@@ -198,13 +188,11 @@ export default function AudioPanel({ project, refresh, onBuilt }) {
             ) : (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                 Add your ElevenLabs API key in the banner at the top of the page
-                to load your account's voices.
+                to load your account&apos;s voices.
               </div>
             )}
           </Field>
-        </div>
 
-        <div className="min-w-[14rem] flex-1">
           <Field label="Model" hint="Expressiveness vs. speed">
             <div className="relative">
               <select
@@ -221,57 +209,7 @@ export default function AudioPanel({ project, refresh, onBuilt }) {
               <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             </div>
           </Field>
-        </div>
 
-        <Button
-          variant="subtle"
-          onClick={() => setShowAdvanced((s) => !s)}
-          aria-expanded={showAdvanced}
-        >
-          <SlidersHorizontal className="h-4 w-4" /> Read settings
-        </Button>
-
-        <Button
-          size="lg"
-          variant={built ? 'amber' : 'primary'}
-          onClick={generate}
-          loading={running}
-          disabled={!voicesConfigured || blocked || running}
-        >
-          {built ? (
-            <>
-              <RotateCw className="h-4 w-4" /> Regenerate
-            </>
-          ) : (
-            <>
-              <Headphones className="h-4 w-4" /> Generate video
-            </>
-          )}
-        </Button>
-      </div>
-
-      {running && (
-        <div className="mt-4 space-y-3">
-          <ProgressBar progress={progress} tone="amber" />
-          <SlideTicks total={progress?.total || total} done={progress?.done || 0} />
-          <p className="text-xs text-muted">
-            Synthesizing the narration, then rendering the video — a couple of
-            minutes for a long deck. Only notes that changed since the last run
-            are re-synthesized.
-          </p>
-        </div>
-      )}
-
-      {!running && built && (
-        <p className="mt-3 text-xs text-muted">
-          {project.stale
-            ? 'The notes or the voice settings have changed since this video was made — regenerate to update it.'
-            : 'Saved to your project folder as an .mp4 and a .txt transcript.'}
-        </p>
-      )}
-
-      {showAdvanced && (
-        <div className="mt-4 grid gap-5 border-t border-line pt-4 lg:grid-cols-2">
           {/* The account lists ~20 premade voices plus your own clones. The rest
               of ElevenLabs' library — thousands of voices — is browsable only on
               their site, which is also where you can audition them. Paste the id
@@ -295,14 +233,14 @@ export default function AudioPanel({ project, refresh, onBuilt }) {
                     }
                   }}
                 />
-                <Button
-                  variant="subtle"
+                <button
+                  type="button"
                   onClick={lookUpLibraryVoice}
-                  loading={lookingUp}
                   disabled={!libraryId.trim() || lookingUp}
+                  className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-2 text-sm font-semibold text-slate transition hover:bg-slate-50 disabled:opacity-50"
                 >
-                  Use
-                </Button>
+                  {lookingUp && <Spinner />} Use
+                </button>
               </div>
               {lookupError ? (
                 <p className="mt-1.5 text-xs text-red-600">{lookupError}</p>
@@ -323,12 +261,19 @@ export default function AudioPanel({ project, refresh, onBuilt }) {
               ) : (
                 <p className="mt-1.5 text-xs text-muted">
                   Browse and audition at elevenlabs.io/app/voice-library, then
-                  copy the voice's ID.
+                  copy the voice&apos;s ID.
                 </p>
               )}
             </Field>
           )}
+        </div>
+      </Card>
 
+      <Card className="p-5">
+        <h2 className="mb-4 text-base font-extrabold tracking-tight text-navy">
+          How it reads
+        </h2>
+        <div className="grid gap-5 lg:grid-cols-2">
           {/* v3 defines three named stability levels; the v2 family takes a
               continuous dial. Showing a slider for v3 would imply precision the
               model does not have. */}
@@ -447,7 +392,13 @@ export default function AudioPanel({ project, refresh, onBuilt }) {
             </span>
           </label>
         </div>
-      )}
-    </Card>
+
+        <p className="mt-5 border-t border-line pt-4 text-xs text-muted">
+          Changing any of these re-synthesizes the whole deck on the next
+          Generate — every clip is cached under the voice it was made with.
+          Editing one slide&apos;s narration costs only that slide.
+        </p>
+      </Card>
+    </div>
   )
 }

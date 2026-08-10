@@ -22,8 +22,9 @@ def _normalize(meta: dict) -> dict:
     """Fill in defaults so every project dict has a stable shape."""
     meta.setdefault("log", "")
     meta.setdefault("source_type", None)
+    # Where the ingested PDF came from on disk, when it was opened by path
+    # rather than uploaded through the browser. Empty for an upload.
     meta.setdefault("source_path", "")
-    meta.setdefault("pdf_path", "")
     return meta
 
 

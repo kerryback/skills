@@ -59,9 +59,9 @@ export const DEFAULT_TTS = {
 // Bounds for the expressive controls, mirrored in CONTRACT.md.
 export const SPEED_RANGE = { min: 0.7, max: 1.2, step: 0.05 }
 
-// Deck states. Loading reads the deck and its PDF; building makes the video.
+// Deck states. Loading reads the PDF; building makes the video.
 export const STATE_LABELS = {
-  loading: ['bg-blue-50 text-brand-dark', 'Reading the deck…'],
+  loading: ['bg-blue-50 text-brand-dark', 'Reading the PDF…'],
   ready: ['bg-slate-100 text-slate-600', 'Ready'],
   load_failed: ['bg-red-50 text-red-600', "Couldn't read the deck"],
   building: ['bg-blue-50 text-brand-dark', 'Generating…'],
@@ -91,4 +91,23 @@ export const formatDuration = (seconds) => {
   const m = Math.floor(seconds / 60)
   const s = Math.round(seconds % 60)
   return m ? `${m} min ${s} sec` : `${s} sec`
+}
+
+// Per-slide flags a re-uploaded PDF leaves behind: the slide's content moved, so
+// its narration is carried over but wants another look. `null` means untouched.
+export const CHANGE_LABELS = {
+  edited: { label: 'Edited', dot: 'bg-brand-600' },
+  new: { label: 'New', dot: 'bg-violet-500' },
+}
+
+// "2 slides edited, 1 new, 1 removed" — what the last re-upload did to the deck.
+export const describeReview = (review) => {
+  if (!review) return ''
+  const parts = []
+  if (review.edited) parts.push(`${review.edited} edited`)
+  if (review.new) parts.push(`${review.new} new`)
+  if (review.removed) parts.push(`${review.removed} removed`)
+  if (!parts.length) return 'no slides changed'
+  const n = review.edited + review.new
+  return `${parts.join(', ')}${n ? ` of ${review.total} slides` : ''}`
 }

@@ -3,12 +3,12 @@ import asyncio
 import json
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from builderlib import config, db, deck, events, jobs, sources, store
+from builderlib import config, db, deck, events, jobs, store
 
 db.init()
 
@@ -22,7 +22,7 @@ app = FastAPI(title="Voiceover Builder")
 def _summary(p: dict) -> dict:
     return {
         "id": p["id"], "name": p["name"], "state": p["state"],
-        "source_type": p["source_type"], "stale": store.is_stale(p["id"]),
+        "stale": store.is_stale(p["id"]),
         "files": store.file_status(p["id"]),
         "updated_at": p["updated_at"],
     }
@@ -33,54 +33,109 @@ async def list_projects():
     return [_summary(p) for p in db.list_projects()]
 
 
+def _ingest_pdf(pid: str, name: str, data: bytes, source_path: Path | None,
+                upload_name: str = "") -> dict:
+    """Write a PDF into the deck folder and start reading it.
+
+    Shared by all three ways a PDF arrives — the launcher's path, a browser
+    upload, and re-reading an edited file from its original path. The deck keeps
+    its id and its folder every time, which is what lets an existing script be
+    carried onto the new slides (jobs._ingest).
+    """
+    config.project_dir(pid).mkdir(parents=True, exist_ok=True)
+    if db.get_project(pid) is None:
+        db.create_project(pid, name, "pdf", "loading")
+    store.pdf_path(pid).write_bytes(data)
+    db.update_project(pid, source_type="pdf",
+                      source_path=str(source_path.resolve()) if source_path else "",
+                      upload_name=upload_name)
+    jobs.start_ingest(pid)
+    return _summary(db.get_project(pid))
+
+
 class OpenBody(BaseModel):
-    source: str
-    pdf: str | None = None
+    pdf: str
     name: str | None = None
+    project: str | None = None
 
 
 @app.post("/api/projects")
 async def open_deck(body: OpenBody):
-    """Open (or reopen) a deck from two files already on disk: the source the
-    instructor writes — .qmd or .pptx, which is where the speaker notes live —
-    and the PDF exported from it, which is where the slide images come from.
+    """Open (or reopen) a deck from a PDF already on disk — how the launcher
+    opens the deck the instructor named.
 
-    Nothing is uploaded and nothing is copied: the deck folder records the two
-    paths and re-reads them on every load, so editing the deck in Quarto or
-    PowerPoint and reloading is the whole edit cycle.
+    `project` re-reads the PDF into an existing deck instead of deriving the
+    deck id from the filename, for a re-export saved under a different name
+    (which would otherwise start a second deck from scratch).
     """
-    src = Path(body.source).expanduser()
-    if not src.is_file():
-        raise HTTPException(400, f"Deck source not found: {src}")
-    try:
-        sources.detect(src)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    pdf = Path(body.pdf).expanduser() if body.pdf else deck.resolve_pdf(src)
+    pdf = Path(body.pdf).expanduser()
     if not pdf.is_file():
-        raise HTTPException(
-            400,
-            f"No PDF found at {pdf}. Export {src.name} to PDF and save it next "
-            "to the deck with the same name.")
+        raise HTTPException(400, f"PDF not found: {pdf}")
+    if not deck.is_pdf(pdf):
+        raise HTTPException(400, deck.NOT_PDF_MESSAGE)
+    if body.project:
+        if not db.get_project(body.project):
+            raise HTTPException(404, "not found")
+        return _ingest_pdf(body.project, body.name or pdf.stem, pdf.read_bytes(),
+                           pdf)
+    pid = deck.deck_slug(pdf.stem)
+    return _ingest_pdf(pid, body.name or pdf.stem, pdf.read_bytes(), pdf)
 
-    pid = deck.deck_slug(src.stem)
-    config.project_dir(pid).mkdir(parents=True, exist_ok=True)
-    if db.get_project(pid) is None:
-        db.create_project(pid, body.name or src.stem, None, "loading")
-    db.update_project(pid, source_path=str(src.resolve()),
-                      pdf_path=str(pdf.resolve()))
-    jobs.start_load(pid)
-    return _summary(db.get_project(pid))
+
+@app.post("/api/projects/upload", status_code=202)
+async def upload_new_deck(file: UploadFile = File(...)):
+    """Start a new deck from a PDF uploaded in the browser — the Upload screen
+    when no deck is open, which is how a bare launch (`/voiceover` with no deck
+    named) gets its slides.
+
+    The deck id is a slug of the uploaded filename, so uploading the same deck
+    again reopens it rather than starting a second copy of it.
+    """
+    name = file.filename or "deck.pdf"
+    if not deck.is_pdf(Path(name)):
+        raise HTTPException(400, deck.NOT_PDF_MESSAGE)
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "That file is empty.")
+    pid = deck.deck_slug(Path(name).stem)
+    return _ingest_pdf(pid, Path(name).stem, data, None, upload_name=name)
+
+
+@app.post("/api/projects/{pid}/pdf", status_code=202)
+async def upload_pdf(pid: str, file: UploadFile = File(...)):
+    """Upload a new PDF into this deck from the browser — the Upload screen with
+    a deck already open.
+
+    The deck keeps its id, its settings and its script: the new slides are
+    matched against the previous ingest by content, so an inserted or reordered
+    slide doesn't shift everyone's narration by one.
+    """
+    if not db.get_project(pid):
+        raise HTTPException(404, "not found")
+    name = file.filename or "deck.pdf"
+    if not deck.is_pdf(Path(name)):
+        raise HTTPException(400, deck.NOT_PDF_MESSAGE)
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "That file is empty.")
+    return _ingest_pdf(pid, db.get_project(pid)["name"], data, None,
+                       upload_name=name)
 
 
 @app.post("/api/projects/{pid}/reload", status_code=202)
 async def reload_deck(pid: str):
-    """Re-read the deck and its PDF from disk — after editing the notes, or
-    after re-exporting the PDF."""
+    """Re-read the PDF this deck was opened from — after re-exporting it in
+    place. Only available when the deck was opened by path; an uploaded PDF has
+    no file to go back to, so re-upload it instead."""
     if not db.get_project(pid):
         raise HTTPException(404, "not found")
-    jobs.start_load(pid)
-    return {"started": True}
+    src = store.source_pdf(pid)
+    if not src or not src.is_file():
+        raise HTTPException(
+            409,
+            "This deck's PDF isn't on disk where the app opened it. Upload the "
+            "PDF instead.")
+    return _ingest_pdf(pid, db.get_project(pid)["name"], src.read_bytes(), src)
 
 
 @app.get("/api/projects/{pid}")
@@ -89,39 +144,94 @@ async def get_project(pid: str):
     if not proj:
         raise HTTPException(404, "not found")
     slides = []
-    for s in sorted(store.read_slides(pid).get("slides", []),
+    for s in sorted(store.read_narration(pid).get("slides", []),
                     key=lambda s: s["index"]):
         i = s["index"]
         png = store.slides_dir(pid) / f"slide-{i + 1:03d}.png"
         slides.append({
             "index": i,
             "title": s.get("title", ""),
-            "notes": s.get("notes", ""),
+            "narration": s.get("narration", ""),
+            # "edited" | "new" when a re-uploaded PDF moved this slide's content.
+            "change": s.get("change") or None,
             "image_url": (f"api/projects/{pid}/slides/slide-{i + 1:03d}.png"
                           if png.exists() else None),
         })
     return {
         "id": proj["id"], "name": proj["name"], "state": proj["state"],
-        "source_type": proj["source_type"], "stale": store.is_stale(pid),
-        "files": store.file_status(pid),
+        "stale": store.is_stale(pid), "files": store.file_status(pid),
         "slides": slides, "config": store.read_config(pid),
-        "log": proj.get("log", ""),
+        "review": store.read_review(pid), "log": proj.get("log", ""),
+        # Cache-buster for the in-app video player: a rebuild changes this.
+        "updated_at": proj.get("updated_at", 0),
     }
 
 
-@app.get("/api/projects/{pid}/notes")
-async def get_notes(pid: str):
-    """The deck's speaker notes, slide by slide, with each slide's text for
-    context. This is what Claude Code reads before drafting; it writes back by
-    editing the deck source, not by calling the app."""
+# --------------------------------------------------------------------------- #
+# Narration — the script. The app owns it; Claude Code and the instructor both
+# write to it through here.
+# --------------------------------------------------------------------------- #
+@app.get("/api/projects/{pid}/narration")
+async def get_narration(pid: str):
+    """The script slide by slide, each with the page's extracted text for
+    context, plus `review` — what the last re-uploaded PDF changed.
+
+    Slides the re-upload moved carry `change: "edited" | "new"`; that is how
+    Claude knows which slides to redraft rather than rewriting a deck whose
+    script is mostly still good.
+    """
     if not db.get_project(pid):
         raise HTTPException(404, "not found")
-    meta = store.read_meta(pid)
-    return {
-        "source": meta.get("source_path", ""),
-        "source_type": meta.get("source_type"),
-        "slides": store.read_slides(pid).get("slides", []),
-    }
+    data = store.read_narration(pid)
+    data["review"] = store.read_review(pid)
+    return data
+
+
+class NarrationBody(BaseModel):
+    narration: str
+
+
+@app.put("/api/projects/{pid}/narration/{index}")
+async def put_narration(pid: str, index: int, body: NarrationBody):
+    """One slide's script — the editor's autosave."""
+    if not db.get_project(pid):
+        raise HTTPException(404, "not found")
+    if not store.set_narration(pid, index, body.narration):
+        raise HTTPException(404, f"No slide {index} in this deck.")
+    return {"ok": True}
+
+
+class NarrationSlide(BaseModel):
+    index: int
+    narration: str
+
+
+class NarrationBulkBody(BaseModel):
+    slides: list[NarrationSlide]
+
+
+@app.put("/api/projects/{pid}/narration")
+async def put_narration_bulk(pid: str, body: NarrationBulkBody):
+    """Several slides at once — how Claude delivers a draft. Slides not named
+    are left alone, so a partial redraft doesn't blank the rest."""
+    if not db.get_project(pid):
+        raise HTTPException(404, "not found")
+    written = store.set_narration_bulk(
+        pid, {s.index: s.narration for s in body.slides})
+    return {"ok": True, "written": written}
+
+
+class ClearReviewBody(BaseModel):
+    indexes: list[int] | None = None
+
+
+@app.post("/api/projects/{pid}/review/clear")
+async def clear_review(pid: str, body: ClearReviewBody):
+    """Mark re-upload-flagged slides as dealt with without editing them — the
+    editor's "keep as is". Omit `indexes` to clear every flag."""
+    if not db.get_project(pid):
+        raise HTTPException(404, "not found")
+    return {"cleared": store.clear_flags(pid, body.indexes)}
 
 
 class ConfigBody(BaseModel):

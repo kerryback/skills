@@ -60,7 +60,7 @@ export default function ApiKeyBanner() {
               Audio can’t be generated yet — add your ElevenLabs API key
             </p>
             <p className="mt-1 text-xs leading-relaxed text-amber-800">
-              You can still read the deck and review its speaker notes. To
+              You can still read the deck and write its narration. To
               generate the voice audio and build the video, this app needs an
               ElevenLabs key. Don’t have one? Create a free account at{' '}
               <a
