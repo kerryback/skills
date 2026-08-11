@@ -43,8 +43,7 @@ reveal's own slide navigation, so all slides are captured correctly.
 
 ## PNG images (one per slide)
 
-Useful for importing into PowerPoint/Google Slides, or as input to
-`tutorbot-builder`:
+Useful for importing into PowerPoint or Google Slides:
 
 ```
 decktape reveal --screenshots --screenshots-directory slides_png \

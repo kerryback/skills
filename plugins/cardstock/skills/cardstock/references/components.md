@@ -65,7 +65,7 @@ A full-bleed dark slide that opens a part of the talk:
   One per slide across a whole deck is the most common way a cardstock deck goes
   flat: the notes stop reading as notes, and the audience learns to skip the
   last line. About one content slide in four. If it carries real weight, put it
-  in the content; if it is narration, put it in `::: {.notes}`.
+  in the content; if it is narration, cut it — the presenter says it.
 - `.punchline` — dark navy block for the line the slide is built toward.
 - `.highlight-box` — emphasized callout with a blue left border.
 - `.info-box` — light panel with an optional `[Title]{.box-title}`.

@@ -1,7 +1,7 @@
 {
   "name": "cardstock",
-  "description": "Build a slide deck in Kerry Back's Quarto reveal.js house style — a vendored theme with cards, section dividers, comparison tables, and step flows, rendered to HTML and exported to PDF, PowerPoint, or PNG. Use when the user invokes /cardstock, asks for a cardstock deck by name, or is editing a deck already built with it. For a general request to make slides or a presentation with no style specified, prefer the pptx skill.",
-  "version": "1.3.0",
+  "description": "Build a slide deck in Kerry Back's Quarto reveal.js house style \u2014 a vendored theme with cards, section dividers, comparison tables, and step flows, rendered to HTML and exported to PDF, PowerPoint, or PNG. Use when the user invokes /cardstock, asks for a cardstock deck by name, or is editing a deck already built with it. For a general request to make slides or a presentation with no style specified, prefer the pptx skill.",
+  "version": "1.4.0",
   "author": {
     "name": "Kerry Back"
   }

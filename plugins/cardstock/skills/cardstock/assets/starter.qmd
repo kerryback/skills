@@ -114,12 +114,6 @@ caveat or a caption, and leave that one [on screen throughout.]{.accent}
 
 ![](images/your_chart.svg)
 
-::: {.notes}
-Spoken narration for this slide goes here. Add notes on slides you will present
-or narrate — they also power the tutorbot-builder skill if you later want a
-self-paced, narrated version.
-:::
-
 ## Thank you {.centered-statement}
 
 your.email@example.edu

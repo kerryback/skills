@@ -86,11 +86,74 @@ theme's component classes. Read `references/components.md` and lay content out
 with those components (cards, callouts, dividers, tables) instead of hand-rolled
 CSS — that is what makes the deck look consistent.
 
-Speaker narration goes in a `::: {.notes}` block on a slide. Add it when the
-deck will be presented or narrated — it also feeds the `tutorbot-builder` skill
-if the user later wants a narrated, self-paced version.
+Do not write speaker notes. No `::: {.notes}` blocks — the presenter narrates
+live, and a note block is somewhere for cut text to hide instead of being cut.
 
-### 3 — Render and check every slide
+### 3 — Prune every slide you draft
+
+A slide is a visual aid for someone talking over it. A sentence that says what
+the presenter is about to say competes with them, and the audience reads it
+instead of listening. Draft first, then cut — and cut with fresh eyes, because
+the sentences you just wrote all feel necessary.
+
+This is sentence-level surgery, not word-level. Delete whole sentences, whole
+bullets, whole explainers. Leave the sentences that survive exactly as written;
+squeezing words out of a kept sentence makes it terser without making the slide
+quieter, and it costs the author their voice.
+
+After drafting a slide, or a run of them, dispatch a subagent over the `.qmd`
+with this brief:
+
+> You are pruning slides for a live talk. The presenter narrates; the slide
+> supports. Read each slide and list the sentences and bullets to delete.
+>
+> Delete: a sentence that explains or justifies what the slide already states;
+> transitions and foreshadowing ("we come back to this after the break");
+> narration of what the audience can already see, including a caption under an
+> obvious screenshot; a second sentence that restates the first in other words;
+> a card description that merely expands the card's title.
+>
+> Keep: the claim itself, and anything the audience cannot reconstruct from
+> hearing it once — a number, a name, a series ID, a file path, a command to
+> type, a line of code.
+>
+> Work at the level of whole sentences and whole lines. Never edit inside a
+> sentence you are keeping, never add content, and never rewrite for style.
+>
+> Report each cut as the exact text to delete, slide by slide, with one clause
+> saying why.
+
+Apply the cuts you agree with. Keep anything genuinely load-bearing, but treat
+deletion as the default — the presenter will say it. The slide must still be
+coherent on its own; it must not deliver the talk.
+
+**What over-writing looks like.** Four patterns, all of them from real decks:
+
+*Narrating the visual.* A slide showing real output from a script, captioned
+"The script produces facts and Claude writes the report — that division is the
+whole point of a skill." The output is on screen and the point is the
+presenter's line. Cut the caption; keep the output.
+
+*Foreshadowing.* "Set `tools=[]` and `permission_mode` to `dontAsk`. These are
+the two lines that matter for security, and we come back to both after the
+break." Cut the second sentence. The break will come.
+
+*Expanding the title.* A card headed "Switching is one string" whose body opens
+"Switching from one model to another takes a single string." Cut that sentence
+and let the body start with the example.
+
+*The agenda with descriptions.* Five cards, each a topic plus a sentence saying
+what the topic will cover. Cut all five sentences. The five topics are the
+agenda; the sentences are the talk.
+
+*Cards built to carry an argument.* A slide reading "The skill and the app
+answer the questions you thought of when you built the watchlist," under two
+cards listing what they do well and three example questions they cannot answer.
+The cards are the presenter working through the argument out loud. Cut both.
+One more sentence finishes the slide: "An agent can answer questions the user
+thinks of on the spot."
+
+### 4 — Render and check every slide
 ```
 quarto render <name>.qmd          # produces <name>.html
 ```
@@ -103,10 +166,10 @@ obvious in the tiles and invisible in the source. Then open the few slides that
 look wrong at full size to confirm.
 
 Fix a dense slide with `.shrink`, by splitting it into two `##` slides, or by
-moving detail into `::: {.notes}`. Note that `.shrink` only fixes *vertical*
+cutting the detail. Note that `.shrink` only fixes *vertical*
 overflow — a slide that is too wide needs a different layout.
 
-### 4 — Say what would make it better
+### 5 — Say what would make it better
 Do not stop at "it renders." Once the draft is whole, read it as a sequence and
 tell the user, unprompted, what would raise it — a few concrete lines, not a
 survey of everything possible:
@@ -122,11 +185,11 @@ Name the slide, name the change, and offer to make it. When a suggestion needs
 something only the user can supply — a screenshot of their screen, a file, a
 number — say so and offer to do the parts that do not.
 
-### 5 — Export (optional)
+### 6 — Export (optional)
 For PDF, PNG images, or an image-based PPTX, read `references/export.md` and use
 decktape on the rendered `.html`.
 
-### 6 — Offer a structural overview (longer decks)
+### 7 — Offer a structural overview (longer decks)
 Once a deck runs long, or after a round of restructuring, offer to generate a
 standalone HTML overview: every section and slide with a one-sentence
 description, plus flags for duplication, overflowing slides, agenda drift, and
@@ -160,7 +223,12 @@ These keep decks rendering cleanly — follow them exactly:
 ## Authoring guidance
 
 - One idea per slide. Keep on-slide text light; let cards and whitespace carry
-  it. Push elaboration into `::: {.notes}`.
+  it. Elaboration gets deleted, not relocated.
+- **Write for a presenter, not a reader.** The deck is projected while someone
+  talks; it is not a handout. Every sentence on a slide is a sentence the
+  presenter now has to either read aloud or talk around. Give the slide the
+  claim and the un-guessable specifics, and leave the argument to the voice in
+  the room.
 - **Prefer multi-card layouts to bullet lists when the item text is long.** A
   handful of one-line bullets is fine; but once items run to a phrase or
   sentence each, put them in `.two-cards`/`.three-cards`/`.four-cards` — the
@@ -186,7 +254,7 @@ These keep decks rendering cleanly — follow them exactly:
   not an aside — it flattens emphasis and teaches the audience to skip the last
   line. Roughly one content slide in four is plenty. If the note is
   load-bearing, it belongs in the slide's content; if it is narration, it
-  belongs in `::: {.notes}`.
+  belongs nowhere in the file — the presenter says it.
 - Tell an explainer from a punchline before choosing either. A punchline is the
   claim the slide is built toward; it gets `.punchline` (dark navy), and it is
   the one thing worth holding back with `.fragment`. An explainer is a caveat,
