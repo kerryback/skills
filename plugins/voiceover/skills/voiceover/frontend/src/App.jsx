@@ -9,7 +9,7 @@ import {
   Upload,
 } from 'lucide-react'
 import { api } from './api'
-import { JOB_TERMINALS } from './constants'
+import { JOB_TERMINALS, countNarrated } from './constants'
 import { useJobEvents } from './hooks/useJobEvents'
 import { ToastProvider, useToast } from './components/Toast'
 import {
@@ -51,6 +51,10 @@ function Shell() {
   const [project, setProject] = useState(null)
   const [screen, setScreen] = useState('narration')
   const [error, setError] = useState('')
+  // Whether Generate was stopped for want of narration — a flag, not a count.
+  // Claude is usually still writing while this is on screen, so the numbers in
+  // it are read live at render time rather than frozen at the click.
+  const [blocked, setBlocked] = useState(false)
   const { progress, running, start } = useJobEvents()
   const toast = useToast()
 
@@ -84,7 +88,7 @@ function Shell() {
     window.history.replaceState({}, '', url)
   }, [])
 
-  const generate = useCallback(async () => {
+  const runBuild = useCallback(async () => {
     if (!project) return
     try {
       const status = await api.ttsStatus()
@@ -94,6 +98,7 @@ function Shell() {
         )
         return
       }
+      setBlocked(null)
       await api.build(project.id)
       setScreen('preview')
       start(project.id, {
@@ -111,6 +116,25 @@ function Shell() {
       toast.error(err.message)
     }
   }, [project, refresh, start, toast])
+
+  // Generating a deck whose slides have no script spends ElevenLabs quota on a
+  // video of silence, and the only sign is a transcript full of "(silent)" after
+  // the fact. The usual way in is pressing Generate in the minute or two before
+  // Claude's draft lands, so stop and say what is missing rather than build it.
+  const generate = useCallback(() => {
+    if (!project) return
+    if (countNarrated(project.slides).empty) {
+      setBlocked(true)
+      return
+    }
+    runBuild()
+  }, [project, runBuild])
+
+  // The last slide landing while the warning is up answers it; don't leave a
+  // spent objection on screen for the instructor to work around.
+  useEffect(() => {
+    if (blocked && !countNarrated(project?.slides).empty) setBlocked(false)
+  }, [blocked, project])
 
   // No deck yet: the top bar would have nothing to act on, so the Upload screen
   // is the whole app until a PDF arrives.
@@ -163,6 +187,15 @@ function Shell() {
                   since the last run are spoken again; the rest are reused.
                 </p>
               </Card>
+            )}
+
+            {blocked && !running && (
+              <NothingToSay
+                counts={countNarrated(project.slides)}
+                onAnyway={runBuild}
+                onWrite={() => setScreen('narration')}
+                onDismiss={() => setBlocked(false)}
+              />
             )}
 
             {/* A failed build is usually the ElevenLabs quota, and the reason
@@ -315,6 +348,52 @@ function TopBar({
         {project && <StatePill state={project.state} stale={project.stale} />}
       </div>
     </header>
+  )
+}
+
+// Generate, stopped because slides have no script. Not a modal: the fix is on
+// another screen, and a dialog would have to be dismissed before going there.
+// "Generate anyway" stays available — a deliberately part-narrated deck is a
+// legitimate thing to build, and this is a warning, not a rule.
+function NothingToSay({ counts, onAnyway, onWrite, onDismiss }) {
+  const { empty, total } = counts
+  const all = empty === total
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+      <span className="flex min-w-0 items-start gap-2">
+        <AlertTriangle
+          className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-700"
+          aria-hidden="true"
+        />
+        <span className="min-w-0">
+          <span className="block font-semibold text-navy">
+            {all
+              ? 'Nothing to say yet — this deck has no narration'
+              : `${empty} of ${total} slides have no narration`}
+          </span>
+          <span className="block text-muted">
+            {all
+              ? 'Generating now would render a silent video and spend nothing but time. Claude Code usually has the draft in within a minute or two of the upload.'
+              : 'Those slides would be silent in the video, held on screen for four seconds each.'}
+          </span>
+        </span>
+      </span>
+      <span className="flex flex-shrink-0 gap-2">
+        <Button variant="subtle" size="sm" onClick={onWrite}>
+          <PenLine className="h-3.5 w-3.5" /> Narration text
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            onDismiss()
+            onAnyway()
+          }}
+        >
+          Generate anyway
+        </Button>
+      </span>
+    </div>
   )
 }
 

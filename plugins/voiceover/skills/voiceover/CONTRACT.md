@@ -107,7 +107,9 @@ that lands on a different slide brings its audio with it.
 - `PUT  /api/projects/{id}/narration/{index}` `{narration}` → 200; one slide (the
   editor's autosave). 404 for an index this deck doesn't have.
 - `PUT  /api/projects/{id}/narration` `{slides:[{index,narration}]}` → `{written}`;
-  several at once (how Claude delivers a draft). Slides not named are untouched.
+  several at once (how Claude delivers a draft — in batches of ~5 as it writes,
+  not one call at the end, so the deck visibly fills in). Slides not named are
+  untouched.
 - `POST /api/projects/{id}/review/clear` `{indexes?}` → `{cleared}`; drop change
   flags without editing ("keep as is"). Omit `indexes` to clear all.
 - `PUT  /api/projects/{id}/config` `{voice_id,model,stability,similarity_boost,style,use_speaker_boost,speed}` → 200 (all fields optional)
@@ -181,10 +183,17 @@ download button.
   - Narration text — thumbnail strip (amber dot = no narration, coloured tag =
     changed in the last upload), the slide on the left, its script in an
     autosaving textarea on the right, and the review banner above when an upload
-    left flags.
+    left flags. Above those, `DraftStatus` says what is happening to the
+    narration: slides arriving in the last 30s reads as "Claude Code is writing"
+    with an n-of-total bar; a quiet deck with empty slides says so and points at
+    the Claude Code window. It infers from arrivals — the app has no channel to
+    Claude and never claims to know more than it sees.
   - Audio settings — voice, Voice Library lookup, model, and the read settings.
     Autosaved, debounced; no apply step.
   - Preview — the finished video, or an empty state with a Generate button.
+- Generate stops on a deck with any empty slide and shows what is missing,
+  rather than rendering a video of silence. The warning carries "Generate
+  anyway", because a part-narrated deck is a legitimate thing to build.
 - Both incremental paths are stated where they are used, because "will this throw
   away my work?" is the question that stops people using either: the Upload
   screen says a page that didn't change keeps its narration and its audio, and

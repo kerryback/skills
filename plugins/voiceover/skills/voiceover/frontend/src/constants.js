@@ -86,6 +86,15 @@ export const estimateSeconds = (text) => {
   return { words, seconds: Math.round((words / WORDS_PER_MINUTE) * 60) }
 }
 
+// How much of the deck has a script. Both the narration screen's status panel
+// and the Generate guard ask this, and they must agree — a deck the status calls
+// finished must not be one Generate stops on.
+export const countNarrated = (slides) => {
+  const list = slides || []
+  const narrated = list.filter((s) => s.narration?.trim()).length
+  return { total: list.length, narrated, empty: list.length - narrated }
+}
+
 // "8 min 20 sec" from a count of seconds.
 export const formatDuration = (seconds) => {
   const m = Math.floor(seconds / 60)

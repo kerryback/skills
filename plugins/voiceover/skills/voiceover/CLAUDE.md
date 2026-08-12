@@ -68,6 +68,22 @@ instead kept the notes in the instructor's own `.qmd`/`.pptx` and had no editor 
 all; that removed the two-copy problem but also removed the screen people
 actually worked on, and made a PDF-only deck impossible to narrate.
 
+The wait for Claude's draft is visible, and Generate will not render silence.
+Nothing connects the browser to the Claude Code session — the app only ever sees
+slides appear through the narration API — so the minute or two after an upload
+looked exactly like nothing happening, and the obvious move was to press
+Generate. That spends ElevenLabs quota on a video of silence and says so only in
+a transcript full of "(silent)" afterwards. Two halves fix it and depend on each
+other: the skill writes narration in batches of about five slides instead of one
+PUT at the end, and `DraftStatus` turns those arrivals into "Claude Code is
+writing — 12 of 41". Drop the batching and the status has nothing to show until
+the whole deck lands at once. When nothing has arrived recently the same panel
+says so plainly and points at the Claude Code window, because the app genuinely
+cannot tell a Claude that is thinking from one that was never asked — do not
+make it assert either. `App.NothingToSay` is the second half: Generate stops on
+any empty slide, keeps "Generate anyway" for a deliberately part-narrated deck,
+and is a banner rather than a modal because the fix lives on another screen.
+
 An upload does not start over, and neither does Generate.
 These are the two things a user will avoid pressing if they doubt them, so both
 are incremental and both say so on screen. An upload aligns the new pages against

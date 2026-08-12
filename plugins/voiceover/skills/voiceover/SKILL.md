@@ -117,12 +117,19 @@ skill is invoked; use that absolute path. `<port>` defaults to 8010.
    diagram, an all-image slide) read that one page's image at
    `GET …/api/projects/<deck>/slides/slide-<NNN>.png` (1-based, zero-padded).
 
-4. Write the narration back:
+4. Write the narration back in batches as you go — about five slides per call,
+   in slide order, starting as soon as the first few are written:
 
    ```
    PUT http://127.0.0.1:<port>/api/projects/<deck>/narration
    {"slides": [{"index": 0, "narration": "…"}, {"index": 1, "narration": "…"}]}
    ```
+
+   Do not save the whole deck for one PUT at the end. The app polls every few
+   seconds, so a batch appears in the thumbnail strip within moments of being
+   sent: batching is what turns a silent two-minute wait into a screen visibly
+   filling in, and it lets the instructor start reading slide 1 while you are
+   still on slide 20. On a deck of ten or fewer, two batches are enough.
 
    Slides you leave out are untouched, so a partial redraft never blanks the
    rest. Narration already there is the instructor's — leave it alone unless
@@ -135,6 +142,11 @@ skill is invoked; use that absolute path. `<port>` defaults to 8010.
    they open Audio settings, pick a voice, and press Generate; the video appears
    on the Preview screen and `<deck>.mp4` + `<deck>.txt` are written to their
    folder.
+
+   You don't need to warn them off generating early — the app does that itself.
+   While slides are still arriving it shows a count above the editor, and
+   Generate stops on a deck with empty slides rather than rendering silence,
+   with "Generate anyway" there for a deliberately part-narrated deck.
 
    Say too that neither Upload nor Generate starts over, because that is the
    thing people are most likely to fear and avoid:

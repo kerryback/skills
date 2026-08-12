@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { api, toRel } from '../api'
 import { CHANGE_LABELS, estimateSeconds, formatDuration } from '../constants'
+import DraftStatus from './DraftStatus'
 import { useToast } from './Toast'
 import { Button, ReviewSummary, Spinner } from './ui'
 
@@ -157,6 +158,8 @@ export default function NarrationView({ project }) {
 
   return (
     <div className="animate-fadein space-y-3">
+      <DraftStatus slides={slides} />
+
       {review && (
         <ReviewSummary review={review}>
           <div className="flex flex-shrink-0 gap-2">
