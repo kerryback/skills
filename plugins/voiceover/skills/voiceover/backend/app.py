@@ -259,11 +259,34 @@ async def put_config(pid: str, body: ConfigBody):
 async def tts_status():
     """Whether an ElevenLabs key is configured. Cheap (no network call) so the
     app-wide key banner can poll it without hitting ElevenLabs."""
-    return {"configured": bool(config.ELEVENLABS_API_KEY)}
+    return {
+        "configured": bool(config.ELEVENLABS_API_KEY),
+        "concurrency": config.TTS_CONCURRENCY,
+    }
 
 
 class KeyBody(BaseModel):
     api_key: str
+
+
+class ConcurrencyBody(BaseModel):
+    concurrency: int
+
+
+@app.post("/api/tts/concurrency")
+async def set_tts_concurrency(body: ConcurrencyBody):
+    """Set how many TTS requests run at once, and persist it account-wide.
+
+    ElevenLabs caps concurrent requests per plan and returns 429 above it, which
+    fails the build. The API exposes the plan tier but not its concurrency
+    number, so this cannot be detected — the instructor sets it from what their
+    plan allows.
+    """
+    n = int(body.concurrency)
+    if not 1 <= n <= 15:
+        raise HTTPException(400, "Concurrency must be between 1 and 15.")
+    config.set_tts_concurrency(n)
+    return {"concurrency": config.TTS_CONCURRENCY}
 
 
 @app.post("/api/tts/key")

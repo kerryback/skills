@@ -82,6 +82,10 @@ export const api = {
   ttsStatus: () => request('api/tts/status'),
   setTtsKey: (api_key) =>
     request('api/tts/key', { method: 'POST', body: { api_key } }),
+  // How many TTS requests run at once. Account-wide (it follows the ElevenLabs
+  // plan, not the deck), so it is not part of a deck's config.
+  setTtsConcurrency: (concurrency) =>
+    request('api/tts/concurrency', { method: 'POST', body: { concurrency } }),
 }
 
 // URL helpers (also relative)

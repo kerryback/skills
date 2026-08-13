@@ -40,6 +40,12 @@ export default function VoiceView({ project }) {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
 
+  // How many TTS requests run at once. This one is an account setting, not a
+  // deck setting: it follows the ElevenLabs plan, and it changes only how fast
+  // clips are requested, never how they sound — so it stays out of the deck
+  // config, whose build_signature would otherwise re-synthesize everything.
+  const [concurrency, setConcurrency] = useState(null)
+
   // A voice pasted from the ElevenLabs Voice Library, resolved to its name so
   // the instructor can see what they pasted. `library` holds the resolved voice
   // once it is accepted; it is offered in the dropdown alongside the account's.
@@ -129,6 +135,31 @@ export default function VoiceView({ project }) {
       setLookupError(err.message || 'Could not look up that voice.')
     } finally {
       setLookingUp(false)
+    }
+  }
+
+  // Current concurrency, read once. Rendered only after it arrives so the
+  // select never flashes a value the server disagrees with.
+  useEffect(() => {
+    let alive = true
+    api
+      .ttsStatus()
+      .then((res) => alive && setConcurrency(res.concurrency ?? 2))
+      .catch(() => alive && setConcurrency(2))
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  async function changeConcurrency(n) {
+    const previous = concurrency
+    setConcurrency(n)
+    try {
+      await api.setTtsConcurrency(n)
+      toast.success(`Up to ${n} clip${n === 1 ? '' : 's'} at a time`)
+    } catch (e) {
+      setConcurrency(previous)
+      setError(e.message || 'Could not save that.')
     }
   }
 
@@ -397,6 +428,44 @@ export default function VoiceView({ project }) {
           Changing any of these re-synthesizes the whole deck on the next
           Generate — every clip is cached under the voice it was made with.
           Editing one slide&apos;s narration costs only that slide.
+        </p>
+      </Card>
+
+      {/* Account-wide, not part of the deck. ElevenLabs caps concurrent
+          requests per plan and returns 429 above the cap, which fails the whole
+          build — and their API reports the plan tier but not its limit, so this
+          cannot be detected for you. */}
+      <Card className="p-5">
+        <h2 className="mb-4 text-base font-extrabold tracking-tight text-navy">
+          ElevenLabs plan
+        </h2>
+
+        <div className="max-w-md">
+          <Field label="Clips at a time" hint="Match your plan's limit">
+            <div className="relative">
+              <select
+                className={`${inputClass} appearance-none pr-9`}
+                value={concurrency ?? 2}
+                disabled={concurrency === null}
+                onChange={(e) => changeConcurrency(Number(e.target.value))}
+              >
+                <option value={1}>1 — slowest, always safe</option>
+                <option value={2}>2 — Free</option>
+                <option value={3}>3 — Starter</option>
+                <option value={5}>5 — Creator</option>
+                <option value={10}>10 — Pro</option>
+                <option value={15}>15 — Scale or Business</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            </div>
+          </Field>
+        </div>
+
+        <p className="mt-4 text-xs text-muted">
+          Set too high, ElevenLabs rejects the extra requests and the build
+          fails; set lower than your plan allows and it simply takes longer.
+          Applies to every deck, changes nothing about how the audio sounds, and
+          never invalidates clips already generated.
         </p>
       </Card>
     </div>

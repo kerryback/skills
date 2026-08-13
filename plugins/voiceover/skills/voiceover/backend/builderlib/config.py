@@ -75,8 +75,13 @@ ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
 OUTPUT_DIR = os.environ.get("VOICEOVER_OUTPUT_DIR", "")
 
 # Parallel ElevenLabs TTS requests during a build. ElevenLabs caps concurrent
-# requests per account tier; 5 matches this account's limit.
-TTS_CONCURRENCY = int(os.environ.get("TTS_CONCURRENCY", "5"))
+# requests per account tier -- Free allows 2, and the cap climbs with the plan.
+# Exceeding it returns 429 and, because a failed clip aborts the whole build,
+# loses the run. So the default is the value every tier can serve, and the
+# instructor raises it on the Voice screen once they know their plan. An
+# exported TTS_CONCURRENCY still wins, since load_dotenv never overwrites a real
+# environment variable.
+TTS_CONCURRENCY = int(os.environ.get("TTS_CONCURRENCY", "2"))
 # Parallel ffmpeg slide-segment encodes during video render (CPU-bound).
 VIDEO_CONCURRENCY = int(os.environ.get("VIDEO_CONCURRENCY", "4"))
 
@@ -107,6 +112,21 @@ def _upsert_env(name: str, value: str) -> None:
     if not found:
         lines.append(line)
     ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def set_tts_concurrency(n: int) -> None:
+    """Persist the TTS concurrency to ~/.voiceover/.env and update the live value.
+
+    Account-wide, like the key, and deliberately NOT part of a deck's config:
+    build_signature covers the deck's audio settings, so putting it there would
+    make changing it re-synthesize every clip. It only governs how fast requests
+    are issued, never how they sound, so cached audio stays valid.
+    """
+    global TTS_CONCURRENCY
+    n = max(1, min(int(n), 15))
+    TTS_CONCURRENCY = n
+    os.environ["TTS_CONCURRENCY"] = str(n)
+    _upsert_env("TTS_CONCURRENCY", str(n))
 
 
 def set_elevenlabs_key(key: str) -> None:

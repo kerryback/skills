@@ -79,6 +79,16 @@ empty.
   out but not voicing a full lecture. If a build fails partway with a quota
   error, that is what happened — the already-synthesized slides are cached, so
   resuming after an upgrade re-voices only what's left.
+
+  A different failure looks similar and is not the quota: ElevenLabs also caps
+  how many requests may run **at once**, and the cap rises with the plan (Free
+  allows 2). Over it, the extra requests come back 429 and the build stops. The
+  app requests 2 at a time out of the box, which every plan can serve; the
+  instructor raises it on the Voice screen under "ElevenLabs plan" once they
+  know their limit. Their API reports the plan tier but not its concurrency
+  number, so this cannot be detected for them. If a build dies partway with a
+  concurrency or "too many requests" error, that setting is too high — or a
+  second copy of the app is running on the same key.
 - Python is already present (it runs the launcher), and the first launch sets up
   a small Python environment automatically. Quarto is NOT required, and neither
   is ffmpeg — it ships with the Python dependencies. The frontend ships prebuilt,
