@@ -51,6 +51,7 @@ function pretty(value) {
 }
 
 function render(s) {
+  const previous = state.current;
   state.current = s;
 
   $("#deck-title").textContent = s.title || "No poll loaded";
@@ -67,6 +68,18 @@ function render(s) {
   // What the server says is live, and what this projector is showing, are two
   // different questions once the join screen can be summoned back.
   const asking = s.loaded && s.index >= 0 && s.question;
+
+  // `/poll <a question>` jumps straight to what it just added, which is right
+  // mid-class and wrong as the first command of one: it would pull the join
+  // screen down before the room had a chance to scan it, and the QR lives
+  // nowhere else. So when the first question of the session goes up and nobody
+  // has joined yet, put the join screen over it -- the same view `j` gives a
+  // latecomer, voting open underneath. Space or `j` takes it down.
+  // `here` counts everyone who has joined all session, not who is currently
+  // connected, so this fires once at the start and never interrupts again.
+  const wasAsking = previous && previous.loaded && previous.index >= 0 && previous.question;
+  if (asking && !wasAsking && !s.here) state.showJoin = true;
+
   const showingJoin = state.showJoin || !asking;
   $("#join").hidden = !showingJoin;
   $("#asked").hidden = showingJoin;
