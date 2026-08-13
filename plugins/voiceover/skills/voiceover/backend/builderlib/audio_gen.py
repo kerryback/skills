@@ -11,7 +11,10 @@ in the same voice.
 """
 import hashlib
 import json
+import os
+import random
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -21,6 +24,30 @@ from . import config
 
 ELEVEN_TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
 OUTPUT_FORMAT = "mp3_44100_128"
+
+# Transient failures worth another try: 429 is the per-plan concurrency/rate cap,
+# 5xx is ElevenLabs being busy. Everything else (401 bad key or exhausted quota,
+# 400 bad request) will fail identically on a retry, so it is raised at once.
+RETRY_STATUSES = {429, 500, 502, 503, 504}
+MAX_ATTEMPTS = 5
+
+
+def _retry_delay(response, attempt: int) -> float:
+    """Seconds to wait before attempt+1.
+
+    Honour Retry-After when the server sends one; otherwise exponential backoff.
+    The jitter matters more than it looks: every worker thread trips the
+    concurrency cap at the same instant, so a fixed delay would march them into
+    the cap together on every retry.
+    """
+    if response is not None:
+        raw = (response.headers.get("retry-after") or "").strip()
+        if raw:
+            try:
+                return max(0.0, min(float(raw), 30.0))
+            except ValueError:
+                pass
+    return min(2 ** attempt, 16) * (0.5 + random.random())
 
 # Every voice_settings field we send, in signature order. `style` and
 # `use_speaker_boost` drive how much expression the model puts in; leaving them
@@ -85,14 +112,39 @@ def synthesize(text: str, out_path: Path, voice_id: str, model: str,
         "voice_settings": {k: merged[k] for k in VOICE_SETTING_KEYS},
     }
     params = {"output_format": OUTPUT_FORMAT}
-    with httpx.stream("POST", url, headers=headers, json=payload, params=params,
-                      timeout=120.0) as response:
-        if response.status_code != 200:
-            body = response.read().decode("utf-8", "replace")
-            raise RuntimeError(f"ElevenLabs TTS error ({response.status_code}): {body[:300]}")
-        with open(out_path, "wb") as f:
-            for chunk in response.iter_bytes():
-                f.write(chunk)
+    # Stream to a sibling .part and rename only once the body is complete. The
+    # cache decides a clip exists by filename alone, so a half-written mp3 left
+    # by a failed attempt would be reused forever as a truncated slide.
+    tmp_path = out_path.with_name(out_path.name + ".part")
+    last_error = ""
+    try:
+        for attempt in range(MAX_ATTEMPTS):
+            wait = None
+            try:
+                with httpx.stream("POST", url, headers=headers, json=payload,
+                                  params=params, timeout=120.0) as response:
+                    if response.status_code == 200:
+                        with open(tmp_path, "wb") as f:
+                            for chunk in response.iter_bytes():
+                                f.write(chunk)
+                        os.replace(tmp_path, out_path)
+                        return
+                    body = response.read().decode("utf-8", "replace")
+                    last_error = (f"ElevenLabs TTS error "
+                                  f"({response.status_code}): {body[:300]}")
+                    if response.status_code not in RETRY_STATUSES:
+                        raise RuntimeError(last_error)
+                    wait = _retry_delay(response, attempt)
+            except httpx.HTTPError as e:
+                # Dropped mid-stream or never connected — same treatment.
+                last_error = f"ElevenLabs request failed: {e}"
+                wait = _retry_delay(None, attempt)
+            if attempt == MAX_ATTEMPTS - 1:
+                break
+            time.sleep(wait)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+    raise RuntimeError(f"{last_error} (gave up after {MAX_ATTEMPTS} attempts)")
 
 
 def generate(slides: list, audio_dir: Path, voice_id: str, model: str,

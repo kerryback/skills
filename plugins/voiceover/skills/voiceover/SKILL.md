@@ -86,9 +86,11 @@ empty.
   app requests 2 at a time out of the box, which every plan can serve; the
   instructor raises it on the Voice screen under "ElevenLabs plan" once they
   know their limit. Their API reports the plan tier but not its concurrency
-  number, so this cannot be detected for them. If a build dies partway with a
-  concurrency or "too many requests" error, that setting is too high — or a
-  second copy of the app is running on the same key.
+  number, so this cannot be detected for them. A clip that comes back 429 is
+  retried with backoff, so brushing the cap costs seconds rather than the run;
+  if a build still dies with a concurrency or "too many requests" error, the
+  setting is genuinely too high — or a second copy of the app is running on the
+  same key.
 - Python is already present (it runs the launcher), and the first launch sets up
   a small Python environment automatically. Quarto is NOT required, and neither
   is ffmpeg — it ships with the Python dependencies. The frontend ships prebuilt,
