@@ -11,7 +11,7 @@ HTML against the theme, and it comes out as a PDF or an image.
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install elegant-pdf@kerryback-skills
+/plugin install elegant-pdf@kerryback
 ```
 
 Then describe the document you want.

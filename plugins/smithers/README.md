@@ -11,7 +11,7 @@ Compose for you to review.
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install smithers@kerryback-skills
+/plugin install smithers@kerryback
 ```
 
 Then ask what's on your plate, or invoke `/smithers`.

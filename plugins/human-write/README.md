@@ -10,7 +10,7 @@ follows the argument instead of a template.
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install human-write@kerryback-skills
+/plugin install human-write@kerryback
 ```
 
 It applies when you're drafting and when you're revising, and triggers on

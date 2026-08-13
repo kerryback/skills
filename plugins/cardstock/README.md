@@ -12,7 +12,7 @@ will change the colours, the type, or the whole look on request.
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install cardstock@kerryback-skills
+/plugin install cardstock@kerryback
 ```
 
 Then ask for a deck, or invoke it with `/cardstock`.

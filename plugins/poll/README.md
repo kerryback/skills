@@ -15,11 +15,11 @@ per student — which is what makes a concept check tell you something true.
 
 ## Install
 
-From the `kerryback-skills` marketplace:
+From the `kerryback` marketplace:
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install poll@kerryback-skills
+/plugin install poll@kerryback
 ```
 
 ## Requirements

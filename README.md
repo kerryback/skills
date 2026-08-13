@@ -14,14 +14,14 @@ or with the `npx skills` CLI — both read the same manifest.
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install voiceover@kerryback-skills
+/plugin install voiceover@kerryback
 ```
 
 Non-interactively:
 
 ```
 claude plugin marketplace add kerryback/skills
-claude plugin install voiceover@kerryback-skills
+claude plugin install voiceover@kerryback
 ```
 
 Swap `voiceover` for `slides`, `finance-data`, or `critique`.

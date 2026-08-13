@@ -44,7 +44,7 @@ Install once:
 
 ```
 claude plugin marketplace add kerryback/skills
-claude plugin install litdb@kerryback-skills
+claude plugin install litdb@kerryback
 ```
 
 On first use, Claude runs a short setup — a couple of questions (see modes below),

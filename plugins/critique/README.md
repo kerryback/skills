@@ -10,7 +10,7 @@ prioritizes them.
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install critique@kerryback-skills
+/plugin install critique@kerryback
 ```
 
 Then `/critique`, optionally with a file path or a description of what to look

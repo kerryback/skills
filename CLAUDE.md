@@ -1,6 +1,6 @@
 # Project Instructions
 
-Plugins for the `kerryback-skills` marketplace. Each lives in
+Plugins for the `kerryback` marketplace. Each lives in
 `plugins/<name>/`, with its version in `plugins/<name>/.claude-plugin/plugin.json`.
 
 ## Releasing a version bump

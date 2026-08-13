@@ -14,11 +14,11 @@ model calls.
 
 ## Install
 
-From the `kerryback-skills` marketplace:
+From the `kerryback` marketplace:
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install participation@kerryback-skills
+/plugin install participation@kerryback
 ```
 
 Then ask Claude Code to open the participation app, or invoke the skill

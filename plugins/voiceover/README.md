@@ -12,7 +12,7 @@ your working directory.
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install voiceover@kerryback-skills
+/plugin install voiceover@kerryback
 ```
 
 Then `/voiceover lecture-3.pdf`, or just `/voiceover` and upload the PDF in the

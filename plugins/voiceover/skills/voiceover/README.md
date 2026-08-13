@@ -43,7 +43,7 @@ From the kerryback/skills plugin marketplace:
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install voiceover@kerryback-skills
+/plugin install voiceover@kerryback
 ```
 
 or with the `skills` CLI:

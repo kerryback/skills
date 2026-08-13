@@ -11,7 +11,7 @@ a CSV you can use.
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install finance-data@kerryback-skills
+/plugin install finance-data@kerryback
 ```
 
 Then just ask for data. It also triggers on its own when data is a step toward

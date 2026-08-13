@@ -18,11 +18,11 @@ students share a single window rather than a whole screen is the easy fix.
 
 ## Install
 
-From the `kerryback-skills` marketplace:
+From the `kerryback` marketplace:
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install screenshare@kerryback-skills
+/plugin install screenshare@kerryback
 ```
 
 Then ask Claude Code to start screen sharing, or invoke the skill directly with
