@@ -128,6 +128,10 @@ commands, Markdown/Obsidian export, Zotero note push, note-to-note links.
   sure which folder a paper belongs in, ask; don't guess. Each paper's `location`
   field (on `paper`/`list`) records where its PDF resides, or `not downloaded` if
   none is on disk.
+- Never leave a paper with neither an abstract nor full text. It is then indexed on
+  its title alone and will not come back from a semantic search, so the user
+  effectively does not have it. Fetch the abstract from the landing page when the
+  PDF is out of reach --- see `search.md`, step 2.
 - Propose note↔paper links and important imports; let the user confirm.
 - Confidential notes stay local and are never sent to a hosted embedder.
 - Installing dependencies: when something litdb needs is missing — a Python

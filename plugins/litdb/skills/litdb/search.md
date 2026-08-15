@@ -77,6 +77,33 @@ supporting/relevant papers.
      it through their library login; once the file is on disk, ingest it the same
      way. Never present a paywalled paper as unavailable without checking for a free
      copy first.
+- Always leave a paper with an abstract, even when the PDF is out of reach. A record
+  with no abstract and no full text is indexed on its title alone --- it will not
+  come back from a semantic search, so for practical purposes the user does not have
+  it. Treat that as a defect to repair, not a normal resting state:
+  1. Check what landed. `"$LITDB_PY" -m litdb paper <id>` after any import; OpenAlex
+     and Semantic Scholar often have no abstract for a paper (Elsevier and some
+     society journals suppress it), so this is common, not exceptional.
+  2. When it is missing, WebFetch the publisher's landing page, the arXiv/SSRN/NBER
+     abstract page, or the journal's table of contents. The abstract is nearly always
+     free even when the PDF is not --- this is not a paywall workaround, it is the
+     page the publisher puts up for anyone.
+  3. Store it verbatim: `"$LITDB_PY" -m litdb update <id> --abstract "…"` (the id is
+     positional; pass the whole abstract as the argument and never truncate it to fit
+     a command line), then `embed`. The abstract chunk is rebuilt from the new text,
+     so the paper becomes searchable by meaning immediately.
+  4. Never write an abstract yourself, and never paste one you have not read on the
+     source page. A summary you composed will be retrieved later as though the
+     authors wrote it.
+  5. To find the records already in this state:
+     ```
+     SELECT id, title FROM paper p
+      WHERE (p.abstract IS NULL OR TRIM(p.abstract)='')
+        AND NOT EXISTS (SELECT 1 FROM chunk c
+                         WHERE c.owner_type='paper' AND c.owner_id=p.id
+                           AND c.kind='fulltext');
+     ```
+     Offer to backfill them when the user asks what is weak in their library.
 
 ## 3. Citation-graph exploration
 
