@@ -205,19 +205,6 @@ def cmd_note(args) -> int:
     return 0
 
 
-def cmd_note_form(args) -> int:
-    from . import note_app
-    result = note_app.run(
-        prefill_papers=args.paper or [],
-        project=args.project,
-        port=args.port,
-        timeout=args.timeout,
-        open_browser=not args.no_browser,
-    )
-    _out(result, args.human)
-    return 0
-
-
 def cmd_search(args) -> int:
     conn = db.connect()
     db.init_db(conn)
@@ -926,15 +913,6 @@ def build_parser() -> argparse.ArgumentParser:
     nsh = add("note", help="show one note with its links (full body)")
     nsh.add_argument("id", type=int)
     nsh.set_defaults(func=cmd_note)
-
-    nf = add("note-form", help="open a browser form to capture a note")
-    nf.add_argument("--paper", type=int, action="append", metavar="ID",
-                    help="prefill a linked paper (repeatable)")
-    nf.add_argument("--project", metavar="NAME", help="preselect a project tag")
-    nf.add_argument("--port", type=int, default=0, help="localhost port (0 = pick a free one)")
-    nf.add_argument("--timeout", type=int, default=900, help="seconds to wait for a submit")
-    nf.add_argument("--no-browser", action="store_true", help="don't auto-open the browser")
-    nf.set_defaults(func=cmd_note_form)
 
     s = add("search", help="keyword (BM25) search over papers and notes")
     s.add_argument("query")

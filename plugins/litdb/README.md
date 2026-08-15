@@ -17,9 +17,10 @@ is also a plain command you can script (see the reference at the end).
   (title, authors, venue, year, DOI), splits the text into passages, and embeds
   them into a local vector store. Sources: a folder of PDFs, a Zotero library, a
   single DOI, or a watched inbox folder that ingests on its own.
-- Add and organize notes. Capture a thought — in chat or via the `/litdb:note`
-  browser form — tagged by kind (idea/summary/critique/question/todo/quote) and
-  anchored to a paper (and optionally a page or a verbatim quote). Notes are embedded
+- Add and organize notes. Write the note however you like — a line in chat, a
+  paragraph pasted in, a file — and tell Claude to file it. Claude picks the kind
+  (idea/summary/critique/question/todo/quote), finds the paper it's about, and
+  anchors it to a page or a verbatim quote. Notes are embedded
   whole and searchable next to your papers; `notes` lists them and `notes --search`
   finds them, and they surface first when you ask what you have on a topic.
 - Search your corpus. Hybrid keyword (BM25) + semantic (vector) search over full
@@ -151,7 +152,6 @@ Notes, indexing, and admin
 | `link --note N --paper P [--relation] [--page N] [--quote …]` | link an existing note to a paper |
 | `notes [--search Q] [--paper ID] [--kind K] [--project NAME] [--since DATE] [--confidential] [-k N]` | list notes, or `--search` notes only (hybrid); returns full note bodies |
 | `note ID` | show one note with its links (full body) |
-| `note-form [--paper ID …] [--project NAME]` | open the browser capture form (also `/litdb:note`) |
 | `projects list \| rename OLD NEW \| tag NAME --paper/--note ID \| untag …` | manage the project/topic tags on papers and notes |
 | `embed [--provider] [--model] [--force]` | build/refresh the "search by meaning" index |
 | `prefs [set KEY VALUE \| get KEY]` | view/change settings (see Settings) |
@@ -199,9 +199,9 @@ Changed with `litdb prefs set KEY VALUE`, stored in `~/.litdb/preferences.json`:
   a kind, links to papers (each with an optional page/quote), and project tags; it's
   embedded whole — one vector per note, not chunked — and retrieved as a separate,
   higher-priority track from papers (`notes` / `notes --search`, read in full). The
-  `/litdb:note` browser form (`note_app.py`, stdlib http.server, same pattern as
-  coauthor's roster picker) is the richer capture path. Rich editing still lives in
-  your own note app (Obsidian, Markdown, Zotero); litdb complements it and can export
+  structure is Claude's job, not the user's: you write the note in whatever form
+  suits you and Claude fills in kind, links, anchors, and tags. Rich editing still
+  lives in your own note app (Obsidian, Markdown, Zotero); litdb complements it and can export
   to it later. Deliberately deferred (revisit before building): synthesis commands,
   Markdown/Obsidian export, Zotero note push, note-to-note links.
 - Surface. The CLI is primary and drives everything; `litdb.server` optionally
