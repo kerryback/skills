@@ -6,7 +6,7 @@ whole point — see the plugin README). Every call is logged to the project's
 canonical JSONL sink, redacted.
 
 Usage (the Coordinator runs this via Bash):
-    python -m coauthor.debate --role proposer --brief-file brief.md \
+    python -m tools.debate.debate --role proposer --brief-file brief.md \
         --project /path/to/project --round 3
 
 Prints the voice's JSON response to stdout for the Coordinator to read.
@@ -25,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from . import config
-from .logging_ import append_event
+from ..logging_ import append_event
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 

@@ -48,12 +48,26 @@ expensive to fix later:
   everyone else keeps a normal git repo, and one person holds both. Claude does
   the syncing, so nobody has to learn `git subtree` to write a paper.
 
-## What it deliberately does not do
+## What gets written down
 
-No activity log. Recording every tool call is occasionally useful and usually
-noise. What is kept is a record of *runs* — one line per execution, with inputs,
-outputs, and the commit — because that is what answers "which run produced this
-number" a year later.
+Two records, kept apart because they answer different questions and have
+different lifetimes.
+
+- **Runs** — `project/<author>/logs/runs.jsonl`, committed. One line per script
+  execution: arguments, commit, duration, status, and the files it actually
+  opened and wrote, caught by an audit hook below pandas and pyarrow so paths
+  built at runtime are recorded too. This is what answers "which run produced
+  this number" a year later, and it is small enough to live in git forever.
+- **Events** — `project/<author>/logs/events-<run>.jsonl`, gitignored. Every
+  prompt, every tool call and its result, every debate voice's request and
+  response, appended as it happens by a hook installed in the repo. Secrets are
+  redacted on the way in. It is exhaustive and it is large — tens of megabytes a
+  project — so it stays local, and the generated `CLAUDE.md` is explicit that
+  Claude writes it, never curates it, and never reads it forward as context.
+
+The distinction is deliberate: `state.md` is memory, the run records are the
+citable provenance, and the event log is the thing you go back to on the day
+someone asks what actually happened.
 
 ## Existing projects
 

@@ -18,10 +18,14 @@ it's folder. Two people rewrite the same prose file and git cannot merge it.
 Nobody can say which script produced a number, or what breaks if a script
 changes. This scaffolds the structure that prevents each of those.
 
-It does NOT set up a general-purpose activity log. Recording every tool call is
-occasionally useful and usually noise; what is kept here is a record of *runs* —
-one line per script execution, with inputs and outputs — because that is what
-answers "which run produced this number" a year later.
+It also sets up two records, which are not the same thing and must not be
+collapsed into one. The *run* records (`runs.jsonl`, committed, small) answer
+"which run produced this number" a year later. The *event* log
+(`events-<run>.jsonl`, gitignored, large) is the exhaustive record of what a
+session did — every prompt, every tool call, every debate voice — written by a
+hook in the repo, never curated, and never read back into a context window. The
+generated `CLAUDE.md` says both of those things to the next Claude explicitly,
+because a log treated as memory is worse than no log.
 
 ## 1. Interview
 
@@ -70,8 +74,17 @@ workspaces/<author>/{analyst,replicator}/   (empirical only)
 draft/{figures,tables}/
 tools/                                 copied from this plugin
 .claude/commands/refresh.md
+.claude/settings.json                  from templates/settings.json
 CLAUDE.md  protocols.html  requirements.txt  .gitignore
 ```
+
+`.claude/settings.json` registers `tools/log_event.py` on SessionStart,
+UserPromptSubmit, PostToolUse and SessionEnd — that is what makes the event log
+write itself, for everyone who clones, without anyone installing anything. If the
+repo already has a `settings.json`, MERGE the hooks into it; never overwrite
+theirs. Tell the user the hooks are there and what they capture — a hook they
+did not know about is a surprise, and Claude Code will prompt them to trust it on
+the first session anyway.
 
 Assemble `CLAUDE.md` from `templates/CLAUDE.md.tmpl`, substituting:
 
@@ -119,6 +132,19 @@ grep -rn "@@" CLAUDE.md tools/ protocols.html  # must find nothing
 
 If there is data and any script, run one through `tools/runlog.py` and confirm a
 line lands in `runs.jsonl`.
+
+Then exercise the event log, which is the check people skip and the one that
+silently fails — a hook that never fires looks exactly like a quiet session:
+
+```bash
+echo '{"hook_event_name":"PostToolUse","tool_name":"Bash","cwd":"'"$PWD"'"}' \
+    | python3 tools/log_event.py
+python3 -m tools.logging_ --limit 1        # must print the line just written
+git check-ignore project/*/logs/events-*.jsonl   # must match — it stays local
+```
+
+The hook itself only fires in a live session, so also confirm it is registered:
+after setup, `/hooks` should list `tools/log_event.py` on all four events.
 
 If Overleaf is wired, `git fetch overleaf` and list the remote tree — it must be
 the draft and nothing else — and test the pull direction, not only the push. A

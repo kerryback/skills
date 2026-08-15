@@ -21,5 +21,9 @@ against the same panel. A seat that errors returns `{"error": ...}` — note it 
 carry on; one bad voice never sinks a round.
 
 Write every brief you send a seat to `project/<author>/logs/` rather than a temp
-file. They are the actual prompts the debate answered, and they are the one part
-of a round nothing else records.
+file — named with `python3 -m tools.runid --stamp`, since briefs are rewritten
+each pass of the loop and would otherwise overwrite each other.
+
+Every call — the messages sent and the response, with its model, usage and
+latency — is appended to the event log alongside them, so what a voice was asked
+and what it said back stay recoverable after the round has been compacted away.

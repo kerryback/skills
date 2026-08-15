@@ -146,6 +146,43 @@ actually happened.
 
 ---
 
+## The event log — exhaustive, and not for you to read forward
+
+Every prompt you are given and every tool call you make, yours and your
+subagents', is appended to `project/<author>/logs/events-<run>.jsonl` by the hook
+in `tools/log_event.py`. Debate calls land in the same file. Secrets are redacted
+on the way in.
+
+It writes itself. Three rules govern how you treat it:
+
+1. **Never curate it and never read it forward as context.** It is not memory —
+   `state.md` is the truth and `session.md` is the handoff. A log read back into
+   a context window is the fastest way to fill one with things that have already
+   been superseded.
+2. **When a question genuinely needs it, read a slice, never the file.** It is
+   line-delimited JSON; filter to what was asked for.
+
+   ```bash
+   python3 -m tools.logging_ --tool Bash --limit 20     # the last 20 shell calls
+   python3 -m tools.logging_ --kind UserPromptSubmit    # what was actually asked
+   python3 -m tools.logging_ --run <author>-<date>-<time>
+   ```
+3. **It is gitignored, so it is yours alone.** Another coauthor's log is not on
+   your machine and never will be. Anything that must survive for everyone
+   belongs in `state.md`, in the run records, or in the draft.
+
+The questions it answers are the ones nothing else can: what exactly was run on
+the afternoon a number changed, what the debate was actually asked, which file a
+script opened when it produced a figure nobody can now reproduce. Those come up
+rarely, and when they do nothing else will answer them.
+
+A run is stamped with `python3 -m tools.runid --project . --new` at the top of a
+round. Logs are named by run, never by round: a round counter is per-machine, so
+in a shared repo two people each have a round 3, and `<author>-<date>-<time>`
+cannot collide.
+
+---
+
 ## One round at a time
 
 `state.md` is long prose rewritten at every gate, and git cannot merge that. So
@@ -180,8 +217,13 @@ Suggest it proactively when a round has run long.
 2. **Working memory** (committed, rewritten often): `project/<author>/session.md`
    and `project/global/method_spec.md`.
 3. **Records** (committed, append-only): `project/<author>/logs/runs.jsonl`.
+4. **The event log** (local, gitignored, append-only, written by the hook):
+   `project/<author>/logs/events-<run>.jsonl`. Exhaustive, never curated, never
+   read forward as context.
 
-Rewrite tiers 1 and 2 compactly; never append forever. A file that accumulates
+Tiers 1 and 2 are what you carry between sessions; 3 and 4 are what you go back
+to when something has to be reconstructed. Rewrite tiers 1 and 2 compactly;
+never append forever. A file that accumulates
 superseded blocks under a "this is all stale now" banner is worse than useless —
 it reads as current. When a result is superseded, cut it to a line saying so and
 where the truth now lives.

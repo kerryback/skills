@@ -10,10 +10,10 @@ from `git config user.name`, so it needs no configuration — but it must be rig
 because everything you own is named from it.
 
 Usage (the Coordinator runs this via Bash):
-    python -m tools.debate.runid --project . --new   # start a run, print its id
-    python -m tools.debate.runid --project .        # print the current id
-    python -m tools.debate.runid --stamp            # a fresh stamp, nothing written
-    python -m tools.debate.runid --author           # just the author slug
+    python -m tools.runid --project . --new   # start a run, print its id
+    python -m tools.runid --project .         # print the current id
+    python -m tools.runid --stamp             # a fresh stamp, nothing written
+    python -m tools.runid --author            # just the author slug
 
 `--stamp` is for artifacts written SEVERAL times within one round — the briefs,
 which are rewritten each pass of the debate loop. They cannot share the round's
