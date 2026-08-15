@@ -114,6 +114,40 @@ def cmd_claim(root: Path, note: str | None) -> int:
     return 0
 
 
+def _warn_if_undocumented(root: Path, claimed: str | None) -> None:
+    """Releasing the round is the last moment the reason is still in someone's head.
+
+    The changelog is written by `/refresh`, and `/refresh` only runs when
+    somebody invokes it — so a round that ends any other way leaves the work
+    committed and the WHY unrecorded. Nothing else notices, because the commits
+    look perfectly fine.
+
+    This warns and never blocks. Refusing to release would strand the lock and
+    block the other coauthors, which is a worse failure than a thin changelog,
+    and this is a coordination protocol rather than a permission system.
+    """
+    try:
+        from .chronology import gaps
+    except Exception:
+        return
+    try:
+        g = gaps(root, (claimed or "")[:10] or None)
+    except Exception:
+        return
+    if not g["count"]:
+        return
+    print(f"\nNOTE: {g['count']} commit(s) in this round have no changelog entry "
+          f"after them.", file=sys.stderr)
+    for c in g["undocumented_commits"][:5]:
+        print(f"  {c['date']}  {c['summary']}", file=sys.stderr)
+    if g["count"] > 5:
+        print(f"  … and {g['count'] - 5} more", file=sys.stderr)
+    print("Git has what changed; nothing has why. Add an entry to\n"
+          "project/global/state.md before the reason is gone — /refresh writes one.\n"
+          "See the full list with: python3 -m tools.chronology --gap --human",
+          file=sys.stderr)
+
+
 def cmd_release(root: Path, _note: str | None) -> int:
     _sync(root)
     lock = _read(root)
@@ -125,6 +159,7 @@ def cmd_release(root: Path, _note: str | None) -> int:
         print(f"REFUSED: the round is {lock.get('author')}'s, not yours. Ask them.",
               file=sys.stderr)
         return 1
+    _warn_if_undocumented(root, lock.get("claimed"))
     (root / LOCK_REL).unlink()
     _git(root, "add", "--all", str(LOCK_REL), check=False)
     _git(root, "commit", "--only", str(LOCK_REL), "-m", f"round unlock: {me}", check=False)

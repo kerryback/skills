@@ -3,7 +3,7 @@ description: Set up (or restructure) a research repository — per-author folder
 argument-hint: "[optional: project name]"
 ---
 
-Invoke the `research-setup` skill and follow it.
+Invoke the `research` skill and follow it.
 
 If "$ARGUMENTS" is non-empty, treat it as the project name and confirm the slug
 and env prefix it produces before going on. Otherwise start the interview from

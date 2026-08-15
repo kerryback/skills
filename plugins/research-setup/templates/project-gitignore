@@ -1,9 +1,0 @@
-# Commit the curated memory; ignore machine-local runtime state.
-*/run
-*/round
-*/onboarded
-
-# The event log is exhaustive and local: tens of megabytes a project, dominated
-# by tool payloads, which is more than GitHub takes. `state.md` and the run
-# records are the shared record. `runs.jsonl` alongside it IS committed.
-*/logs/events-*.jsonl

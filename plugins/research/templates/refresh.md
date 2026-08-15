@@ -12,7 +12,18 @@ Read `CLAUDE.md` if you have not already. Everything below assumes it.
 
 ## 1. Promote what has settled
 
-Move anything now settled out of working memory into the durable record:
+Start by finding what the record is missing:
+
+```bash
+python3 -m tools.chronology --gap --human
+```
+
+That lists commits with no changelog entry dated after them — work whose reason
+was never written down, usually from a session that ended without a `/refresh`.
+Walk it. For each one, write the entry now if you can still reconstruct why;
+name the ones you cannot, so the gap is known rather than invisible.
+
+Then move anything now settled out of working memory into the durable record:
 
 - Into `project/global/state.md` — confirmed thesis changes, newly settled facts,
   killed ideas WITH the reason they were killed, replicated empirical results.

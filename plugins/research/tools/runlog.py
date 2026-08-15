@@ -41,7 +41,7 @@ REPO = next(p for p in Path(__file__).resolve().parents if (p / "CLAUDE.md").exi
 sys.path.insert(0, str(REPO))
 from tools.runid import user_slug  # noqa: E402
 
-# Set by research-setup to <PROJECT>_DATA; every script reads the same variable.
+# Set by the research skill to <PROJECT>_DATA; every script reads the same variable.
 DATA_ENV = "@@DATA_ENV@@"
 
 IGNORE_SUFFIX = (".py", ".pyc", ".pyo", ".so", ".dylib", ".pth", ".json.lock")

@@ -25,7 +25,7 @@ from pathlib import Path
 
 REPO = next(p for p in Path(__file__).resolve().parents if (p / "CLAUDE.md").exists())
 
-# Set by research-setup to <PROJECT>_DATA.
+# Set by the research skill to <PROJECT>_DATA.
 DATA_ENV = "@@DATA_ENV@@"
 
 

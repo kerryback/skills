@@ -1,21 +1,31 @@
-"""The event log: append-only JSONL, secret-redacted, one file per run.
+"""The debate log: append-only JSONL, secret-redacted, one file per run.
 
-This is the exhaustive record of what a session actually did. Two things feed
-it: the PostToolUse/UserPromptSubmit hook in `tools/log_event.py` (every prompt
-and every tool call, Coordinator and subagents alike) and `tools/debate/debate.py`
-(every voice call, prompt and response). Nothing renders it and nothing curates
-it — read the JSONL directly when you need a slice of it.
+One writer feeds it: `tools/debate/debate.py`, which appends a record per voice
+call — the seat, the model, the messages sent, and the response returned. That
+is the whole of it. There is no session-wide hook and no tool-call capture: an
+exhaustive record of every prompt and every tool call runs to tens of megabytes
+a project, cannot go in git, and answers none of the questions people actually
+ask. What answers those is a decision written down with its reason, which is
+`state.md`'s changelog.
 
-It is NOT memory. `project/global/state.md` is the curated truth and
-`project/<author>/session.md` the handoff; those are committed and rewritten.
-The event log is written once, never read forward as context, and gitignored: a
-real project's runs reach tens of megabytes, dominated by tool payloads, which
-is more than GitHub will take and more than a context window should ever see.
+Read a slice when a specific question needs one:
 
-Logs live at `project/<author>/logs/events-<run>.jsonl`. Naming by RUN rather
-than by round is what keeps two coauthors in a shared clone from ever writing
-the same file — a round counter is per-machine, so both of them have a "round
-3", but `<author>-<date>-<time>` says who ran it and when and cannot collide.
+    python3 -m tools.logging_ --seat adversary --limit 5
+
+What IS shared with coauthors, and deliberately:
+
+- `project/<author>/logs/brief-*.md` — the briefs sent to each debate seat.
+  Committed. They are the written record of which directions were proposed and
+  attacked, which is what someone means by "did we ever explore X."
+- `project/<author>/logs/runs.jsonl` — the run records. Committed.
+- `project/global/state.md` — the curated truth, with the changelog.
+
+This file's own output stays local. It holds full model responses, it is bulky,
+and the briefs plus the changelog already carry the part a coauthor needs.
+
+Logs are named by RUN, not by round: a round counter is per-machine, so two
+coauthors in a shared clone each have a "round 3", while
+`<author>-<date>-<time>` says who ran it and when and cannot collide.
 """
 from __future__ import annotations
 
@@ -58,27 +68,22 @@ def redact_obj(obj):
 
 
 def append_event(project_dir: str | Path, event: dict) -> None:
-    """Append one fully-formed event (it carries its own timestamp and ids).
+    """Append one fully-formed record (it carries its own timestamp and ids).
 
-    The run stamp goes into the record as well as the filename, so events stay
+    The run stamp goes into the record as well as the filename, so records stay
     attributable if the files are later concatenated or renamed.
     """
     run = event.get("run_id") or current_run_id(project_dir)
     record = redact_obj({"run_id": run, **event})
-    path = author_dir(project_dir) / "logs" / f"events-{run}.jsonl"
+    path = author_dir(project_dir) / "logs" / f"debate-{run}.jsonl"
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
 
 
 def read_events(project_dir: str | Path, run: str | None = None):
-    """Yield the events of one run (default: the current one), in order.
-
-    Provided so reading a slice does not mean writing an ad-hoc parser each
-    time. Filter what this yields — by `kind`, by `tool`, by a time span —
-    rather than loading a whole log into context.
-    """
+    """Yield the records of one run (default: the current one), in order."""
     run = run or current_run_id(project_dir)
-    path = author_dir(project_dir) / "logs" / f"events-{run}.jsonl"
+    path = author_dir(project_dir) / "logs" / f"debate-{run}.jsonl"
     if not path.exists():
         return
     with path.open(encoding="utf-8") as fh:
@@ -92,21 +97,19 @@ def read_events(project_dir: str | Path, run: str | None = None):
 
 
 def main() -> None:
-    """`python3 -m tools.logging_ [--run <id>] [--kind tool_use] [--tool Bash]`"""
+    """`python3 -m tools.logging_ [--run <id>] [--seat adversary] [--limit N]`"""
     import argparse
 
-    ap = argparse.ArgumentParser(description="read a slice of the event log")
+    ap = argparse.ArgumentParser(description="read a slice of the debate log")
     ap.add_argument("--project", default=".", help="project root")
     ap.add_argument("--run", help="run id (default: the current run)")
-    ap.add_argument("--kind", help="filter by event kind, e.g. PostToolUse")
-    ap.add_argument("--tool", help="filter by tool name, e.g. Bash")
-    ap.add_argument("--limit", type=int, default=0, help="last N matching events")
+    ap.add_argument("--seat", help="filter by debate seat, e.g. adversary")
+    ap.add_argument("--limit", type=int, default=0, help="last N matching records")
     args = ap.parse_args()
 
     rows = [
         e for e in read_events(args.project, args.run)
-        if (not args.kind or e.get("kind") == args.kind)
-        and (not args.tool or e.get("tool") == args.tool)
+        if not args.seat or e.get("seat") == args.seat
     ]
     if args.limit:
         rows = rows[-args.limit:]

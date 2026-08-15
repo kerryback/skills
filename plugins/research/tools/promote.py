@@ -36,7 +36,7 @@ REPO = next(p for p in Path(__file__).resolve().parents if (p / "CLAUDE.md").exi
 sys.path.insert(0, str(REPO))
 from tools.runid import user_slug  # noqa: E402
 
-# Set by research-setup to <PROJECT>_DATA.
+# Set by the research skill to <PROJECT>_DATA.
 DATA_ENV = "@@DATA_ENV@@"
 
 MANIFEST = REPO / "project" / "global" / "data_manifest.md"

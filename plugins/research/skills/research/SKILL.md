@@ -1,6 +1,6 @@
 ---
-name: research-setup
-description: Set up a research repository that several people and their Claudes can work in without tripping over each other — per-author folders, portable paths, a single canonical dataset, provenance, a round lock, and a generated CLAUDE.md. Use when starting a new empirical or theoretical research project, when a solo project is about to gain coauthors, or when an existing project's files have grown organically and need structure. Also use when asked to "set up a research project", "add coauthors to this project", or "make this repo work like the multiples project". Covers wiring a paper directory to an Overleaf project through its git bridge, for teams where only some coauthors use Overleaf.
+name: research
+description: Set up a research repository that several people and their Claudes can work in without tripping over each other — per-author folders, portable paths, a single canonical dataset, provenance, a round lock, a vendored writing guide, and a generated CLAUDE.md. Use when starting a new empirical or theoretical research project, when a solo project is about to gain coauthors, or when an existing project's files have grown organically and need structure. Also use when asked to "set up a research project", "add coauthors to this project", or "make this repo work like the multiples project". Covers wiring a paper directory to an Overleaf project through its git bridge, for teams where only some coauthors use Overleaf.
 ---
 
 You are setting up a research repository. The output is a working structure plus
@@ -18,14 +18,23 @@ it's folder. Two people rewrite the same prose file and git cannot merge it.
 Nobody can say which script produced a number, or what breaks if a script
 changes. This scaffolds the structure that prevents each of those.
 
-It also sets up two records, which are not the same thing and must not be
-collapsed into one. The *run* records (`runs.jsonl`, committed, small) answer
-"which run produced this number" a year later. The *event* log
-(`events-<run>.jsonl`, gitignored, large) is the exhaustive record of what a
-session did — every prompt, every tool call, every debate voice — written by a
-hook in the repo, never curated, and never read back into a context window. The
-generated `CLAUDE.md` says both of those things to the next Claude explicitly,
-because a log treated as memory is worse than no log.
+It also settles what the project remembers. Three committed records carry it,
+and the generated `CLAUDE.md` names all three so the next session knows where to
+write:
+
+- `project/global/state.md` and its changelog — every substantive change with
+  its date, author, and reason; killed ideas with why they were killed.
+- `project/<author>/logs/brief-*.md` — the briefs sent to each debate seat, the
+  record of which directions were proposed and attacked.
+- `project/<author>/logs/runs.jsonl` — one line per script execution, tying a
+  number to the run that produced it.
+
+There is deliberately no session-wide activity log. Recording every prompt and
+tool call reaches tens of megabytes a project, will not go in git, and answers
+none of the questions coauthors actually ask — "what did they do last week",
+"why did we change that", "did we ever explore X" are questions about decisions,
+and only a written decision answers them. Bulk capture is not memory; a
+changelog line is.
 
 ## 1. Interview
 
@@ -73,18 +82,28 @@ workspaces/global/params.py            (empirical only)
 workspaces/<author>/{analyst,replicator}/   (empirical only)
 draft/{figures,tables}/
 tools/                                 copied from this plugin
-.claude/commands/refresh.md
-.claude/settings.json                  from templates/settings.json
+.claude/commands/{refresh.md,status.md}
 CLAUDE.md  protocols.html  requirements.txt  .gitignore
+writing-guide.md                       copied verbatim from templates/
 ```
 
-`.claude/settings.json` registers `tools/log_event.py` on SessionStart,
-UserPromptSubmit, PostToolUse and SessionEnd — that is what makes the event log
-write itself, for everyone who clones, without anyone installing anything. If the
-repo already has a `settings.json`, MERGE the hooks into it; never overwrite
-theirs. Tell the user the hooks are there and what they capture — a hook they
-did not know about is a surprise, and Claude Code will prompt them to trust it on
-the first session anyway.
+`/status` builds an HTML report — executive summary, what is settled, open
+issues, chronology — from the committed records, using `tools/chronology.py` to
+merge the changelog, git log, briefs, and run records into one timeline. It
+needs no accumulation step: the changelog is the incremental artifact and
+`/refresh` is what keeps it current.
+
+Copy `templates/writing-guide.md` to the repo root unchanged, on every project.
+It is the standard for everything that goes into `draft/`, and it is vendored so
+a coauthor who has installed nothing still gets it. There is no project without
+writing, so this one is not conditional on any interview answer.
+
+Do not install a session-wide activity-logging hook, and do not offer to. An
+exhaustive record of every prompt and every tool call reaches tens of megabytes
+a project, cannot go in git, and answers none of the questions coauthors ask —
+those are about decisions, and the changelog in `state.md` is what records
+decisions. `templates/project-gitignore` commits the debate briefs and the run
+records for exactly this reason; the bulky debate responses stay local.
 
 Assemble `CLAUDE.md` from `templates/CLAUDE.md.tmpl`, substituting:
 
@@ -96,7 +115,7 @@ Assemble `CLAUDE.md` from `templates/CLAUDE.md.tmpl`, substituting:
 | `@@PREFIX@@` | the env prefix |
 | `@@EMPIRICAL_SECTIONS@@` | `templates/fragments/empirical.md`, or empty |
 | `@@DEBATE_SECTION@@` | `templates/fragments/debate.md`, or empty |
-| `@@WRITING_SECTION@@` | `templates/fragments/writing.md`, or empty |
+| `@@WRITING_SECTION@@` | `templates/fragments/writing.md` — always, never empty |
 | `@@OVERLEAF_SECTION@@` | `templates/fragments/overleaf.md`, or empty |
 | `@@OVERLEAF_PROJECT@@` | the Overleaf project id, once the bridge is wired |
 | `@@ROLES@@`, `@@AUTHOR_MEMORY@@`, `@@WORKSPACE_TREE@@`, `@@INDEPENDENCE_NOTE@@`, `@@ONBOARD_EXTRA@@` | see the fragments; write the empirical or the plain variant |
@@ -128,23 +147,32 @@ python3 tools/onboard.py                      # must print ready
 python3 -m tools.provenance --authors         # must list the author trees
 python3 -m tools.lock status                  # must say unlocked
 grep -rn "@@" CLAUDE.md tools/ protocols.html  # must find nothing
+test -s writing-guide.md                       # must exist and be non-empty
 ```
 
 If there is data and any script, run one through `tools/runlog.py` and confirm a
 line lands in `runs.jsonl`.
 
-Then exercise the event log, which is the check people skip and the one that
-silently fails — a hook that never fires looks exactly like a quiet session:
+Then confirm the gitignore rules do what they claim, because a negation under an
+ignored directory is easy to get subtly wrong and fails silently:
 
 ```bash
-echo '{"hook_event_name":"PostToolUse","tool_name":"Bash","cwd":"'"$PWD"'"}' \
-    | python3 tools/log_event.py
-python3 -m tools.logging_ --limit 1        # must print the line just written
-git check-ignore project/*/logs/events-*.jsonl   # must match — it stays local
+touch project/$(python3 -m tools.runid --author)/logs/brief-test-0.md
+git check-ignore -v project/*/logs/brief-test-0.md   # must find NOTHING (exit 1)
+git check-ignore    project/*/logs/debate-x.jsonl    # must match — stays local
+rm project/*/logs/brief-test-0.md
 ```
 
-The hook itself only fires in a live session, so also confirm it is registered:
-after setup, `/hooks` should list `tools/log_event.py` on all four events.
+If the brief comes back ignored, the rule shape is wrong: git cannot re-include a
+file whose parent directory is ignored, so it must be `*/logs/*` plus negations,
+never `*/logs/`.
+
+Then confirm the timeline assembler runs against the repo as it actually is —
+it parses four sources and a wrong path fails quietly as an empty list:
+
+```bash
+python3 -m tools.chronology --human | head       # must show the setup commits
+```
 
 If Overleaf is wired, `git fetch overleaf` and list the remote tree — it must be
 the draft and nothing else — and test the pull direction, not only the push. A

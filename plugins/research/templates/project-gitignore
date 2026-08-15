@@ -1,0 +1,28 @@
+# Commit the curated memory and the record of what was explored; ignore bulk
+# model output and machine-local runtime state.
+#
+# From logs/, these go to git:
+#   runs.jsonl    the run records — provenance for every reported number
+#   brief-*.md    the briefs sent to each debate seat. Small (tens of KB for a
+#                 whole project) and they are the written record of which
+#                 directions were proposed and attacked, which is what a
+#                 coauthor means by "did we ever explore X". They are useless
+#                 sitting on one person's laptop.
+#
+# The debate log stays local: it carries full model responses and gets bulky,
+# and the briefs plus state.md's changelog already carry what a coauthor needs.
+#
+# Note the rule shape: git cannot re-include a file whose parent DIRECTORY is
+# ignored, so this must be `*/logs/*` plus negations, never `*/logs/`.
+*/logs/*
+!*/logs/runs.jsonl
+!*/logs/brief-*.md
+
+# Per-author runtime state: machine-local, and meaningless to anyone else.
+# `python` in particular holds an absolute venv path.
+*/run
+*/round
+*/python
+
+# machine-local: this clone has been through onboarding
+*/onboarded
