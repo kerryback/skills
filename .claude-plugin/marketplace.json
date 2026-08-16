@@ -49,7 +49,7 @@
     {
       "name": "wrds",
       "source": "./plugins/wrds",
-      "description": "Empirical asset-pricing data from WRDS (CRSP v2/Compustat) and Open Source Asset Pricing: extractable Python building blocks for connect, pull, merge, market cap aggregated across share classes, the CRSP-Compustat link, book equity, accounting alignment and firm age — every query run against live WRDS. Surfaces the constructions that are genuine decisions rather than common practice (Ken French vs Drechsler's WRDS script vs OpenAP, and the 4- vs 6-month reporting lag) instead of picking silently, and ships twelve WRDS reference scripts."
+      "description": "Empirical asset-pricing data from WRDS (CRSP v2/Compustat) and Open Source Asset Pricing: extractable Python building blocks for connect (without a 2FA prompt), pull, merge, market cap aggregated across share classes, the CRSP-Compustat link, book equity, accounting alignment and firm age — every query run against live WRDS. Surfaces the constructions that are genuine decisions rather than common practice (Ken French vs Drechsler's WRDS script vs OpenAP, and the 4- vs 6-month reporting lag) instead of picking silently, and ships twelve WRDS reference scripts."
     },
     {
       "name": "critique",
