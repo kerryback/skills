@@ -9,9 +9,13 @@ skill whenever a task pulls or constructs market/accounting data from WRDS.
 
 ## What it covers (`skills/wrds/SKILL.md`)
 
-- Connecting to WRDS non-interactively — resolve the username at runtime
-  (`$WRDS_USER` → `~/.wrds` → `~/.pgpass` field 4), password from `~/.pgpass`, so
-  unattended builds don't hang. Resolver at `skills/wrds/wrds_username.py`.
+- Connecting to WRDS non-interactively — SQLAlchemy over psycopg2, letting libpq
+  read `~/.pgpass`. This avoids the Duo push that `wrds.Connection()` triggers and
+  the "Loading library list" step it runs on every connect, so unattended builds
+  neither hang nor wait on a phone. Resolve the username at runtime
+  (`$WRDS_USER` → `~/.wrds` → `~/.pgpass` field 4); resolver at
+  `skills/wrds/wrds_username.py`. The `wrds` package is still what creates
+  `~/.pgpass` and is still the nicer way to browse tables while exploring.
 - Installing the `wrds` package without letting it downgrade pandas.
 - CRSP v2 table conventions (`crsp.msf_v2`) and common-stock screens.
 - Why the screens must read `msf_v2`'s inline columns rather than a join to
@@ -110,6 +114,7 @@ greppable copy would be worth shipping and is not present yet.
 
 ## Requirements
 
-- WRDS access: the `wrds` Python package, `~/.pgpass` with a wrds line, and a
-  resolvable WRDS username.
+- WRDS access: `~/.pgpass` with a wrds line, a resolvable WRDS username, and
+  `sqlalchemy` + `psycopg2` for pulls. The `wrds` package is optional once
+  `~/.pgpass` exists — keep it for `create_pgpass_file()` and for browsing.
 - OpenAP data is public (download directly).

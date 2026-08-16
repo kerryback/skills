@@ -72,3 +72,15 @@ Deliberately, because both are a download away and neither needs vendoring:
 - Ken French's variable definitions —
   [the data library's definitions page](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/variable_definitions.html).
   The sentences that matter are quoted in `CONVENTIONS.md`.
+
+## A note on how these connect
+
+Every script here opens WRDS with `wrds.Connection()`, which is the right idiom
+for the notebooks they came from: interactive, exploratory, and the library's
+table-browsing helpers are genuinely useful there. It is the WRONG idiom inside a
+pipeline — it triggers a Duo push and reloads the library list on every connect.
+
+These files are kept AS PUBLISHED, bylines and all, so that line is left alone.
+When you lift code from one of them into a build script, swap the connection for
+the SQLAlchemy engine in `../SKILL.md` ("Connecting to WRDS non-interactively")
+and leave the SQL as it is.

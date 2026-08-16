@@ -119,20 +119,55 @@ supply their own lag through the June/December structure, so passing
 `convention`. Both choices are stamped on the returned frame's `.attrs`. State
 them in the paper.
 
-## Connecting to WRDS non-interactively (or an unattended run HANGS)
-`~/.pgpass` supplies the PASSWORD (robust — no secret in code), but the wrds library
-does NOT read the username from it, so you MUST pass the username or the connection
-prompts and an unattended run hangs forever. NEVER hardcode a username (code must
-work for anyone) — resolve it per user, first hit wins: `$WRDS_USER` → `~/.wrds`
-(a `WRDS_USER=<id>` or bare-username line) → `~/.pgpass` field 4 of the wrds line
-(zero setup — anyone with WRDS already has it). This skill ships the resolver at
-`wrds_username.py`; copy the small function INLINE into your build script so it
-stays standalone:
+## Connecting to WRDS non-interactively (or an unattended run HANGS or 2FAs)
+For any SCRIPTED pull, connect with SQLAlchemy over psycopg2 and let libpq read
+`~/.pgpass`. Do NOT use `wrds.Connection()` in a pipeline.
+
 ```python
-import wrds
+from sqlalchemy import create_engine
+import pandas as pd
 # (paste the wrds_username() resolver from wrds_username.py here)
-conn = wrds.Connection(wrds_username=wrds_username())   # password from ~/.pgpass
+eng = create_engine(
+    f"postgresql+psycopg2://{wrds_username()}@wrds-pgdata.wharton.upenn.edu:9737/wrds",
+    connect_args={"sslmode": "require", "connect_timeout": 45})
+df = pd.read_sql("select gvkey, conm from comp.company limit 3", eng)
 ```
+
+No password appears in the code: libpq finds `~/.pgpass` by itself from the host,
+port, database and user in the URL. Still resolve the username rather than
+hardcoding it — same rule as before, `$WRDS_USER` → `~/.wrds` → `~/.pgpass`
+field 4 — so the script works for anyone.
+
+WHY THIS AND NOT `wrds.Connection()`. Three reasons, all measured:
+- **2FA.** The wrds library's own connection path triggers a Duo push. The
+  libpq/`.pgpass` route does not — it authenticates straight through. An
+  unattended run that fires a Duo prompt at 3am is a failed run.
+- **Speed.** `wrds.Connection()` runs a "Loading library list" step on EVERY
+  connect. The engine above is ready in about a second.
+- **It is a real SQLAlchemy engine**, so `pandas.read_sql` takes it without the
+  "not a valid connection" warning you get from a bare DBAPI connection.
+
+WHAT THE `wrds` LIBRARY IS STILL FOR. It is not redundant — it is just the wrong
+tool inside a pipeline:
+- **Creating `~/.pgpass` in the first place.** `wrds.Connection().create_pgpass_file()`
+  is the bootstrap, and that one-time step is where the 2FA approval belongs.
+  Everything above assumes the file already exists.
+- **Discovery while you are still exploring**: `list_libraries()`, `list_tables()`,
+  `describe_table()`. `list_libraries()` in particular reflects what your account
+  can actually reach, not merely what exists.
+- **`get_table()`** for a quick look without writing SQL.
+
+The discovery calls have plain-SQL equivalents when you want them in a script:
+```sql
+-- columns of a table (describe_table)
+select column_name, data_type from information_schema.columns
+ where table_schema='crsp' and table_name='msf_v2' order by ordinal_position;
+-- what is in a library (list_tables)
+select table_name from information_schema.tables where table_schema='crsp';
+```
+Rule of thumb: explore in a notebook with the `wrds` package, then pull with the
+engine. If you keep the package only for `create_pgpass_file`, that is fine and
+is a good reason not to uninstall it.
 
 ## Installing wrds — do NOT let it downgrade pandas
 The `wrds` package pins an OLD pandas in its metadata; installed normally it

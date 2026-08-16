@@ -1,8 +1,10 @@
 """Resolve the WRDS username portably — no hardcoding, works for any user.
 
-The wrds library needs the username passed to `wrds.Connection(wrds_username=...)`
-(it never reads it from ~/.pgpass). To keep code reusable across users, never
-hardcode it — resolve it at runtime, first hit wins:
+Both connection routes need the username supplied: the SQLAlchemy/psycopg2 engine
+puts it in the URL (libpq then finds the password in ~/.pgpass by itself), and the
+wrds library needs it passed to `wrds.Connection(wrds_username=...)`, which never
+reads it from ~/.pgpass. To keep code reusable across users, never hardcode it —
+resolve it at runtime, first hit wins:
 
   1. $WRDS_USER environment variable (explicit override).
   2. ~/.wrds — first non-comment line, or a `WRDS_USER=<id>` line.
