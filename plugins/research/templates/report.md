@@ -20,9 +20,10 @@ python3 -m tools.chronology --gap --human
 ```
 
 It lists commits that landed with no changelog entry dated after them — work
-whose *reason* was never written down. The changelog is written by `/refresh`,
-and `/refresh` only runs when someone invokes it, so a session that ended any
-other way leaves exactly this hole. Git has what changed; nothing has why.
+whose *reason* was never written down. The changelog is written by `/round`
+(and by `/refresh` for anything settled mid-round), and both only run when someone
+invokes them, so work that ended any other way leaves exactly this hole. Git has
+what changed; nothing has why.
 
 If there is a gap, **deal with it before writing the report, not after.** For
 each undocumented commit you can reconstruct the reason for — from this
@@ -38,7 +39,7 @@ in the executive summary, naming the dates and authors.
 
 Everything else the report needs is already written down and committed. There is
 no accumulation step to run first and no log to mine: the changelog in
-`state.md` is the incremental artifact, and `/refresh` is what keeps it current.
+`state.md` is the incremental artifact, and `/round` is what keeps it current.
 
 Read these, and only these:
 
@@ -108,14 +109,16 @@ which.
 ### 4. Chronology
 
 The project's arc, newest first, grouped by date. Lead each day with the
-decisions from the changelog — those carry the reason — then the commits, briefs,
-and runs around them as supporting detail. A reader should be able to scan dates
+decisions from the changelog — those carry the reason — then the commits and
+runs around them as supporting detail. A reader should be able to scan dates
 and see the shape of the project without expanding anything.
 
-Where a direction was explored and abandoned, show it. The briefs and the killed
-ideas are what make this section worth reading, because "we tried X and here is
-why we stopped" is the most expensive knowledge on the project and the easiest
-to lose.
+Where a direction was explored and abandoned, show it. Those are what make this
+section worth reading, because "we tried X and here is why we stopped" is the
+most expensive knowledge on the project and the easiest to lose. It lives in the
+round entries and the killed-ideas section — if a round's entry was never
+written, this report cannot recover it, and should say so rather than imply the
+project never explored anything.
 
 Collapse the run-level detail behind a disclosure element so the decisions stay
 legible; a day with forty script runs should not bury the one decision that made

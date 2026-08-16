@@ -10,11 +10,25 @@ merge two rewrites of it.
 
 ## Changelog
 
-Every substantive change gets a line here: who, when, what changed. Newest first,
-append only — never rewrite or tidy someone else's entry. This is how the others
-see what moved without reading the whole file.
+Newest first, append only — never rewrite or tidy someone else's entry. This is
+how the others see what moved without reading the whole file, and it is the only
+record of what this project has explored.
 
-Format: `- YYYY-MM-DD  author-slug  — what changed, and why it is now settled.`
+Two things get an entry:
+
+1. **The end of every round, without exception** — including a round that
+   settled nothing. Name what the round took up and what came of it. A round
+   that chased something and dropped it is the most expensive knowledge on the
+   project and the easiest to lose, and it is a *non*-change, so nothing else
+   here will catch it.
+2. **Any substantive change**, when it happens, if you are mid-round and do not
+   want to wait for the end.
+
+Format: `- YYYY-MM-DD  author-slug  — <what was taken up> → <what came of it, and why>.`
+
+Write the arrow even when the right-hand side is "nothing": *"→ dropped; the
+effect is inside the standard errors once we cluster by firm"* is what stops
+somebody proposing it again in March.
 
 - (nothing yet)
 

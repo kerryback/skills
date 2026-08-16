@@ -14,14 +14,13 @@ Read a slice when a specific question needs one:
 
 What IS shared with coauthors, and deliberately:
 
-- `project/<author>/logs/brief-*.md` — the briefs sent to each debate seat.
-  Committed. They are the written record of which directions were proposed and
-  attacked, which is what someone means by "did we ever explore X."
 - `project/<author>/logs/runs.jsonl` — the run records. Committed.
-- `project/global/state.md` — the curated truth, with the changelog.
+- `project/global/state.md` — the curated truth, with the changelog. When a
+  debate resolves, the question, the decision, and the reason go here.
 
-This file's own output stays local. It holds full model responses, it is bulky,
-and the briefs plus the changelog already carry the part a coauthor needs.
+This file's own output stays local, and so are the briefs. Both are the input to
+a decision rather than the decision, and the changelog carries the part a
+coauthor needs.
 
 Logs are named by RUN, not by round: a round counter is per-machine, so two
 coauthors in a shared clone each have a "round 3", while

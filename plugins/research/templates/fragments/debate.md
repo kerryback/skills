@@ -20,19 +20,25 @@ roster is `project/global/config.toml`, shared and committed so everyone debates
 against the same panel. A seat that errors returns `{"error": ...}` — note it and
 carry on; one bad voice never sinks a round.
 
-### Briefs are committed — this one is not optional
+### Record the question, the decision, and the reason — not the briefs
 
 Write every brief you send a seat to
 `project/<author>/logs/brief-<seat>-<stamp>.md`, never a temp file. Stamp it with
 `python3 -m tools.runid --stamp`, since briefs are rewritten each pass of the
-loop and would otherwise overwrite each other.
+loop and would otherwise overwrite each other. They stay local and gitignored:
+they are the input to a decision, not the decision.
 
-**Then commit them, in the same commit as whatever the round produced.** The
-`.gitignore` un-ignores `brief-*.md` for exactly this reason. They are the
-written record of which directions were proposed and which were attacked, they
-run to tens of kilobytes for an entire project, and they are the thing a
-coauthor reaches for when they ask whether the team ever looked at X. A brief
-sitting uncommitted on one laptop answers that question for nobody.
+**What gets committed is the outcome, in `state.md`'s changelog:**
+
+- the question actually put to the panel, in one line;
+- what was decided;
+- why — which objection carried, or what the panel failed to break.
+
+Write it when the debate resolves, not at the end of the round. A coauthor
+asking whether the team ever looked at X wants that entry; handed a folder of
+briefs they would have to reconstruct the answer from the prompts, and nobody
+does. If the panel killed a direction, it also goes in the killed-ideas section
+with the reason — that is the same record viewed from the other end.
 
 Every call — the messages sent and the response, with its model, usage and
 latency — is appended to `logs/debate-<run>.jsonl`. That file stays local: it

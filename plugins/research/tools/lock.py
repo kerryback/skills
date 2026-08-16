@@ -9,9 +9,9 @@ A `git push` is atomic, which makes it a usable mutex: claiming the round means
 committing a lock file and pushing it. Exactly one push can win. The loser finds
 out immediately, at the moment of claiming, instead of after a round's work.
 
-    python -m tools.debate.lock claim  "peer rule for microcaps"
-    python -m tools.debate.lock status
-    python -m tools.debate.lock release
+    python -m tools.lock claim  "peer rule for microcaps"
+    python -m tools.lock status
+    python -m tools.lock release
 
 This guards the round, not the file: nothing stops someone editing state.md
 outside a round. It is a coordination protocol between people who have agreed to
@@ -117,9 +117,9 @@ def cmd_claim(root: Path, note: str | None) -> int:
 def _warn_if_undocumented(root: Path, claimed: str | None) -> None:
     """Releasing the round is the last moment the reason is still in someone's head.
 
-    The changelog is written by `/refresh`, and `/refresh` only runs when
-    somebody invokes it — so a round that ends any other way leaves the work
-    committed and the WHY unrecorded. Nothing else notices, because the commits
+    The changelog is written by `/round`, which only runs when somebody
+    invokes it — so a round that ends any other way leaves the work committed
+    and the WHY unrecorded. Nothing else notices, because the commits
     look perfectly fine.
 
     This warns and never blocks. Refusing to release would strand the lock and
@@ -143,7 +143,7 @@ def _warn_if_undocumented(root: Path, claimed: str | None) -> None:
     if g["count"] > 5:
         print(f"  … and {g['count'] - 5} more", file=sys.stderr)
     print("Git has what changed; nothing has why. Add an entry to\n"
-          "project/global/state.md before the reason is gone — /refresh writes one.\n"
+          "project/global/state.md before the reason is gone — /round writes one.\n"
           "See the full list with: python3 -m tools.chronology --gap --human",
           file=sys.stderr)
 

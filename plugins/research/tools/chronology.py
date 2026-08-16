@@ -1,15 +1,17 @@
 """Assemble the project's timeline from the records that already exist.
 
-Four sources, all committed, none of them a transcript:
+Three sources, all committed, none of them a transcript:
 
   changelog  `project/global/state.md` — the dated entries at the top, each with
              an author and the reason a thing changed. This is the spine: it is
              the only source that says WHY.
   commit     `git log` — what landed and when.
-  brief      `project/<author>/logs/brief-<seat>-<author>-<date>-<time>.md` —
-             which direction was put to which debate seat.
   run        `project/<author>/logs/runs.jsonl` — a script execution that
              produced a reportable result.
+
+Debate briefs are deliberately not a source. They are the input to a decision,
+not the decision, they are gitignored, and a timeline assembled from prompts
+answers a question nobody asked.
 
 Nothing here reads a session log, and nothing needs to: a timeline is a sequence
 of decisions and the artifacts around them, and those are all written down at the
@@ -33,16 +35,12 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-KINDS = ("changelog", "commit", "brief", "run")
+KINDS = ("changelog", "commit", "run")
 
 # `- 2026-08-14  kevin-crotty  — what changed...`, continuation lines indented.
 _CHANGELOG_ENTRY = re.compile(
     r"^-\s+(\d{4}-\d{2}-\d{2})\s+(\S+)\s+[—-]+\s*(.*)$"
 )
-# brief-<seat>-<author-slug>-<YYYYMMDD>-<HHMMSS>.md
-_BRIEF = re.compile(r"^brief-(.+?)-(\d{8})-(\d{6})\.md$")
-
-
 def _repo_root(start: Path) -> Path:
     for p in [start.resolve(), *start.resolve().parents]:
         if (p / "CLAUDE.md").exists() or (p / ".git").exists():
@@ -116,9 +114,9 @@ def _slug(name: str) -> str:
     """Same normalization `tools.runid` applies to `git config user.name`.
 
     Git records a commit author as a display name ("Kevin Crotty") while the
-    changelog, briefs, and run records all carry the slug ("kevin-crotty"). One
-    author filter has to match all four, so slugify here rather than making the
-    caller know which source spells a person which way.
+    changelog and run records carry the slug ("kevin-crotty"). One author filter
+    has to match all three, so slugify here rather than making the caller know
+    which source spells a person which way.
     """
     return re.sub(r"[^A-Za-z0-9]+", "-", name).strip("-").lower() or "anon"
 
@@ -137,25 +135,6 @@ def commits(root: Path, since: str | None) -> list[dict]:
                          "author_name": name, "summary": subject, "ref": sha[:7]})
     return rows
 
-
-def briefs(root: Path) -> list[dict]:
-    rows = []
-    for d in sorted((root / "project").glob("*/logs")):
-        author = d.parent.name
-        for f in sorted(d.glob("brief-*.md")):
-            m = _BRIEF.match(f.name)
-            if not m:
-                continue
-            tail, ymd, hms = m.groups()
-            # tail is "<seat>-<author-slug>"; the author slug is the directory.
-            seat = tail[: -len(author)].rstrip("-") if tail.endswith(author) else tail
-            rows.append({
-                "kind": "brief", "date": f"{ymd[:4]}-{ymd[4:6]}-{ymd[6:]}",
-                "time": f"{hms[:2]}:{hms[2:4]}", "author": author,
-                "summary": f"brief to {seat or 'a seat'}",
-                "ref": str(f.relative_to(root)),
-            })
-    return rows
 
 
 def runs(root: Path) -> list[dict]:
@@ -197,9 +176,9 @@ _MECHANICAL = re.compile(
 def gaps(root: Path, since: str | None = None) -> dict:
     """Commits that landed with no changelog entry dated at or after them.
 
-    The changelog is written by `/refresh`, and `/refresh` only runs when
-    somebody invokes it. A session that ends without it leaves the work
-    committed and the REASON unrecorded — which is invisible, because the
+    The changelog is written by `/round`, which only runs when somebody
+    invokes it. Work that ends without it leaves the commits in place
+    and the REASON unrecorded — which is invisible, because the
     commits look fine. This makes it visible.
 
     Reported per author, because the person who can still remember why is the
@@ -243,7 +222,7 @@ def report_gaps(root: Path, since: str | None = None) -> int:
     if g["count"] > 15:
         print(f"  … and {g['count'] - 15} more")
     print("\nWhat changed is in git; WHY is not written anywhere. Add an entry to\n"
-          "project/global/state.md — or run /refresh, which writes one — while\n"
+          "project/global/state.md — or run /round, which writes one — while\n"
           "somebody still remembers the reason.")
     return g["count"]
 
@@ -257,8 +236,6 @@ def build(root: Path, *, since=None, kinds=KINDS, author=None) -> list[dict]:
         rows += changelog_entries(root)
     if "commit" in kinds:
         rows += commits(root, since)
-    if "brief" in kinds:
-        rows += briefs(root)
     if "run" in kinds:
         rows += runs(root)
     if since:
@@ -267,7 +244,7 @@ def build(root: Path, *, since=None, kinds=KINDS, author=None) -> list[dict]:
         want = _slug(author)
         rows = [r for r in rows if r.get("author") == want]
     # Newest first; within a day, decisions before the artifacts around them.
-    order = {"changelog": 0, "commit": 1, "brief": 2, "run": 3}
+    order = {"changelog": 0, "commit": 1, "run": 2}
     rows.sort(key=lambda r: (r.get("date") or "", -order.get(r["kind"], 9)),
               reverse=True)
     return rows

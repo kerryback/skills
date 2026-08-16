@@ -18,16 +18,20 @@ it's folder. Two people rewrite the same prose file and git cannot merge it.
 Nobody can say which script produced a number, or what breaks if a script
 changes. This scaffolds the structure that prevents each of those.
 
-It also settles what the project remembers. Three committed records carry it,
-and the generated `CLAUDE.md` names all three so the next session knows where to
-write:
+It also settles what the project remembers. Two committed records carry it, and
+the generated `CLAUDE.md` names both so the next session knows where to write:
 
-- `project/global/state.md` and its changelog — every substantive change with
-  its date, author, and reason; killed ideas with why they were killed.
-- `project/<author>/logs/brief-*.md` — the briefs sent to each debate seat, the
-  record of which directions were proposed and attacked.
+- `project/global/state.md` and its changelog — one entry per round saying what
+  it took up and what came of it, written even when the round settled nothing,
+  plus any substantive change as it happens. Killed ideas go in with why. This
+  is what makes "did we ever explore X" answerable: a round that chased
+  something and dropped it leaves no diff and no artifact, only its entry.
 - `project/<author>/logs/runs.jsonl` — one line per script execution, tying a
   number to the run that produced it.
+
+Debate briefs and full model responses stay local and gitignored. They are the
+input to a decision, not the decision, and a coauthor asking "did we ever
+explore X" wants the answer, not the prompts that produced it.
 
 There is deliberately no session-wide activity log. Recording every prompt and
 tool call reaches tens of megabytes a project, will not go in git, and answers
@@ -82,16 +86,23 @@ workspaces/global/params.py            (empirical only)
 workspaces/<author>/{analyst,replicator}/   (empirical only)
 draft/{figures,tables}/
 tools/                                 copied from this plugin
-.claude/commands/{refresh.md,status.md}
+.claude/commands/{round.md,refresh.md,report.md}
 CLAUDE.md  protocols.html  requirements.txt  .gitignore
 writing-guide.md                       copied verbatim from templates/
 ```
 
-`/status` builds an HTML report — executive summary, what is settled, open
+`/report` builds an HTML report — executive summary, what is settled, open
 issues, chronology — from the committed records, using `tools/chronology.py` to
-merge the changelog, git log, briefs, and run records into one timeline. It
+merge the changelog, git log, and run records into one timeline. It
 needs no accumulation step: the changelog is the incremental artifact and
-`/refresh` is what keeps it current.
+`/round` is what keeps it current.
+
+Write `protocols.html` LAST, after the repo is built and verified, following
+`templates/protocols.md` — that file is the spec, not the content, so write the
+page for this project rather than copying it. It is the human counterpart to
+`CLAUDE.md` and the one document a coauthor actually reads; the round vocabulary
+in particular has to be explained there, because a newcomer cannot guess it and
+it governs when they may touch shared state.
 
 Copy `templates/writing-guide.md` to the repo root unchanged, on every project.
 It is the standard for everything that goes into `draft/`, and it is vendored so
@@ -102,8 +113,8 @@ Do not install a session-wide activity-logging hook, and do not offer to. An
 exhaustive record of every prompt and every tool call reaches tens of megabytes
 a project, cannot go in git, and answers none of the questions coauthors ask —
 those are about decisions, and the changelog in `state.md` is what records
-decisions. `templates/project-gitignore` commits the debate briefs and the run
-records for exactly this reason; the bulky debate responses stay local.
+decisions. `templates/project-gitignore` commits the run records for exactly
+this reason; the briefs and the bulky debate responses stay local.
 
 Assemble `CLAUDE.md` from `templates/CLAUDE.md.tmpl`, substituting:
 
@@ -112,6 +123,7 @@ Assemble `CLAUDE.md` from `templates/CLAUDE.md.tmpl`, substituting:
 | `@@PROJECT@@` | the project name |
 | `@@ONE_LINE@@` | their one-line description |
 | `@@DATA_ENV@@` | `<PREFIX>_DATA` |
+| `@@DATA_LOCATION@@` | the shared data location from question 5, written out plainly — e.g. `~/Dropbox (Rice University)/housing-supply-data/`. Name the service (Dropbox, Box, a group drive) so a new coauthor knows what they are looking for, not just a path that exists on one machine. If there is no data at all, drop the whole block. |
 | `@@PREFIX@@` | the env prefix |
 | `@@EMPIRICAL_SECTIONS@@` | `templates/fragments/empirical.md`, or empty |
 | `@@DEBATE_SECTION@@` | `templates/fragments/debate.md`, or empty |
@@ -148,6 +160,7 @@ python3 -m tools.provenance --authors         # must list the author trees
 python3 -m tools.lock status                  # must say unlocked
 grep -rn "@@" CLAUDE.md tools/ protocols.html  # must find nothing
 test -s writing-guide.md                       # must exist and be non-empty
+ls .claude/commands/{round,refresh,report}.md  # all three must be there
 ```
 
 If there is data and any script, run one through `tools/runlog.py` and confirm a
@@ -157,15 +170,17 @@ Then confirm the gitignore rules do what they claim, because a negation under an
 ignored directory is easy to get subtly wrong and fails silently:
 
 ```bash
-touch project/$(python3 -m tools.runid --author)/logs/brief-test-0.md
-git check-ignore -v project/*/logs/brief-test-0.md   # must find NOTHING (exit 1)
+A=$(python3 -m tools.runid --author)
+touch project/$A/logs/runs.jsonl
+git check-ignore -v project/*/logs/runs.jsonl        # must find NOTHING (exit 1)
+git check-ignore    project/*/logs/brief-x-0.md      # must match — stays local
 git check-ignore    project/*/logs/debate-x.jsonl    # must match — stays local
-rm project/*/logs/brief-test-0.md
 ```
 
-If the brief comes back ignored, the rule shape is wrong: git cannot re-include a
-file whose parent directory is ignored, so it must be `*/logs/*` plus negations,
-never `*/logs/`.
+If `runs.jsonl` comes back ignored, the rule shape is wrong: git cannot
+re-include a file whose parent directory is ignored, so it must be `*/logs/*`
+plus the negation, never `*/logs/`. If a brief comes back un-ignored, the
+negation is too broad — briefs are working material and do not belong in git.
 
 Then confirm the timeline assembler runs against the repo as it actually is —
 it parses four sources and a wrong path fails quietly as an empty list:

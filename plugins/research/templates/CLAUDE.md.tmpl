@@ -97,6 +97,18 @@ wrong data.
 
 ## The canonical data — a single source of truth
 
+The shared data for this project lives at:
+
+```
+@@DATA_LOCATION@@
+```
+
+That path is outside the repo and is never committed. Each person sets
+`@@DATA_ENV@@` to their own working folder inside it; `global/` is the sibling
+everyone reads. If someone's copy is somewhere else — a different Dropbox mount
+point, a different drive letter — they change the env var, not this file and not
+a script.
+
 `<data root>/global/` holds the core data everyone works from. One copy, shared,
 read-only. `project/global/data_manifest.md` records for each file its hash, its
 shape, who promoted it, and why it is trusted.
@@ -130,16 +142,28 @@ python3 -m tools.provenance --orphans             # inputs nothing produces
 with the change. Working that set out from memory is how a stale number survives
 into a draft.
 
-**Record runs that produce a reportable result:**
+**This is how you run a script. Not an extra step afterwards:**
 
 ```bash
-python3 tools/runlog.py <script> [args...]
+python3 tools/runlog.py <script> [args...]      # yes
+python3 <script> [args...]                      # no
 ```
 
-It runs the script normally and records what it actually opened — an audit hook
-below pandas and pyarrow, so paths built at runtime are caught. One line per run
-in `project/<author>/logs/runs.jsonl`, committed: script, arguments, commit,
-duration, status, inputs, outputs. Read them back with `--runs`.
+Whenever you execute anything whose output could end up reported — a table, a
+figure, a number in the draft — run it through the wrapper. The wrapper runs the
+script normally and appends one line to `project/<author>/logs/runs.jsonl`
+(committed): script, arguments, commit, duration, status, inputs, outputs. Read
+them back with `--runs`.
+
+The wrapper is the only thing that writes that record. It installs an audit hook
+that fires on every file open below pandas, pyarrow, numpy and matplotlib, so
+what lands in the line is what the script *actually* opened, including paths
+assembled at runtime. Called directly, the script produces the same numbers and
+no record at all — and nothing will notice, because the output looks fine. A
+year later the number is undefendable.
+
+Exploratory one-offs you are running twenty times in a row do not need it; the
+moment a script's output might be shown to anyone, it does.
 
 The static graph is a strong first draft of provenance; the run records are what
 actually happened.
@@ -155,38 +179,44 @@ last week", "why did we change that", and "did we ever explore X" are questions
 about *decisions*, and a tool-call log records actions. So the decision gets
 written down, with its reason, at the moment it is made.
 
-Three committed records carry the project, and between them they answer all
-three questions:
+Two committed records carry the project, and between them they answer all three
+questions:
 
-1. **`project/global/state.md` and its changelog.** Every substantive change
-   gets a line: date, author slug, what changed, and why it is now settled.
-   Newest first, append only. Killed ideas go in with the reason they were
-   killed. This is how the others see what moved without reading the whole file,
-   and it is the first place to look for any of the three questions above.
-2. **`project/<author>/logs/brief-*.md`.** The briefs sent to each debate seat —
-   the record of which directions were proposed and attacked. Committed.
-3. **`project/<author>/logs/runs.jsonl`.** One line per script execution, with
+1. **`project/global/state.md` and its changelog.** One entry at the end of
+   every round — what the round took up, and what came of it — plus any
+   substantive change as it happens. Newest first, append only. Killed ideas go
+   in with the reason they were killed. This is how the others see what moved
+   without reading the whole file, and it is the first place to look for any of
+   the three questions above.
+
+   The round entry is written **even when the round settled nothing**. A round
+   that took something up and dropped it leaves no diff and no artifact, so if
+   its entry is not written the exploration is simply gone.
+2. **`project/<author>/logs/runs.jsonl`.** One line per script execution, with
    inputs, outputs, and the commit. This is what ties a number to the run that
    produced it.
 
-Git history sits underneath all three, and `git log --since` answers "last week"
+Git history sits underneath both, and `git log --since` answers "last week"
 directly.
 
-Two things stay local and are not memory: `logs/debate-<run>.jsonl`, the full
-model responses from each debate call, and anything a tool wrote to a scratch
-path. Read a slice of the debate log when a specific question needs it —
+Everything else in `logs/` is working material and is gitignored: the briefs
+sent to each debate seat, `logs/debate-<run>.jsonl` with the full model
+responses, and anything a tool wrote to a scratch path. Read a slice when a
+specific question needs one —
 
 ```bash
 python3 -m tools.logging_ --seat adversary --limit 5
 ```
 
-— but if a voice said something that changed the project's direction, that
-belongs in `state.md` with the reason, not left in a log on one machine.
+— but none of it is memory. A brief is the input to a decision, not the
+decision, and "did we ever explore X" is answered by the round entries in the
+changelog, not by a folder of prompts somebody would have to reverse-engineer. If a voice said something that changed the project's
+direction, that belongs in `state.md` with the reason.
 
 **When you learn something the project should keep, write it down now.** Not at
 the end of the session, not in your own words in a scratch file — into
-`state.md` with a changelog line, or into the brief, or into the run record.
-Nothing reconstructs it later.
+`state.md` with a changelog line, or into the run record. Nothing reconstructs
+it later.
 
 A run is stamped with `python3 -m tools.runid --project . --new` at the top of a
 round. Files are named by run, never by round: a round counter is per-machine,
@@ -195,40 +225,61 @@ cannot collide.
 
 ---
 
-## One round at a time
+## One round at a time — /round
 
-`state.md` is long prose rewritten at every gate, and git cannot merge that. So
-the round is claimed, and git enforces it — a push is atomic, so exactly one
-claim wins.
+A **round** is one bounded stretch of work that ends with `state.md` rewritten.
+`state.md` is long prose rewritten at every gate, and git cannot merge that, so
+exactly one person holds it at a time. A push is atomic, which makes it a usable
+mutex: exactly one claim wins, and the loser finds out at claim time instead of
+after a round's work.
 
-```bash
-python3 -m tools.lock claim "what this round is"
-python3 -m tools.lock status
-python3 -m tools.lock release
+```
+/round                                   finish one: write the entry, promote, release
+/round start "peer rule for microcaps"   optional — claim it first
+/round status                            who holds it, and is the changelog behind
 ```
 
-Claim before reading state; release after writing it, even if the round was
-killed — an unreleased lock blocks everyone.
+**Bare `/round` is the command.** It works whether or not a round was ever
+claimed; when none was, work out what was taken up from the conversation, say it
+back for correction, and skip the release. Never tell someone to go back and
+run `start` — that is a two-person feature, and nobody working alone should be
+made to perform it.
+
+`start` earns its keep when a coauthor might be working right now: claiming up
+front surfaces a collision in the first minute rather than after you have both
+spent an afternoon on the same question. Claim before reading state, and release
+after writing it even if the round was killed — an unreleased lock blocks
+everyone, and it fails silently.
+
+Underneath, that is `python3 -m tools.lock claim|status|release`; use `/round`
+rather than the raw tool so the promotion and the changelog are not skipped.
+
+**A round is not a session.** A round is a unit of *work* and can span several
+context windows; a session is one conversation. A long round survives any number
+of `/clear`s. Do not end a round because the context filled up, and do not keep
+one open for days because nothing forced you to close it.
 @@DEBATE_SECTION@@
 ---
 
 ## /refresh — checkpoint before the context runs out
 
-When the session gets long, run `/refresh`. It promotes what has settled into
-`state.md` with a changelog line, rewrites your `session.md` so a cold session
-could resume from it alone, and releases the lock if the round is done. Then it
-stops — it cannot clear its own context.
+When the session gets long, run `/refresh`. It rewrites your `session.md` so a
+cold session could resume from it alone, writes down anything already settled,
+and **leaves the round lock alone** — you are still holding the round when the
+next session starts, which is correct. Then it stops; it cannot clear its own
+context.
 
-Suggest it proactively when a round has run long.
+Suggest it proactively when a session has run long. If the work is actually
+finished, `/round` is the command, not this one.
 
 ---
 
-## /status — the project, on one page
+## /report — the project, on one page
 
-`/status` writes an HTML report to the repo root: executive summary, what is
+`/report` writes an HTML report to the repo root: executive summary, what is
 settled, open issues, and a chronology. It reads only the committed records —
-`state.md` and its changelog, each `session.md`, the briefs, the run records,
-and git — and assembles the timeline with:
+`state.md` and its changelog, each `session.md`, the run records, and git — and
+assembles the timeline with:
 
 ```bash
 python3 -m tools.chronology --human
@@ -239,8 +290,9 @@ python3 -m tools.chronology --author <slug> --human
 That tool is also the fastest answer to a question asked in passing. "What did
 Kevin do last week" is `--author kevin-crotty --since "last week"`. "Why did we
 change that" is `--kinds changelog`, because a changelog entry carries its
-reason. "Did we ever explore X" is the killed-ideas section of `state.md` plus
-`--kinds brief`.
+reason. "Did we ever explore X" is the round entries in the changelog: every
+round names what it took up, including the ones that came to nothing, so the
+exploration is searchable whether or not it changed anything.
 
 None of that reads a session log, and none of it needs to — which is why the
 changelog has to be written when the decision is made, not reconstructed after.
@@ -257,7 +309,7 @@ python3 -m tools.chronology --gap --human
 ```
 
 That names the commits with no entry after them. `lock release` runs it for you
-and warns; `/refresh` and `/status` both start with it. When it shows a gap,
+and warns; `/refresh` and `/report` both start with it. When it shows a gap,
 write the entries while the reason is still recoverable — from this
 conversation, from the diff, from `session.md`. Say which ones you cannot
 reconstruct instead of inventing a reason: a wrong entry in the changelog is
@@ -270,11 +322,10 @@ worse than a missing one, because it will be believed.
 1. **Project truth** (committed, human-gated): `project/global/state.md`.
 2. **Working memory** (committed, rewritten often): `project/<author>/session.md`
    and `project/global/method_spec.md`.
-3. **Records** (committed, append-only): `project/<author>/logs/runs.jsonl` and
-   `project/<author>/logs/brief-*.md`. Commit the briefs with the round that
-   produced them — they are how a coauthor finds out whether the team ever
-   looked at a direction.
-4. **The debate log** (local, gitignored): `project/<author>/logs/debate-<run>.jsonl`,
+3. **Records** (committed, append-only): `project/<author>/logs/runs.jsonl` —
+   one line per script execution, tying a number to the run that produced it.
+4. **Working material** (local, gitignored): the briefs sent to each seat and
+   `project/<author>/logs/debate-<run>.jsonl`,
    the full model responses. Read a slice when a question needs one; never read
    it forward as context.
 
@@ -296,6 +347,34 @@ missing-data handling, sources and vintages.
 
 Never present a number while hiding or glossing the design that produced it. The
 human cannot judge a result whose construction they cannot see.
+
+---
+## Literature and citations — use litdb if it is there
+
+If the `litdb` plugin is installed, it is this project's literature layer. Check
+once, at the start of a session that touches the literature:
+
+```bash
+ls ~/.litdb/.venv/bin/python 2>/dev/null || echo "no litdb"
+```
+
+**When it is there**, use it and do not improvise around it:
+
+- Search the corpus before any web or external source — that is the whole point
+  of having it, and the user's own library is better evidence than a search
+  result.
+- A paper worth citing goes in, so the next session finds it too. A paper you
+  could not get the PDF for still goes in with its abstract; a record with
+  neither is indexed on its title alone and will not come back.
+- Generate `draft/references.bib` from litdb rather than hand-maintaining it,
+  and use the citekeys it assigns.
+- Notes about a paper belong in litdb, linked to the paper. Notes about the
+  *project* belong in `state.md`. When in doubt: would this still matter if the
+  paper were dropped from the project? If yes, litdb; if no, `state.md`.
+
+**When it is not there**, say so once and carry on with an ordinary `.bib`. Do
+not half-build a literature database out of scratch files — an improvised one is
+worse than none, because people trust it.
 
 ---
 @@WRITING_SECTION@@

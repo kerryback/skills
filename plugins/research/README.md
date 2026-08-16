@@ -55,14 +55,14 @@ expensive to fix later:
 
 ## What gets written down
 
-Three committed records, small enough to live in git forever.
+Two committed records, small enough to live in git forever.
 
-- **The changelog** in `project/global/state.md`. Every substantive change gets
-  a line: date, author, what changed, and why it is now settled. Newest first,
-  append only. Killed ideas go in with the reason they were killed.
-- **The briefs** — `project/<author>/logs/brief-*.md`. What each debate seat was
-  actually asked: the directions proposed, and the ones attacked. Tens of
-  kilobytes for a whole project.
+- **The changelog** in `project/global/state.md`. One entry at the end of every
+  round — what it took up, and what came of it — plus any substantive change as
+  it happens. Newest first, append only. Killed ideas go in with the reason.
+  The round entry is written even when the round settled nothing, which is what
+  makes *did we ever explore X* answerable: a round that chased something and
+  dropped it leaves no diff and no artifact, only its entry.
 - **The runs** — `project/<author>/logs/runs.jsonl`. One line per script
   execution: arguments, commit, duration, status, and the files it actually
   opened and wrote, caught by an audit hook below pandas and pyarrow so paths
@@ -82,20 +82,21 @@ So the decision gets written at the moment it is made, and the generated
 reconstruct it later. Underneath all three, `git log --since` answers "last
 week" directly.
 
-One file stays local: `logs/debate-<run>.jsonl`, the full model responses from
-each debate call. It gets bulky, and the briefs plus the changelog already carry
-what a coauthor needs.
+Everything else in `logs/` stays local: the briefs sent to each debate seat and
+`logs/debate-<run>.jsonl`, the full model responses. Both are the input to a
+decision rather than the decision, and the changelog carries what a coauthor
+needs. Raw material nobody curated reads as a record and is not one.
 
 ## Reading it back
 
-`/status` writes an HTML report to the repo root — executive summary, what is
+`/report` writes an HTML report to the repo root — executive summary, what is
 settled and should not be reopened, open issues tagged by whose they are, and a
 chronology. It reads the three records above plus each `session.md` and git; it
 never touches a log.
 
-Underneath it, `tools/chronology.py` merges the changelog, `git log`, the brief
-filenames, and the run records into one timeline, newest first, decisions before
-the artifacts around them:
+Underneath it, `tools/chronology.py` merges the changelog, `git log`, and the
+run records into one timeline, newest first, decisions before the artifacts
+around them:
 
 ```bash
 python3 -m tools.chronology --human
@@ -106,8 +107,8 @@ python3 -m tools.chronology --kinds changelog --human        # decisions only
 That is also the direct answer to the questions people actually ask. *What did
 my coauthors do last week* is `--author <slug> --since "last week"`. *Why did we
 change that* is `--kinds changelog`, since every entry carries its reason.
-*Did we ever explore X* is the killed-ideas section of `state.md` plus
-`--kinds brief`.
+*Did we ever explore X* is the round entries, since every round names what it
+took up whether or not it changed anything.
 
 No accumulation step runs first, and none is needed: the changelog is the
 incremental artifact, and `/refresh` is what keeps it current. If the changelog
