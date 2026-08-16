@@ -18,7 +18,7 @@ python3 -m tools.provenance --write >/dev/null 2>&1 || {
     exit 1
 }
 
-author=$(python3 -m tools.debate.runid --author 2>/dev/null)
+author=$(python3 -m tools.runid --author 2>/dev/null)
 if [ -n "$author" ] && [ -d "workspaces/$author/dag" ]; then
     git add "workspaces/$author/dag"
     n=$(git diff --cached --name-only -- "workspaces/$author/dag" | wc -l | tr -d ' ')
