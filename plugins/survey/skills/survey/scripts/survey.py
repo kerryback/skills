@@ -51,6 +51,20 @@ def die(message: str, **extra: object) -> None:
     raise SystemExit(1)
 
 
+class ApiError(Exception):
+    """A call that failed where the caller wants to say so in its own words.
+
+    Everywhere but `check`, a failed call should print and stop -- Claude reads
+    one JSON object and tells the instructor what went wrong. `check` is the
+    exception: a rejected token is the thing it was asked to find out, so it
+    reports it as one line of a readiness report instead.
+    """
+
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
+
+
 # --- where the app is, and how to prove who we are ---------------------------
 
 
@@ -97,7 +111,8 @@ def require_token() -> tuple[str, str]:
     return base, token
 
 
-def api(path: str, payload: dict | None = None, method: str | None = None) -> dict:
+def api(path: str, payload: dict | None = None, method: str | None = None,
+        quiet: bool = False) -> dict:
     base, token = require_token()
     request = urllib.request.Request(
         f"{base}{path}",
@@ -126,11 +141,14 @@ def api(path: str, payload: dict | None = None, method: str | None = None) -> di
                 "The app didn't accept that token. Check SURVEY_TOKEN matches "
                 "the one set on the server."
             )
+        if quiet:
+            raise ApiError(str(message), exc.code) from None
         die(str(message), status=exc.code)
-    except urllib.error.URLError as exc:
-        die(f"Couldn't reach {base}: {exc.reason}")
-    except OSError as exc:
-        die(f"Couldn't reach {base}: {exc}")
+    except (urllib.error.URLError, OSError) as exc:
+        reason = getattr(exc, "reason", exc)
+        if quiet:
+            raise ApiError(f"Couldn't reach {base}: {reason}") from None
+        die(f"Couldn't reach {base}: {reason}")
     return {}
 
 
@@ -308,9 +326,16 @@ def cmd_check(args) -> None:
         report["problem"] = f"Couldn't reach {base}: {exc}"
 
     if report.get("reachable") and token:
-        state = api("/api/state")
-        report["token_ok"] = True
-        report["questions"] = state.get("count", 0)
+        try:
+            state = api("/api/state", quiet=True)
+            report["token_ok"] = True
+            report["questions"] = state.get("count", 0)
+        except ApiError as exc:
+            report["token_ok"] = False
+            report["problem"] = (
+                f"{exc} It is read from {ENV_PATH} unless the environment "
+                "sets it."
+            )
     elif report.get("reachable") and not token:
         report["problem"] = (
             f"No SURVEY_TOKEN. Put it in the environment or in {ENV_PATH}."
