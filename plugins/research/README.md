@@ -37,6 +37,17 @@ expensive to fix later:
   and style rules on one side, the tells and rhythms that make AI prose
   recognizable on the other. It is read before writing, not after, and it works
   for a coauthor who has installed nothing.
+- **Giving the same note for the third time.** The guide learns. When you tell
+  Claude to change how a passage reads — or rewrite its prose yourself — a hook
+  keeps the passage and what you asked for, and `/style-learn` turns that
+  backlog into rules you accept one at a time. They are written into the guide
+  itself, in the section each one bears on, so there is still exactly one
+  standard and no second file to disagree with it. The guide is a manual and too
+  long to put in context, so the rules your project added are marked, extracted,
+  and put in context at the start of every session — capped, because a list too
+  long to read is a list nobody follows. Captures stay local to whoever produced
+  them; only an accepted rule is committed, so coauthors with different taste
+  still share one standard.
 
 ## What you choose
 

@@ -86,9 +86,10 @@ workspaces/global/params.py            (empirical only)
 workspaces/<author>/{analyst,replicator}/   (empirical only)
 draft/{figures,tables}/
 tools/                                 copied from this plugin
-.claude/commands/{round.md,refresh.md,report.md}
+.claude/commands/{round.md,refresh.md,report.md,style-learn.md}
+.claude/settings.json                  the style-capture hooks
 CLAUDE.md  protocols.html  requirements.txt  .gitignore
-writing-guide.md                       copied verbatim from templates/
+writing-guide.md                       copied from templates/, then grows
 ```
 
 `/report` builds an HTML report — executive summary, what is settled, open
@@ -104,10 +105,43 @@ page for this project rather than copying it. It is the human counterpart to
 in particular has to be explained there, because a newcomer cannot guess it and
 it governs when they may touch shared state.
 
-Copy `templates/writing-guide.md` to the repo root unchanged, on every project.
-It is the standard for everything that goes into `draft/`, and it is vendored so
-a coauthor who has installed nothing still gets it. There is no project without
+Copy `templates/writing-guide.md` to the repo root, on every project. It is the
+standard for everything that goes into `draft/`, and it is vendored so a
+coauthor who has installed nothing still gets it. There is no project without
 writing, so this one is not conditional on any interview answer.
+
+It is copied unchanged but it does not stay that way: it is the project's single
+writing standard, and `/style-learn` writes rules into it as the project's own
+editing produces them. Copy `templates/style-learn.md` to `.claude/commands/`
+for the same reason, unconditionally.
+
+Do not create a second file of writing conventions, and do not put prose rules
+in the generated `CLAUDE.md`. One standard, in the guide, in the section each
+rule bears on. Two homes for style rules is the failure this is arranged to
+avoid — it is how a project ends up with two rules that disagree and no way to
+say which is live.
+
+Then install the style-capture hooks in `.claude/settings.json`, creating the
+file if it does not exist and merging into the `hooks` key if it does:
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {"hooks": [{"type": "command",
+        "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/style_capture.py\""}]}
+    ],
+    "PostToolUse": [
+      {"matcher": "Edit|MultiEdit", "hooks": [{"type": "command",
+        "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/style_capture.py\""}]}
+    ],
+    "SessionStart": [
+      {"hooks": [{"type": "command",
+        "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/style_capture.py\""}]}
+    ]
+  }
+}
+```
 
 Do not install a session-wide activity-logging hook, and do not offer to. An
 exhaustive record of every prompt and every tool call reaches tens of megabytes
@@ -115,6 +149,15 @@ a project, cannot go in git, and answers none of the questions coauthors ask —
 those are about decisions, and the changelog in `state.md` is what records
 decisions. `templates/project-gitignore` commits the run records for exactly
 this reason; the briefs and the bulky debate responses stay local.
+
+The style hooks above are not that, and the difference is worth being precise
+about, because the next session will read the paragraph above and reach for the
+delete key. They fire on one tool, filtered to prose files in `draft/`; what
+they write is a staging buffer that stays local and gitignored; and the artifact
+that survives is a capped rule file a human accepted line by line. Bulk capture
+is not memory — but a correction the author had to give twice is not bulk, and
+losing it is why they have to give it a third time. If a project has no `draft/`
+at all, skip the hooks; otherwise install them.
 
 Assemble `CLAUDE.md` from `templates/CLAUDE.md.tmpl`, substituting:
 
@@ -160,8 +203,30 @@ python3 -m tools.provenance --authors         # must list the author trees
 python3 -m tools.lock status                  # must say unlocked
 grep -rn "@@" CLAUDE.md tools/ protocols.html  # must find nothing
 test -s writing-guide.md                       # must exist and be non-empty
-ls .claude/commands/{round,refresh,report}.md  # all three must be there
+ls .claude/commands/{round,refresh,report,style-learn}.md   # all four
 ```
+
+Then exercise the style hooks, because a hook that fails is silent by design —
+`style_capture.py` swallows every exception rather than breaking the tool loop,
+so "no error" tells you nothing:
+
+```bash
+echo '{"hook_event_name":"SessionStart"}' | python3 tools/style_capture.py
+# prints nothing on a fresh project — correct, there are no learned rules yet.
+# Add a marked line to writing-guide.md by hand and re-run: it must appear.
+
+printf '{"hook_event_name":"UserPromptSubmit","prompt_id":"t1","user_input":"stop hedging"}' \
+  | python3 tools/style_capture.py
+printf '{"hook_event_name":"PostToolUse","prompt_id":"t1","tool_name":"Edit","tool_input":
+  {"file_path":"draft/main.tex","old_string":"The effect is arguably somewhat large.",
+   "new_string":"The effect is large."}}' | tr -d '\n' | python3 tools/style_capture.py
+python3 tools/style.py pending    # must show that one observation, with "stop hedging"
+python3 tools/style.py accept     # clear the test out of the backlog
+```
+
+If `pending` is empty, the usual cause is the path filter: `is_prose()` requires
+the file to be under `draft/`, so a project whose paper lives somewhere else
+needs `PROSE_DIRS` in `style_capture.py` changed to match.
 
 If there is data and any script, run one through `tools/runlog.py` and confirm a
 line lands in `runs.jsonl`.

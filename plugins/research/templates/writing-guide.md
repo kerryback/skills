@@ -9,6 +9,37 @@ messages, or notes between coauthors.
 Read it before you write, not after. Prose composed flat and sanded down later
 never fully recovers.
 
+This is the only writing standard the project has. Nothing else competes with
+it, and no second file of conventions should ever be started — if a rule about
+prose is worth keeping, it belongs in here, in the section it bears on.
+
+## This copy grows
+
+The file arrives vendored from the `research` plugin, and then it becomes the
+project's own. When a coauthor corrects a draft, `/style-learn` proposes the
+rule behind the correction and, once they accept it, writes it into the section
+where it belongs. A rule that contradicts something already here is not appended
+alongside it — the existing line gets rewritten, because two rules that disagree
+mean the guide has stopped being definitive.
+
+Rules the project added carry a marker, so they can be told apart from the
+published craft they sit among and so the tooling can find them:
+
+```
+- Say "median-fit," never "pinball."  <!-- learned: no-pinball | hits: 3 | added: 2026-08-17 | last: 2026-08-17 -->
+```
+
+One line each. A rule needing a paragraph has not been decided yet.
+
+That marker is also how those rules reach a session. This guide is far too long
+to put in context every time — it is a manual you consult for the task in front
+of you, not a page you re-read before each paragraph. So a hook extracts the
+marked lines and puts just those in context at the start of a session. They are
+the ones that need it: published craft is half-known already, while a convention
+particular to this project is arbitrary and is exactly what a skim loses. What
+gets injected is an excerpt of this file, regenerated every time and never
+edited by hand. There is still one standard, and it is this one.
+
 Two things govern everything below.
 
 **Variation is a byproduct, never a target.** You do not sprinkle in a short
