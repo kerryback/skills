@@ -36,6 +36,12 @@
       "description": "Put a question to the class and show the answers on the projector. Type `/poll What's the capital of France? Paris, Topeka or Frankfurt` and it goes up immediately — Claude reads the sentence, works out that it is multiple choice and which option is right, and the app runs it: multiple choice, word clouds, confidence scales, numeric estimates and rankings, each drawn live as answers arrive. `/poll <file>` runs a poll written before class instead, and both land in one session and one results file. Students answer from their own devices over a Cloudflare Quick Tunnel. Anonymous by design: no names, no roster, nothing stored per student, and concept-check results stay hidden while voting is open so the room doesn't follow the leading bar. Needs cloudflared."
     },
     {
+      "name": "survey",
+      "source": "./plugins/survey",
+      "version": "1.0.0",
+      "description": "Put a question to the class and show the answers on the projector. Type `/survey What's the capital of France? Paris, Topeka or Frankfurt` and it goes up immediately — Claude reads the sentence, works out that it is multiple choice and which option is right, and the app runs it: multiple choice, word clouds, confidence scales, numeric estimates and rankings, each drawn live as answers arrive. `/survey <file>` loads a poll written before class, and the projector's menu jumps to any question at any time, so a prepared class is a set of questions to reach for rather than a queue to walk. Students answer at a fixed public address, so there is no tunnel to start and nothing to install beyond an API token. Anonymous by design: no names, no roster, nothing stored per student, and concept-check results stay hidden while voting is open so the room doesn't follow the leading bar."
+    },
+    {
       "name": "cardstock",
       "source": "./plugins/cardstock",
       "version": "1.4.0",
