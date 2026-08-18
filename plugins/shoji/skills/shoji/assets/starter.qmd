@@ -1,0 +1,103 @@
+---
+title: "Deck title"
+subtitle: "Optional subtitle"
+author: "Kerry Back"
+date: today
+format:
+  revealjs:
+    theme: shoji.scss
+    width: 1050
+    height: 700
+    margin: 0
+    slide-number: c/t
+    footer: "Course or talk name"
+    highlight-style: github
+    html-math-method: mathjax
+---
+
+## Agenda
+
+- First thing
+- Second thing
+- Third thing
+
+# First section
+
+## A slide with a standfirst {.plain-title}
+
+::: {.lead}
+One sentence setting up the slide.
+:::
+
+- A short bullet
+- Another one
+
+## Three cards
+
+::: {.cards .cards-3}
+::: {.card}
+[First]{.card-title}
+
+Card titles are spans, never headings.
+:::
+
+::: {.card .card-blue}
+[Second]{.card-title}
+
+Variants: `.card-blue`, `.card-sage`, `.card-sand`.
+:::
+
+::: {.card}
+[Third]{.card-title}
+
+Keep card text to a couple of lines.
+:::
+:::
+
+## A comparison {.compare .band-bottom}
+
+:::: {.columns}
+::: {.column width="50%"}
+[Before]{.eyebrow}
+
+Text.
+:::
+
+::: {.column width="50%"}
+[After]{.eyebrow}
+
+Text.
+:::
+::::
+
+## Numbers
+
+::: {.stats}
+::: {.stat}
+[42]{.stat-value}
+[what it counts]{.stat-label}
+:::
+::: {.stat}
+[3x]{.stat-value}
+[what it compares]{.stat-label}
+:::
+:::
+
+::: {.note}
+A quiet aside. Use `.note-plum` when it matters more.
+:::
+
+## Steps {.band-bottom}
+
+::: {.steps}
+1. First
+2. Second
+3. Third
+:::
+
+# Takeaways
+
+## What to remember
+
+- One
+- Two

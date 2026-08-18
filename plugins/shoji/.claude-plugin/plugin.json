@@ -1,0 +1,9 @@
+{
+  "name": "shoji",
+  "version": "1.0.0",
+  "description": "Build a Quarto reveal.js slide deck in the Shoji style — a plum, pale-gray and dusty-blue theme derived from the PowerPoint design of the same name, with an offset panel frame, letter-spaced titles, cards, callouts, stats, steps, and half-bleed picture layouts, rendered to HTML and exported to PDF. Use when the user invokes /shoji, asks for a shoji deck by name, or is editing a deck already built with this theme. For a general \"make me slides\" with no style named, prefer the pptx skill; for the cardstock house style, use cardstock.",
+  "author": {
+    "name": "Kerry Back"
+  },
+  "skills": "./skills/"
+}
