@@ -90,7 +90,7 @@ $col-gap: 20px;
 }
 
 .reveal-viewport {
-  background: $pale;
+  background: $panel;
 }
 
 .reveal {
@@ -116,23 +116,23 @@ $col-gap: 20px;
   text-align: left;
   padding: $hy-band + 40px $pad-right $pad-bottom $pad-left;
 
-  background-color: $pale;
+  background-color: $panel;
   background-repeat: no-repeat;
   background-image:
     block($plum),   // rule dividing the foot strip
     block($blue),   // blue block in the foot strip
     block($plum),   // base rule, full bleed
-    block($panel);  // the white panel
+    block($panel);  // the panel, covering the whole canvas
   background-position:
     #{$vx-split} #{$hy-base + $rule},
     0 #{$hy-base + $rule},
     0 #{$hy-base},
-    0 #{$hy-band};
+    0 0;
   background-size:
     #{$rule} #{$canvas-h - $hy-base - $rule},
     #{$vx-split} #{$canvas-h - $hy-base - $rule},
     #{$canvas-w} #{$rule},
-    #{$canvas-w} #{$hy-base - $hy-band};
+    #{$canvas-w} #{$canvas-h};
 
   // The band. Absolute, so a two-line title grows into it rather than pushing
   // the body text down.
@@ -161,17 +161,17 @@ $col-gap: 20px;
       block($plum),   // seam rule, full height
       block($blue),   // blue block, beside the band
       block($plum),   // base rule, full bleed
-      block($panel);  // the white panel
+      block($panel);  // the panel, covering the whole canvas
     background-position:
       #{$vx-seam} 0,
       0 #{$hy-low},
       0 #{$hy-base},
-      #{$vx-seam + $rule} 0;
+      0 0;
     background-size:
       #{$rule} #{$canvas-h},
       #{$vx-seam} #{$hy-base - $hy-low},
       #{$canvas-w} #{$rule},
-      #{$canvas-w - $vx-seam - $rule} #{$hy-low};
+      #{$canvas-w} #{$canvas-h};
 
     > h2 {
       top: $hy-low;
@@ -194,19 +194,19 @@ $col-gap: 20px;
       block($blue),   // blue block in the left margin
       block($plum),   // plum block, top right corner
       block($plum),   // base rule, full bleed
-      block($panel);  // the white panel
+      block($panel);  // the panel, covering the whole canvas
     background-position:
       #{$vx-seam} 0,
       0 #{$hy-mid},
       #{$vx-col} 0,
       0 #{$hy-base},
-      #{$vx-seam + $rule} #{$hy-top};
+      0 0;
     background-size:
       #{$rule} #{$canvas-h},
       #{$vx-seam} #{$hy-base - $hy-mid},
       #{$canvas-w - $vx-col} #{$hy-top},
       #{$canvas-w} #{$rule},
-      #{$canvas-w - $vx-seam - $rule} #{$hy-base - $hy-top};
+      #{$canvas-w} #{$canvas-h};
 
     > h2 {
       position: static;
@@ -241,7 +241,7 @@ $col-gap: 20px;
 // and a pale column holding the band off the right edge.
 
 @mixin grid-band-slide {
-  background-color: $pale;
+  background-color: $panel;
   background-repeat: no-repeat;
   background-image:
     block($plum),   // seam rule, in the top margin
@@ -249,7 +249,7 @@ $col-gap: 20px;
     block($blue),   // blue block in the left margin
     block($blue),   // blue block, top right corner
     block($blue),   // blue block, bottom right corner
-    block($pale),   // pale column, holding the band off the right edge
+    block($panel),  // column holding the band off the right edge
     block($plum);   // the band
   background-position:
     #{$vx-seam} 0,

@@ -9,8 +9,8 @@ Every class below is defined in `shoji.scss`. Copy the markdown as shown.
 | Plum — titles, bands, table headers, rules | `#595460` |
 | Dusty blue — margin block, bullets, links, sub-headings | `#97A7B8` |
 | Deeper blue — bullets and `h3`, where `#97A7B8` is too light | `#6f8497` |
-| Pale gray — page, card fills, table striping | `#EBEDEB` |
-| Panel white | `#fbfbfa` |
+| Pale gray — card and callout fills, table striping | `#EBEDEB` |
+| Text area | `#fbfbfa` |
 | Body ink | `#3b3842` |
 | Sage / sand — rare fourth and fifth categories | `#A5B592` / `#D1C499` |
 
@@ -112,7 +112,7 @@ Variants: `.card-blue`, `.card-sage`, `.card-sand`.
 ::: {.card}
 [Pale gray]{.card-title}
 
-The page behind the panel.
+The fill behind cards and callouts.
 :::
 :::
 ```

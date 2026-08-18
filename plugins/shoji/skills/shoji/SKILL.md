@@ -19,8 +19,11 @@ a small set of components — so slides look designed without hand-placed boxes.
 
 The look comes from Microsoft's Shoji PowerPoint theme: plum `#595460`, pale gray
 `#EBEDEB`, dusty blue `#97A7B8`, bold titles with wide letter spacing, and a
-Mondrian-ish grid of rectangles filling the canvas. Every rectangle and rule in
-this theme lands on one of a few shared lines measured out of that .pptx —
+Mondrian-ish grid of rectangles filling the canvas. The text area covers the
+whole canvas here: blocks may protrude past the text, but what they protrude into
+is the text area's own colour rather than a second shade, so nothing reads as a
+leftover margin. Every rectangle and rule lands on one of a few shared lines
+measured out of that .pptx —
 vertical at 8%, 38% and 91%, horizontal at 12%, 19%, 50%, 69% and 87% — so the
 shapes line up both within a slide and from slide to slide. Each layout is a
 different selection of rectangles from those lines, which is why the layout
