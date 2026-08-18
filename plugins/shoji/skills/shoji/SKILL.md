@@ -7,7 +7,7 @@ description: >-
   half-bleed picture layouts, rendered to HTML and exported to PDF. Use when the
   user invokes /shoji, asks for a shoji deck by name, or is editing a deck
   already built with this theme. For a general "make me slides" with no style
-  named, prefer the pptx skill; for the cardstock house style, use cardstock.
+  named, prefer the pptx skill.
 ---
 
 # Shoji
@@ -19,11 +19,8 @@ a small set of components — so slides look designed without hand-placed boxes.
 
 The look comes from Microsoft's Shoji PowerPoint theme: plum `#595460`, pale gray
 `#EBEDEB`, dusty blue `#97A7B8`, bold titles with wide letter spacing, and a
-Mondrian-ish grid of rectangles filling the canvas. The text area covers the
-whole canvas here: blocks may protrude past the text, but what they protrude into
-is the text area's own colour rather than a second shade, so nothing reads as a
-leftover margin. Every rectangle and rule lands on one of a few shared lines
-measured out of that .pptx —
+Mondrian-ish grid of rectangles filling the canvas. Every rectangle and rule in
+this theme lands on one of a few shared lines measured out of that .pptx —
 vertical at 8%, 38% and 91%, horizontal at 12%, 19%, 50%, 69% and 87% — so the
 shapes line up both within a slide and from slide to slide. Each layout is a
 different selection of rectangles from those lines, which is why the layout
@@ -34,9 +31,8 @@ should a deck built with this.
 
 - Use shoji when the user asks for it by name, or when editing a deck whose
   front matter already points at `shoji.scss`.
-- Use cardstock for that house style; use the `pptx` skill for a general request
-  with no style named, and always when the user needs a natively editable
-  PowerPoint.
+- Use the `pptx` skill for a general request with no style named, and always
+  when the user needs a natively editable PowerPoint.
 - Shoji suits text- and code-heavy academic decks: quiet palette, generous line
   spacing, plenty of room inside the panel.
 
@@ -66,20 +62,28 @@ date: today
 format:
   revealjs:
     theme: shoji.scss
-    width: 1050
-    height: 700
+    width: 1280
+    height: 720
     margin: 0
+    max-scale: 5
     slide-number: c/t
     footer: "Course or talk name"
     highlight-style: github
 ---
 ```
 
-`width: 1050`, `height: 700` and `margin: 0` are load bearing. The grid is
-specified in px, which are canvas units and scale with the deck — but only if the
-canvas is that size. `margin: 0` matters twice over: reveal's default 10% margin
-scales the canvas by 0.9, which puts every edge on a fractional device pixel and
-leaves 1px slivers of the wrong colour along the seams.
+`width: 1280`, `height: 720`, `margin: 0` and `max-scale: 5` are load bearing.
+
+- The grid is specified in px, which are canvas units and scale with the deck —
+  but only if the canvas is that size.
+- 1280×720 is 16:9. Reveal scales the canvas but never reshapes it, so a canvas
+  that is not the screen's shape is letterboxed: the frame's rectangles sit in a
+  fixed region while the pale viewport background fills the rest of the window.
+- `margin: 0` matters twice over: reveal's default 10% margin scales the canvas
+  by 0.9, which puts every edge on a fractional device pixel and leaves 1px
+  slivers of the wrong colour along the seams.
+- `max-scale: 5` overrides reveal's default cap of 2×. Without it the deck stops
+  growing at 2560px and just sits in the middle of any larger window.
 
 ### 2 — Write the slides
 
@@ -129,7 +133,7 @@ change, offer to make it.
 ### 6 — Export (optional)
 
 ```
-decktape reveal http://127.0.0.1:8712/<name>.html <name>.pdf --size 1050x700
+decktape reveal http://127.0.0.1:8712/<name>.html <name>.pdf --size 1280x720
 ```
 
 decktape hangs on `file://` URLs — always give it the served URL. The exported
@@ -168,4 +172,4 @@ PDF keeps the frame, the footer, and the slide numbers.
 - The palette is three colors. `.card-sage` and `.card-sand` exist for the rare
   fourth category; reaching for them often turns a quiet design loud.
 - Charts and diagrams as SVG or high-dpi PNG from matplotlib. The canvas is only
-  1050×700 CSS pixels but is presented full-screen.
+  1280×720 CSS pixels but is presented full-screen.

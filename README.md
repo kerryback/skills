@@ -45,7 +45,7 @@ example, checks for `quarto` and `ELEVENLABS_API_KEY` and offers to set them up)
 | Skill | What it does |
 |-------|--------------|
 | [`voiceover`](./plugins/voiceover/skills/voiceover) | PDF slide deck → narrated MP4 + transcript. Claude Code writes the narration; ElevenLabs voices it. Needs `quarto` + `ELEVENLABS_API_KEY`. |
-| [`cardstock`](./plugins/cardstock/skills/cardstock) | Build a slide deck in the Quarto reveal.js house style — cards, dividers, comparison tables; export to PDF, PPTX, or PNG. |
+| [`shoji`](./plugins/shoji/skills/shoji) | Build a slide deck in the Shoji style — a Quarto reveal.js theme from the PowerPoint design of the same name: plum bands, a grid of rectangles on shared gridlines, cards, callouts, stats, steps, picture layouts; export to PDF. |
 | [`finance-data`](./plugins/finance-data/skills/finance-data) | Fetch free market/economic data (prices, fundamentals, FRED, factors) and save as CSV. |
 | [`critique`](./plugins/critique/skills/critique) | Spawn parallel reviewer agents to critique work from different angles, then synthesize and apply revisions. Heavyweight — fans out subagents. |
 | [`research`](./plugins/research/skills/research) | Structure a research repo several people and their Claudes can share: per-author folders, portable paths, one canonical dataset, provenance, a git-enforced round lock, and a generated CLAUDE.md. Ships a writing guide that learns — hooks capture the prose corrections you give, `/style-learn` turns them into rules you accept, written into the guide itself. Optional two-build protocol, OpenRouter debate panel, Overleaf mirror. |

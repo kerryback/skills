@@ -49,7 +49,10 @@ card and `[Label]{.eyebrow}` inside any other div.
 
 ## Notes
 
-The deck's front matter needs `width: 1050`, `height: 700` and `margin: 0`. The
-grid is specified in px, which are canvas units and scale with the deck — but
-only at that canvas size, and reveal's default 10% margin scales the canvas by
-0.9, which leaves 1px slivers along the seams.
+The deck's front matter needs `width: 1280`, `height: 720`, `margin: 0` and
+`max-scale: 5`. The grid is specified in px, which are canvas units and scale
+with the deck — but only at that canvas size; 1280×720 is 16:9, so the canvas is
+the shape of the screen rather than being letterboxed inside it; `max-scale`
+lifts reveal's default 2× cap, which would otherwise stop the deck growing at
+2560px; and reveal's default 10% margin scales the canvas by 0.9, which leaves
+1px slivers along the seams.

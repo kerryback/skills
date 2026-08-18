@@ -6,9 +6,10 @@ date: today
 format:
   revealjs:
     theme: shoji.scss
-    width: 1050
-    height: 700
+    width: 1280
+    height: 720
     margin: 0
+    max-scale: 5
     slide-number: c/t
     footer: "Course or talk name"
     highlight-style: github

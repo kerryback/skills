@@ -23,7 +23,7 @@ $sand:       #D1C499;
 $font-family-sans-serif: Meiryo, 'Zen Kaku Gothic New', 'Segoe UI', system-ui, -apple-system, sans-serif;
 $font-family-monospace: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
 
-$presentation-font-size-root: 30px;
+$presentation-font-size-root: 32px;
 $presentation-line-height: 1.5;
 $presentation-h1-font-size: 1.7em;
 $presentation-h2-font-size: 1.4em;
@@ -54,43 +54,51 @@ $code-color: $plum;
 // an element has only two pseudo-elements. Backgrounds also sit behind content
 // by definition, so no z-index juggling is needed.
 //
-// Everything is in px because the reveal canvas is a fixed 1050×700 (see the
+// Everything is in px because the reveal canvas is a fixed 1280×720 (see the
 // front matter): px here are canvas units, and scale with the deck. Percentages
 // would be worse than they look — percentage padding resolves against the
 // slide's WIDTH even on the top and bottom, so it cannot line up with a
 // horizontal gridline.
+//
+// 1280×720 is 16:9, the shape of the screen the deck is shown on. The canvas
+// keeps its own aspect ratio when reveal scales it, so a canvas that is not the
+// window's shape gets letterboxed — the frame's rectangles stay inside a fixed
+// region while the pale viewport background fills the rest of the window. The
+// front matter's `max-scale` matters for the same reason: reveal's default caps
+// the canvas at 2× (2560px wide here), and past that the deck simply stops
+// growing.
 
-$canvas-w: 1050px;
-$canvas-h: 700px;
+$canvas-w: 1280px;
+$canvas-h: 720px;
 $rule:      6px;
 
 // vertical lines
-$vx-seam:  84px;   //  8%  — left seam
-$vx-split: 399px;  // 38%  — divides the foot strip
-$vx-col:   958px;  // 91%  — right column, on band slides
-$vx-mid:   570px;  // the panel's midpoint, for the picture layouts
+$vx-seam:  102px;  //  8%  — left seam
+$vx-split: 486px;  // 38%  — divides the foot strip
+$vx-col:   1165px; // 91%  — right column, on band slides
+$vx-mid:   694px;  // the panel's midpoint, for the picture layouts
 
 // horizontal lines
-$hy-top:   84px;   // 12%  — top of a centred band, top of an unbanded panel
-$hy-band:  133px;  // 19%  — foot of the title band on a content slide
-$hy-mid:   350px;  // 50%
-$hy-low:   482px;  // 69%  — top of a foot band
-$hy-base:  606px;  // 87%  — the base rule, on every slide
+$hy-top:   86px;   // 12%  — top of a centred band, top of an unbanded panel
+$hy-band:  137px;  // 19%  — foot of the title band on a content slide
+$hy-mid:   360px;  // 50%
+$hy-low:   497px;  // 69%  — top of a foot band
+$hy-base:  626px;  // 87%  — the base rule, on every slide
 
 // text margins, measured off those lines
-$pad-left:   $vx-seam + 52px;                 // 136px
-$pad-right:  $canvas-w - $vx-col;              //  92px, so content ends on the right line
+$pad-left:   $vx-seam + 63px;                 // 165px
+$pad-right:  $canvas-w - $vx-col;              // 115px, so content ends on the right line
 $pad-bottom: $canvas-h - $hy-base + 24px;     // 118px
 
 // one gutter for cards, stats and columns, so their edges agree slide to slide
-$col-gap: 20px;
+$col-gap: 24px;
 
 @function block($color) {
   @return linear-gradient($color, $color);
 }
 
 .reveal-viewport {
-  background: $panel;
+  background: $pale;
 }
 
 .reveal {
@@ -116,23 +124,23 @@ $col-gap: 20px;
   text-align: left;
   padding: $hy-band + 40px $pad-right $pad-bottom $pad-left;
 
-  background-color: $panel;
+  background-color: $pale;
   background-repeat: no-repeat;
   background-image:
     block($plum),   // rule dividing the foot strip
     block($blue),   // blue block in the foot strip
     block($plum),   // base rule, full bleed
-    block($panel);  // the panel, covering the whole canvas
+    block($panel);  // the white panel
   background-position:
     #{$vx-split} #{$hy-base + $rule},
     0 #{$hy-base + $rule},
     0 #{$hy-base},
-    0 0;
+    0 #{$hy-band};
   background-size:
     #{$rule} #{$canvas-h - $hy-base - $rule},
     #{$vx-split} #{$canvas-h - $hy-base - $rule},
     #{$canvas-w} #{$rule},
-    #{$canvas-w} #{$canvas-h};
+    #{$canvas-w} #{$hy-base - $hy-band};
 
   // The band. Absolute, so a two-line title grows into it rather than pushing
   // the body text down.
@@ -161,17 +169,17 @@ $col-gap: 20px;
       block($plum),   // seam rule, full height
       block($blue),   // blue block, beside the band
       block($plum),   // base rule, full bleed
-      block($panel);  // the panel, covering the whole canvas
+      block($panel);  // the white panel
     background-position:
       #{$vx-seam} 0,
       0 #{$hy-low},
       0 #{$hy-base},
-      0 0;
+      #{$vx-seam + $rule} 0;
     background-size:
       #{$rule} #{$canvas-h},
       #{$vx-seam} #{$hy-base - $hy-low},
       #{$canvas-w} #{$rule},
-      #{$canvas-w} #{$canvas-h};
+      #{$canvas-w - $vx-seam - $rule} #{$hy-low};
 
     > h2 {
       top: $hy-low;
@@ -194,19 +202,19 @@ $col-gap: 20px;
       block($blue),   // blue block in the left margin
       block($plum),   // plum block, top right corner
       block($plum),   // base rule, full bleed
-      block($panel);  // the panel, covering the whole canvas
+      block($panel);  // the white panel
     background-position:
       #{$vx-seam} 0,
       0 #{$hy-mid},
       #{$vx-col} 0,
       0 #{$hy-base},
-      0 0;
+      #{$vx-seam + $rule} #{$hy-top};
     background-size:
       #{$rule} #{$canvas-h},
       #{$vx-seam} #{$hy-base - $hy-mid},
       #{$canvas-w - $vx-col} #{$hy-top},
       #{$canvas-w} #{$rule},
-      #{$canvas-w} #{$canvas-h};
+      #{$canvas-w - $vx-seam - $rule} #{$hy-base - $hy-top};
 
     > h2 {
       position: static;
@@ -241,7 +249,7 @@ $col-gap: 20px;
 // and a pale column holding the band off the right edge.
 
 @mixin grid-band-slide {
-  background-color: $panel;
+  background-color: $pale;
   background-repeat: no-repeat;
   background-image:
     block($plum),   // seam rule, in the top margin
@@ -249,7 +257,7 @@ $col-gap: 20px;
     block($blue),   // blue block in the left margin
     block($blue),   // blue block, top right corner
     block($blue),   // blue block, bottom right corner
-    block($panel),  // column holding the band off the right edge
+    block($pale),   // pale column, holding the band off the right edge
     block($plum);   // the band
   background-position:
     #{$vx-seam} 0,
@@ -763,11 +771,13 @@ $col-gap: 20px;
 
 // ── Figures ─────────────────────────────────────────────────────────────
 
+// px, not vh: inside the scaled canvas a vh resolves against the browser window,
+// so a vh cap makes the same figure a different size on every screen.
 .reveal img,
 .reveal figure img {
   border: none;
   box-shadow: none;
-  max-height: 58vh;
+  max-height: 400px;
   object-fit: contain;
 }
 

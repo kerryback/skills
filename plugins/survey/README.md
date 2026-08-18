@@ -71,22 +71,27 @@ for. A question typed on the spot joins the same set and can be returned to.
 
 | type | students see | projector shows |
 | --- | --- | --- |
-| `choice` | tappable options, A/B/C | bar per option, correct one green when revealed |
+| `choice` | tappable options, A/B/C | a bar per option, as % of the people who answered |
+| `multi` | the same, tick any number, then Submit | a bar per option, as % of the people who answered — so they add to more than 100% |
 | `wordcloud` | a text box | answers sized by how many said them |
 | `scale` | a row of numbers | distribution plus the mean |
 | `number` | a number box | histogram, mean, median, true answer marked |
 | `rank` | a reorderable list | options by average position |
 
 If you would rather say the type than have it guessed, there is a command for
-each: `/survey:choice`, `/survey:word-cloud`, `/survey:scale`, `/survey:number`,
-`/survey:rank`.
+each: `/survey:choice`, `/survey:select-all`, `/survey:word-cloud`,
+`/survey:scale`, `/survey:number`, `/survey:rank`.
 
-## A question with a right answer behaves differently
+## Perception questions draw live
 
-Mark one and the projector shows only a count while voting is open, then the
-distribution when you close voting or press `r`. A bar chart growing in real
-time tells the room what the popular answer is, and quiet students follow it.
-Opinion questions have nothing to bias, so they draw live.
+Most of these ask what students think and how solid they feel, so there is no
+right answer and the distribution builds on screen as they answer. Press `h` if
+you would rather withhold it and show the room at the end.
+
+A question that does have a right answer behaves differently: mark it and the
+projector shows only a count while voting is open, then the distribution when
+you close voting or press `r`. A bar growing in real time tells the room what
+the popular answer is, and quiet students follow it.
 
 ## The app
 

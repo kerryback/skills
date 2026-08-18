@@ -8,8 +8,9 @@ description: >-
   something -- and when they ask you to write a poll for a coming class.
   `/survey <a question>` puts that one question up immediately; `/survey <a
   file>` loads a poll you prepared earlier; "write me a poll for Thursday"
-  produces the file. Multiple choice, word clouds, confidence scales, numeric
-  estimates and rankings, each drawn live as answers arrive. Runs at
+  produces the file. Multiple choice, select-all-that-apply, word clouds,
+  confidence scales, numeric estimates and rankings, each drawn live as answers
+  arrive. Runs at
   https://poll.kerryback.com, always on, so students join from any device with
   no tunnel and no waiting. Anonymous: no names, no roster, nothing stored per
   student.
@@ -31,8 +32,8 @@ the schema in section 4, so the file you write actually loads.
 `/survey` works out the question type from how the sentence is phrased. When the
 instructor would rather say than be guessed at, there is a command per type —
 `/survey:word-cloud`, `/survey:scale`, `/survey:number`, `/survey:rank`,
-`/survey:choice` — and each carries the same instruction: the type is settled,
-don't re-infer it from the wording.
+`/survey:choice`, `/survey:select-all` — and each carries the same instruction:
+the type is settled, don't re-infer it from the wording.
 
 ## What to do with the argument
 
@@ -88,13 +89,16 @@ Reading the sentence:
 - Type follows the phrasing. Options listed or an either/or → `choice`. "Short
   answer", "in a word", "what comes to mind" → `wordcloud`. "How confident", "1
   to 5", "how solid do you feel" → `scale`. "Guess", "estimate", "what percent",
-  "how many" → `number`. "Order these", "rank" → `rank`. "Pick all that apply" →
-  `choice` with `"multi": true`. Unless a `/survey:<type>` command already
+  "how many" → `number`. "Order these", "rank" → `rank`. "Select all that apply",
+  "which of these", "tick everything that" → `multi`. Unless a `/survey:<type>` command already
   settled it, in which case use that type and don't second-guess the wording.
-- Mark `answer` when the question has a right answer. Paris is Paris. This is
-  not cosmetic: a marked answer hides the distribution while voting is open and
-  adds a Reveal, so getting it wrong changes how the question behaves in the
-  room. Say in your reply which one you marked, and drop it if told to.
+- Leave `answer` out unless the instructor says the question has a right one.
+  Most questions here are perception checks -- what students think, and how
+  solid they feel -- and those have no right answer to mark. A marked answer is
+  not cosmetic: it hides the distribution while voting is open and adds a
+  Reveal, so marking one on an opinion question changes how it behaves in the
+  room for the worse. Where there genuinely is a right answer, mark it and say
+  in your reply which one.
 
 A question asked this way goes up immediately and joins the same session as
 everything else, so it appears in the menu alongside the prepared questions and
@@ -166,31 +170,36 @@ to — `class-4-duration.json` — so it can be run again next term.
 {
   "title": "MGMT 638 — Duration and convexity",
   "questions": [
-    {"type": "choice", "text": "Two bonds, same maturity. Which has the higher duration?",
-     "options": ["The 8% coupon bond", "The 3% coupon bond", "They are equal"],
-     "answer": 1},
-
-    {"type": "wordcloud", "text": "Short answer: what does convexity buy you?"},
-
     {"type": "scale", "text": "How solid do you feel about duration right now?",
      "min": 1, "max": 5, "min_label": "Lost", "max_label": "Solid"},
 
-    {"type": "number", "text": "Guess the current 10-year Treasury yield, in percent",
-     "answer": 4.3, "unit": "%"},
+    {"type": "multi", "text": "Which of these still feel shaky? Select all that apply.",
+     "options": ["Duration", "Convexity", "Immunization", "None of these"]},
+
+    {"type": "wordcloud", "text": "Short answer: what does convexity buy you?"},
 
     {"type": "rank", "text": "Order these from least to most interest-rate risk",
      "options": ["3-month T-bills", "5-year notes", "30-year Treasuries"]},
 
-    {"type": "choice", "text": "Which of these reduce duration? Pick all that apply.",
-     "options": ["Higher coupon", "Longer maturity", "Higher yield"],
-     "multi": true, "answer": [0, 2]}
+    {"type": "number", "text": "Guess the current 10-year Treasury yield, in percent",
+     "unit": "%"},
+
+    {"type": "choice", "text": "Two bonds, same maturity. Which has the higher duration?",
+     "options": ["The 8% coupon bond", "The 3% coupon bond", "They are equal"]}
   ]
 }
 ```
 
-`answer` is a 0-based index into `options`, a list of them for `multi`, or a
-plain number for `number`. It is optional, and including it is what makes a
-question a concept check rather than an opinion poll.
+No `answer` anywhere, which is the normal case: these ask what students think
+and how solid they feel, and there is nothing to be right about. Add one only
+where the question genuinely has a right answer -- a 0-based index into
+`options`, a list of them for `multi`, or a plain number for `number`. Doing so
+withholds the distribution while voting is open and adds a Reveal, which is what
+you want for a concept check and wrong for everything else here.
+
+`multi` is select all that apply. Its bars are percentages of the people who
+answered rather than of the ticks, so they add to more than 100% -- which is the
+reading that means something: "two-thirds of the room is shaky on convexity".
 
 Because any question can be reached from the menu at any time, a prepared file
 can hold more than one class will use — questions for wherever the discussion
@@ -243,7 +252,8 @@ so. Leaving a session running between classes is fine too — the next `file` or
 
 | type | students see | projector shows |
 | --- | --- | --- |
-| `choice` | tappable options, A/B/C | bar per option, correct one green when revealed |
+| `choice` | tappable options, A/B/C | bar per option, as % of the people who answered |
+| `multi` | the same, tick any number, then Submit | bar per option, as % of the people who answered, so they add to more than 100% |
 | `wordcloud` | a text box | answers sized by how many said them |
 | `scale` | a row of numbers | distribution plus the mean |
 | `number` | a number box | histogram, mean, median, true answer marked |

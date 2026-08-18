@@ -23,35 +23,29 @@
       "name": "smithers",
       "source": "./plugins/smithers",
       "version": "1.1.0",
-      "description": "A personal email and calendar desk. Claude Code reads your Gmail and Calendar through a local connector, writes a fresh overview of what’s ahead for the next seven days every time you open the app, and parks drafted replies in a Compose tab you review and send yourself. Claude never sends mail and never deletes events — those stay your actions in the app. Local-first; state and Google tokens live in ~/.smithers."
+      "description": "A personal email and calendar desk. Claude Code reads your Gmail and Calendar through a local connector, writes a fresh overview of what\u2019s ahead for the next seven days every time you open the app, and parks drafted replies in a Compose tab you review and send yourself. Claude never sends mail and never deletes events \u2014 those stay your actions in the app. Local-first; state and Google tokens live in ~/.smithers."
     },
     {
       "name": "screenshare",
       "source": "./plugins/screenshare",
-      "description": "Let students put their own screen on the classroom projector. Claude runs a small WebRTC relay on the classroom computer and publishes it over a Cloudflare Quick Tunnel, so students join from an https link on their own laptops, pick a screen, window or tab, and wait in a queue while the instructor chooses who is shown. Video goes browser to browser — direct when the campus network allows it, through a TURN relay when segmentation blocks the direct path. Nothing is recorded and nothing is written to disk. Runs on Windows, macOS or Linux; on a locked-down classroom machine it can fetch its own cloudflared without admin rights."
+      "description": "Let students put their own screen on the classroom projector. Claude runs a small WebRTC relay on the classroom computer and publishes it over a Cloudflare Quick Tunnel, so students join from an https link on their own laptops, pick a screen, window or tab, and wait in a queue while the instructor chooses who is shown. Video goes browser to browser \u2014 direct when the campus network allows it, through a TURN relay when segmentation blocks the direct path. Nothing is recorded and nothing is written to disk. Runs on Windows, macOS or Linux; on a locked-down classroom machine it can fetch its own cloudflared without admin rights."
     },
     {
       "name": "poll",
       "source": "./plugins/poll",
-      "description": "Put a question to the class and show the answers on the projector. Type `/poll What's the capital of France? Paris, Topeka or Frankfurt` and it goes up immediately — Claude reads the sentence, works out that it is multiple choice and which option is right, and the app runs it: multiple choice, word clouds, confidence scales, numeric estimates and rankings, each drawn live as answers arrive. `/poll <file>` runs a poll written before class instead, and both land in one session and one results file. Students answer from their own devices over a Cloudflare Quick Tunnel. Anonymous by design: no names, no roster, nothing stored per student, and concept-check results stay hidden while voting is open so the room doesn't follow the leading bar. Needs cloudflared."
+      "description": "Put a question to the class and show the answers on the projector. Type `/poll What's the capital of France? Paris, Topeka or Frankfurt` and it goes up immediately \u2014 Claude reads the sentence, works out that it is multiple choice and which option is right, and the app runs it: multiple choice, word clouds, confidence scales, numeric estimates and rankings, each drawn live as answers arrive. `/poll <file>` runs a poll written before class instead, and both land in one session and one results file. Students answer from their own devices over a Cloudflare Quick Tunnel. Anonymous by design: no names, no roster, nothing stored per student, and concept-check results stay hidden while voting is open so the room doesn't follow the leading bar. Needs cloudflared."
     },
     {
       "name": "survey",
       "source": "./plugins/survey",
-      "version": "1.0.0",
-      "description": "Put a question to the class and show the answers on the projector. Type `/survey What's the capital of France? Paris, Topeka or Frankfurt` and it goes up immediately — Claude reads the sentence, works out that it is multiple choice and which option is right, and the app runs it: multiple choice, word clouds, confidence scales, numeric estimates and rankings, each drawn live as answers arrive. `/survey <file>` loads a poll written before class, and the projector's menu jumps to any question at any time, so a prepared class is a set of questions to reach for rather than a queue to walk. Students answer at a fixed public address, so there is no tunnel to start and nothing to install beyond an API token. Anonymous by design: no names, no roster, nothing stored per student, and concept-check results stay hidden while voting is open so the room doesn't follow the leading bar."
-    },
-    {
-      "name": "cardstock",
-      "source": "./plugins/cardstock",
-      "version": "1.4.0",
-      "description": "Build a slide deck in Kerry Back's Quarto reveal.js house style — a vendored theme with cards, section dividers, comparison tables, and step flows, rendered to HTML and exported to PDF, PowerPoint, or PNG. Use when the user invokes /cardstock, asks for a cardstock deck by name, or is editing a deck already built with it. For a general request to make slides or a presentation with no style specified, prefer the pptx skill."
+      "version": "1.1.0",
+      "description": "Put a question to the class and show the answers on the projector. Type `/survey What's the capital of France? Paris, Topeka or Frankfurt` and it goes up immediately \u2014 Claude reads the sentence, works out that it is multiple choice and which option is right, and the app runs it: multiple choice, select all that apply, word clouds, confidence scales, numeric estimates and rankings, each drawn live as answers arrive. `/survey <file>` loads a poll written before class, and the projector's menu jumps to any question at any time, so a prepared class is a set of questions to reach for rather than a queue to walk. Students answer at a fixed public address, so there is no tunnel to start and nothing to install beyond an API token. Anonymous by design: no names, no roster, nothing stored per student, and concept-check results stay hidden while voting is open so the room doesn't follow the leading bar."
     },
     {
       "name": "shoji",
       "source": "./plugins/shoji",
       "version": "1.0.0",
-      "description": "Build a Quarto reveal.js slide deck in the Shoji style — a plum, pale-gray and dusty-blue theme derived from the PowerPoint design of the same name, with an offset panel frame, letter-spaced titles, cards, callouts, stats, steps, and half-bleed picture layouts, rendered to HTML and exported to PDF. Use when the user invokes /shoji, asks for a shoji deck by name, or is editing a deck already built with this theme. For a general \"make me slides\" with no style named, prefer the pptx skill; for the cardstock house style, use cardstock."
+      "description": "Build a Quarto reveal.js slide deck in the Shoji style \u2014 a plum, pale-gray and dusty-blue theme derived from the PowerPoint design of the same name, with an offset panel frame, letter-spaced titles, cards, callouts, stats, steps, and half-bleed picture layouts, rendered to HTML and exported to PDF. Use when the user invokes /shoji, asks for a shoji deck by name, or is editing a deck already built with this theme. For a general \"make me slides\" with no style named, prefer the pptx skill."
     },
     {
       "name": "finance-data",
@@ -61,7 +55,7 @@
     {
       "name": "wrds",
       "source": "./plugins/wrds",
-      "description": "Empirical asset-pricing data from WRDS (CRSP v2/Compustat) and Open Source Asset Pricing: extractable Python building blocks for connect (without a 2FA prompt), pull, merge, market cap aggregated across share classes, the CRSP-Compustat link, book equity, accounting alignment and firm age — every query run against live WRDS. Surfaces the constructions that are genuine decisions rather than common practice (Ken French vs Drechsler's WRDS script vs OpenAP, and the 4- vs 6-month reporting lag) instead of picking silently, and ships twelve WRDS reference scripts."
+      "description": "Empirical asset-pricing data from WRDS (CRSP v2/Compustat) and Open Source Asset Pricing: extractable Python building blocks for connect (without a 2FA prompt), pull, merge, market cap aggregated across share classes, the CRSP-Compustat link, book equity, accounting alignment and firm age \u2014 every query run against live WRDS. Surfaces the constructions that are genuine decisions rather than common practice (Ken French vs Drechsler's WRDS script vs OpenAP, and the 4- vs 6-month reporting lag) instead of picking silently, and ships twelve WRDS reference scripts."
     },
     {
       "name": "critique",
@@ -76,7 +70,7 @@
     {
       "name": "elegant-pdf",
       "source": "./plugins/elegant-pdf",
-      "description": "Create elegant, branded documents from a small HTML design system rendered to PDF or image with headless Chrome — one-page flyers/announcements (2x JPEG or clickable PDF) and multi-page programs, reports, and handbooks (clickable PDF with cover, running footer, and page numbers). Default palette is Rice Business navy + gold; recolor by editing one block."
+      "description": "Create elegant, branded documents from a small HTML design system rendered to PDF or image with headless Chrome \u2014 one-page flyers/announcements (2x JPEG or clickable PDF) and multi-page programs, reports, and handbooks (clickable PDF with cover, running footer, and page numbers). Default palette is Rice Business navy + gold; recolor by editing one block."
     },
     {
       "name": "research",
