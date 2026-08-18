@@ -10,7 +10,7 @@ description: >-
   file>` loads a poll you prepared earlier; "write me a poll for Thursday"
   produces the file. Multiple choice, word clouds, confidence scales, numeric
   estimates and rankings, each drawn live as answers arrive. Runs at
-  https://survey.kerryback.com, always on, so students join from any device with
+  https://poll.kerryback.com, always on, so students join from any device with
   no tunnel and no waiting. Anonymous: no names, no roster, nothing stored per
   student.
 ---
@@ -50,7 +50,7 @@ retyped `/survey`, which is cheaper than any confirmation would have been.
 
 ## 0. One-time setup
 
-The app is already running at <https://survey.kerryback.com>. The only thing a
+The app is already running at <https://poll.kerryback.com>. The only thing a
 machine needs is the API token, in `~/.survey/.env`:
 
 ```

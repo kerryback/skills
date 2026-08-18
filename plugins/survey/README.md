@@ -9,7 +9,7 @@ Put a question to the class and show the answers on the projector.
 That is the whole thing. Claude reads the sentence, works out that it is
 multiple choice with three options and that Paris is the right one, and puts it
 on the projector with voting open. Students answer from their own phones at
-<https://survey.kerryback.com>.
+<https://poll.kerryback.com>.
 
 Answers are anonymous. No name field, no sign-in, no roster, and nothing stored
 per student — which is what makes a concept check tell you something true.

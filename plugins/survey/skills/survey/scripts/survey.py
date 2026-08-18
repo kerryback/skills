@@ -9,7 +9,7 @@
   survey.py stop                 end the session
   survey.py check [<file>]       is the app reachable, is the token good
 
-The app runs at https://survey.kerryback.com, always on, so none of these pay a
+The app runs at https://poll.kerryback.com, always on, so none of these pay a
 cold start and there is nothing to launch. This script is an HTTP client and
 nothing else: no venv, no server process, no tunnel, no state file. It imports
 only the standard library, so the plugin has no dependencies to install and the
@@ -32,7 +32,7 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
-DEFAULT_URL = "https://survey.kerryback.com"
+DEFAULT_URL = "https://poll.kerryback.com"
 
 HOME_DIR = Path(os.environ.get("SURVEY_HOME", Path.home() / ".survey"))
 ENV_PATH = HOME_DIR / ".env"
