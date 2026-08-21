@@ -20,8 +20,8 @@ python3 -m tools.chronology --gap --human
 ```
 
 It lists commits that landed with no changelog entry dated after them — work
-whose *reason* was never written down. The changelog is written by `/round`
-(and by `/refresh` for anything settled mid-round), and both only run when someone
+whose *reason* was never written down. Entries are written by `/handover`, or
+whenever Claude asks *update state?*, and those only happen when someone
 invokes them, so work that ended any other way leaves exactly this hole. Git has
 what changed; nothing has why.
 
@@ -39,19 +39,18 @@ in the executive summary, naming the dates and authors.
 
 Everything else the report needs is already written down and committed. There is
 no accumulation step to run first and no log to mine: the changelog in
-`state.md` is the incremental artifact, and `/round` is what keeps it current.
+The state directory is the incremental artifact, and `/handover` keeps it current.
 
 Read these, and only these:
 
 | Source | What it gives the report |
 |---|---|
-| `project/global/state.md` | the thesis, settled facts, killed ideas with reasons, open questions, empirical results, and the dated changelog |
+| `project/global/state/` | the thesis, settled facts, killed ideas with reasons, open questions, results, and the dated changelog |
 | `project/global/method_spec.md` | what is frozen for the current round |
 | `project/global/data_manifest.md` | what is canonical and why it is trusted |
 | `project/<author>/session.md` | each person's in-flight work, next actions, open threads |
 | `project/<author>/analyst.md`, `replicator.md` | where each build stands, if the project is empirical |
 | `draft/` | whether the paper exists and what it currently contains |
-| `python3 -m tools.lock status` | whether a round is open, and whose it is |
 | `python3 -m tools.chronology` | the assembled timeline |
 
 Do NOT read `logs/debate-*.jsonl`. It is bulky, it is local to one machine, and
@@ -84,7 +83,7 @@ the reason. That is usually the most valuable sentence on the page.
 
 The claims that have been through the gate and should not be relitigated, each
 with the date it settled. Keep this section short and hard: a fact belongs here
-only if `state.md` treats it as settled. Where a result is empirical and the
+only if `state/core.md` treats it as settled. Where a result is empirical and the
 project runs two builds, say whether both builds converged on it.
 
 This section exists so a returning coauthor knows what NOT to reopen. Do not

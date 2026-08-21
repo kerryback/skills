@@ -2,7 +2,7 @@
 
 Three sources, all committed, none of them a transcript:
 
-  changelog  `project/global/state.md` — the dated entries at the top, each with
+  changelog  `project/global/state/` — one file per entry (see tools/state.py),
              an author and the reason a thing changed. This is the spine: it is
              the only source that says WHY.
   commit     `git log` — what landed and when.
@@ -37,10 +37,6 @@ from pathlib import Path
 
 KINDS = ("changelog", "commit", "run")
 
-# `- 2026-08-14  kevin-crotty  — what changed...`, continuation lines indented.
-_CHANGELOG_ENTRY = re.compile(
-    r"^-\s+(\d{4}-\d{2}-\d{2})\s+(\S+)\s+[—-]+\s*(.*)$"
-)
 def _repo_root(start: Path) -> Path:
     for p in [start.resolve(), *start.resolve().parents]:
         if (p / "CLAUDE.md").exists() or (p / ".git").exists():
@@ -78,35 +74,20 @@ def resolve_since(root: Path, since: str | None) -> str | None:
 # --------------------------------------------------------------------------- #
 
 def changelog_entries(root: Path) -> list[dict]:
-    """Parse the dated entries at the top of state.md.
+    """Read `project/global/state/` — one file per entry, front matter on each.
 
-    An entry runs until the next entry or the next heading, so a multi-paragraph
-    changelog line survives intact — the body is usually where the reason lives.
+    The state used to be a single `state.md` whose top block this function
+    parsed. It is a directory now, so that several people can add entries at the
+    same time without git having to merge one file; see `tools/state.py`.
     """
-    path = root / "project" / "global" / "state.md"
-    if not path.exists():
+    try:
+        from .state import load
+    except ImportError:                       # running as a loose script
         return []
     out: list[dict] = []
-    current: dict | None = None
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        m = _CHANGELOG_ENTRY.match(line)
-        if m:
-            if current:
-                out.append(current)
-            date, author, head = m.groups()
-            current = {"kind": "changelog", "date": date, "author": author,
-                       "summary": head.strip(), "body": []}
-            continue
-        if current is not None:
-            if line.startswith("#"):  # a heading ends the changelog block
-                out.append(current)
-                current = None
-            elif line.strip():
-                current["body"].append(line.strip())
-    if current:
-        out.append(current)
-    for e in out:
-        e["body"] = " ".join(e.pop("body"))
+    for e in load(root):
+        out.append({"kind": "changelog", "date": e["date"], "author": e["author"],
+                    "summary": e["title"], "body": " ".join(e["body"].split())})
     return out
 
 
@@ -114,9 +95,9 @@ def _slug(name: str) -> str:
     """Same normalization `tools.runid` applies to `git config user.name`.
 
     Git records a commit author as a display name ("Kevin Crotty") while the
-    changelog and run records carry the slug ("kevin-crotty"). One author filter
-    has to match all three, so slugify here rather than making the caller know
-    which source spells a person which way.
+    state entries and run records carry the slug ("kevin-crotty"). One author
+    filter has to match all three, so slugify here rather than making the caller
+    know which source spells a person which way.
     """
     return re.sub(r"[^A-Za-z0-9]+", "-", name).strip("-").lower() or "anon"
 
@@ -176,7 +157,7 @@ _MECHANICAL = re.compile(
 def gaps(root: Path, since: str | None = None) -> dict:
     """Commits that landed with no changelog entry dated at or after them.
 
-    The changelog is written by `/round`, which only runs when somebody
+    Entries are written by `/handover`, which only runs when somebody
     invokes it. Work that ends without it leaves the commits in place
     and the REASON unrecorded — which is invisible, because the
     commits look fine. This makes it visible.
@@ -222,7 +203,7 @@ def report_gaps(root: Path, since: str | None = None) -> int:
     if g["count"] > 15:
         print(f"  … and {g['count'] - 15} more")
     print("\nWhat changed is in git; WHY is not written anywhere. Add an entry to\n"
-          "project/global/state.md — or run /round, which writes one — while\n"
+          "project/global/state/ — `python3 -m tools.state new \"…\"` writes one — while\n"
           "somebody still remembers the reason.")
     return g["count"]
 

@@ -1,6 +1,6 @@
 ---
 name: research
-description: Set up a research repository that several people and their Claudes can work in without tripping over each other — per-author folders, portable paths, a single canonical dataset, provenance, a round lock, a vendored writing guide, and a generated CLAUDE.md. Use when starting a new empirical or theoretical research project, when a solo project is about to gain coauthors, or when an existing project's files have grown organically and need structure. Also use when asked to "set up a research project", "add coauthors to this project", or "make this repo work like the multiples project". Covers wiring a paper directory to an Overleaf project through its git bridge, for teams where only some coauthors use Overleaf.
+description: Set up a research repository that several people and their Claudes can work in without tripping over each other — per-author folders, portable paths, a single canonical dataset, provenance, a state directory several people can write to at once with no locking, a vendored writing guide, and a generated CLAUDE.md. Use when starting a new empirical or theoretical research project, when a solo project is about to gain coauthors, or when an existing project's files have grown organically and need structure. Also use when asked to "set up a research project", "add coauthors to this project", or "make this repo work like the multiples project". Covers wiring a paper directory to an Overleaf project through its git bridge, for teams where only some coauthors use Overleaf.
 ---
 
 You are setting up a research repository. The output is a working structure plus
@@ -21,11 +21,13 @@ changes. This scaffolds the structure that prevents each of those.
 It also settles what the project remembers. Two committed records carry it, and
 the generated `CLAUDE.md` names both so the next session knows where to write:
 
-- `project/global/state.md` and its changelog — one entry per round saying what
-  it took up and what came of it, written even when the round settled nothing,
-  plus any substantive change as it happens. Killed ideas go in with why. This
-  is what makes "did we ever explore X" answerable: a round that chased
-  something and dropped it leaves no diff and no artifact, only its entry.
+- `project/global/state/` — a DIRECTORY, one file per entry, so several people
+  can write at once without git having to merge anything. One entry per stretch
+  of work saying what it took up and what came of it, written even when nothing
+  settled, plus any substantive change as it happens. Killed ideas go into
+  `core.md` with why. This is what makes "did we ever explore X" answerable:
+  work that chased something and dropped it leaves no diff and no artifact,
+  only its entry.
 - `project/<author>/logs/runs.jsonl` — one line per script execution, tying a
   number to the run that produced it.
 
@@ -80,13 +82,14 @@ are closed; ask in prose where they are not.
 Create only what the interview asked for.
 
 ```
-project/global/{state.md,method_spec.md,data_manifest.md}
+project/global/state/{core.md,entries/,blocks/}
+project/global/{method_spec.md,data_manifest.md}
 project/<author>/{session.md,logs/}
 workspaces/global/params.py            (empirical only)
 workspaces/<author>/{analyst,replicator}/   (empirical only)
 draft/{figures,tables}/
 tools/                                 copied from this plugin
-.claude/commands/{round.md,refresh.md,report.md,style-learn.md}
+.claude/commands/{handover.md,report.md,style-learn.md}
 .claude/settings.json                  the style-capture hooks
 CLAUDE.md  protocols.html  requirements.txt  .gitignore
 writing-guide.md                       copied from templates/, then grows
@@ -94,15 +97,16 @@ writing-guide.md                       copied from templates/, then grows
 
 `/report` builds an HTML report — executive summary, what is settled, open
 issues, chronology — from the committed records, using `tools/chronology.py` to
-merge the changelog, git log, and run records into one timeline. It
-needs no accumulation step: the changelog is the incremental artifact and
-`/round` is what keeps it current.
+merge the state entries, git log, and run records into one timeline. It
+needs no accumulation step: the entries are the incremental artifact and
+`/handover` keeps them current.
 
 Write `protocols.html` LAST, after the repo is built and verified, following
 `templates/protocols.md` — that file is the spec, not the content, so write the
 page for this project rather than copying it. It is the human counterpart to
-`CLAUDE.md` and the one document a coauthor actually reads; the round vocabulary
-in particular has to be explained there, because a newcomer cannot guess it and
+`CLAUDE.md` and the one document a coauthor actually reads; that everyone works
+at once has to be said there explicitly, because a newcomer who has used a
+locked repository before will go looking for the lock, and
 it governs when they may touch shared state.
 
 Copy `templates/writing-guide.md` to the repo root, on every project. It is the
@@ -146,8 +150,7 @@ file if it does not exist and merging into the `hooks` key if it does:
 Do not install a session-wide activity-logging hook, and do not offer to. An
 exhaustive record of every prompt and every tool call reaches tens of megabytes
 a project, cannot go in git, and answers none of the questions coauthors ask —
-those are about decisions, and the changelog in `state.md` is what records
-decisions. `templates/project-gitignore` commits the run records for exactly
+those are about decisions, and the state entries are what record decisions. `templates/project-gitignore` commits the run records for exactly
 this reason; the briefs and the bulky debate responses stay local.
 
 The style hooks above are not that, and the difference is worth being precise
@@ -200,10 +203,10 @@ A scaffold that has not been exercised is a guess. Before you report success:
 ```bash
 python3 tools/onboard.py                      # must print ready
 python3 -m tools.provenance --authors         # must list the author trees
-python3 -m tools.lock status                  # must say unlocked
+python3 -m tools.state check                  # must parse the seeded state
 grep -rn "@@" CLAUDE.md tools/ protocols.html  # must find nothing
 test -s writing-guide.md                       # must exist and be non-empty
-ls .claude/commands/{round,refresh,report,style-learn}.md   # all four
+ls .claude/commands/{handover,report,style-learn}.md   # all three
 ```
 
 Then exercise the style hooks, because a hook that fails is silent by design —

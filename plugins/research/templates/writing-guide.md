@@ -3,7 +3,7 @@
 This is the standard for every word that goes into `draft/` — the paper, the
 abstract, the slides, the referee response, the cover letter, the grant
 proposal. It is binding, not advisory, and it applies when drafting fresh as
-much as when revising. It does not apply to `state.md`, `session.md`, commit
+much as when revising. It does not apply to the state files, `session.md`, commit
 messages, or notes between coauthors.
 
 Read it before you write, not after. Prose composed flat and sanded down later

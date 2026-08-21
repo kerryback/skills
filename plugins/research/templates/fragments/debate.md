@@ -28,7 +28,7 @@ Write every brief you send a seat to
 loop and would otherwise overwrite each other. They stay local and gitignored:
 they are the input to a decision, not the decision.
 
-**What gets committed is the outcome, in `state.md`'s changelog:**
+**What gets committed is the outcome, as a state entry:**
 
 - the question actually put to the panel, in one line;
 - what was decided;
@@ -43,5 +43,5 @@ with the reason — that is the same record viewed from the other end.
 Every call — the messages sent and the response, with its model, usage and
 latency — is appended to `logs/debate-<run>.jsonl`. That file stays local: it
 carries full model responses and gets bulky. If a voice says something that
-changes the project's direction, that belongs in `state.md` with the reason, not
+changes the project's direction, that belongs in the state with the reason, not
 left in a log on one machine.

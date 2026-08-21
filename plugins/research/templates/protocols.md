@@ -42,35 +42,36 @@ yours and nobody else writes in it; data lives outside the repo and is never
 committed. Say where the data actually is, by name — the Dropbox or Box folder,
 not just an environment variable.
 
-**4. Rounds.** This is the section that most needs to exist, because "round" is
-the one piece of vocabulary a newcomer cannot guess and it governs when they may
-touch shared state. Cover, in this order:
+**4. Working at the same time.** This is the section that most needs to exist,
+because it is the piece a newcomer will assume works the way it does everywhere
+else. Cover, in this order:
 
-- What a round is: one bounded stretch of work that ends with `state.md`
-  rewritten.
-- Why it is claimed: `state.md` is long prose and git cannot merge it, so two
-  people rewriting it at once produce a conflict on the file that defines what
-  the paper is. A push is atomic, so exactly one claim wins and the loser finds
-  out immediately instead of at merge time.
-- How: bare `/round` finishes one and is the command they will actually use;
-  `/round start "what this is"` claims it first and is only worth doing when
-  someone else might be working; `/round status` says who holds it. Say plainly
-  that not claiming a round is normal when working alone.
-- **A round is not a session.** A round is a unit of work and can span several
-  context windows; a session is one conversation with Claude. `/refresh`
-  checkpoints a session and deliberately leaves the round open. Say this
-  explicitly — it is the single most common misreading, and getting it wrong
-  means either a lock released mid-work or one held for days.
-- What to do when the claim fails: someone else holds it. Work on something that
-  does not touch shared state, and do not edit `state.md` anyway. The lock is a
-  protocol between people who agreed to use it, not a permission system, so it
-  only works if it is honoured when it is inconvenient.
+- **Everyone works at once.** Nobody claims anything, nobody waits, and there is
+  nothing to release. Say it plainly and early — a collaborator who has used a
+  locked repository before will otherwise go looking for the lock.
+- **Why it works: the state is a directory, not a file.** One `state.md` holding
+  everything cannot be merged, and the only fix on one file is to let one person
+  write at a time. Instead, `python3 -m tools.state new "what changed"` creates
+  one file. Two people running it at the same moment create two different files,
+  and git merges file additions without a conflict.
+- **How to read it:** `python3 -m tools.state show`. It prints and writes
+  nothing — there is no assembled `state.md` on disk, on purpose, because a
+  generated shared file is exactly what two people at once would collide on.
+- **The two rules.** Never edit another author's entry or block; they are
+  append-only, and if one is wrong you write a new one saying so. And `core.md`
+  — thesis, settled facts, open questions, killed ideas — is the one shared
+  file, short enough that two people editing it the same day is a small readable
+  conflict rather than two rewrites of a thousand lines.
+- **Claude raises it, you do not have to remember.** When a result changed, when
+  something was settled or killed, at a gate, or before committing work someone
+  else would need explained, Claude asks *update state?* rather than waiting to
+  be told.
 
-**5. What the project remembers.** The two committed records — the changelog in
-`state.md`, and the run records — and the fact that there is no session log, on
-purpose. Then the part that asks something of them: every round ends with an
-entry saying what it took up and what came of it, written *even when the round
-settled nothing*. That is what answers "did we ever try X" a year later, and it
+**5. What the project remembers.** The two committed records — the state
+entries, and the run records — and the fact that there is no session log, on
+purpose. Then the part that asks something of them: a stretch of work ends with
+an entry saying what it took up and what came of it, written *even when nothing
+settled*. That is what answers "did we ever try X" a year later, and it
 is the entry people skip, because a round that changed nothing feels like
 nothing worth recording. It leaves no diff and no artifact, so if the entry is
 not written the exploration is gone. Killed ideas also go in the killed-ideas
@@ -89,8 +90,10 @@ record, and nothing warns them.
 `draft/`. Say that it is binding rather than advisory, that it does not apply to
 notes between coauthors, and that Claude reads it before drafting.
 
-**8. The commands.** A short table: `/round`, `/round start`, `/refresh`,
-`/report`, and anything else the project got. One line each, in plain language.
+**8. The commands.** A short table: `/handover`, `/report`, and anything else
+the project got. One line each, in plain language. There are deliberately few —
+the state is kept current by Claude asking, not by a command somebody has to
+remember to run.
 
 **9. Who to ask.** Names, and what each person owns.
 

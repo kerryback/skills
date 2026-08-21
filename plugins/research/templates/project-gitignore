@@ -6,7 +6,7 @@
 # Everything else here is working material, not memory. The briefs sent to each
 # debate seat and the full model responses are both inputs to a decision, and a
 # coauthor asking "did we ever explore X" wants the decision and the reason for
-# it, not the prompts that produced it. That answer belongs in state.md's
+# it, not the prompts that produced it. That answer belongs in the state's
 # changelog, written when the decision is made — see the debate section of
 # CLAUDE.md. Raw material nobody curated reads as a record and is not one.
 #
@@ -24,7 +24,6 @@
 # Per-author runtime state: machine-local, and meaningless to anyone else.
 # `python` in particular holds an absolute venv path.
 */run
-*/round
 */python
 
 # machine-local: this clone has been through onboarding

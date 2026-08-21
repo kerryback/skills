@@ -50,7 +50,10 @@ The human is editor-in-chief. You do not decide what the paper is.
 ```
 project/
   global/                    SHARED — what everyone agrees on
-    state.md                 thesis, open questions, settled facts, killed ideas
+    state/                   the project's state, as a DIRECTORY
+      core.md                thesis, open questions, settled facts, killed ideas
+      entries/               one file per dated entry — never edit another's
+      blocks/                one file per topic block — append, do not rewrite
     method_spec.md           the frozen spec for the current round
     data_manifest.md         what is canonical, and why
   <author>/                  ONE PER PERSON — nobody else writes here
@@ -64,11 +67,11 @@ draft/                       SHARED — the paper, figures, tables, bibliography
 tools/                       the machinery, vendored — nothing to install
 ```
 
-**`project/global/` is the project.** Read `state.md` and `method_spec.md` from
+**`project/global/` is the project.** Read the state and `method_spec.md` from
 there at the start of every round and write them back there — never into your own
 folder. A copy in a personal folder is a fork nobody voted for.
 
-**Every substantive change to `state.md` gets a changelog line** at the top of
+**Every substantive change gets its own state entry** — created at the top of
 that file: date, author slug, what changed. Newest first, append only, never
 rewrite someone else's entry.
 
@@ -182,16 +185,16 @@ written down, with its reason, at the moment it is made.
 Two committed records carry the project, and between them they answer all three
 questions:
 
-1. **`project/global/state.md` and its changelog.** One entry at the end of
-   every round — what the round took up, and what came of it — plus any
-   substantive change as it happens. Newest first, append only. Killed ideas go
-   in with the reason they were killed. This is how the others see what moved
-   without reading the whole file, and it is the first place to look for any of
-   the three questions above.
+1. **`project/global/state/`.** One entry per stretch of work — what it took
+   up, and what came of it — plus any substantive change as it happens. One
+   file each, so two people writing at once never collide. Killed ideas go into
+   `core.md` with the reason they were killed. This is how the others see what
+   moved without reading everything, and it is the first place to look for any
+   of the three questions above.
 
-   The round entry is written **even when the round settled nothing**. A round
-   that took something up and dropped it leaves no diff and no artifact, so if
-   its entry is not written the exploration is simply gone.
+   An entry is written **even when nothing settled**. Work that took something
+   up and dropped it leaves no diff and no artifact, so if its entry is not
+   written the exploration is simply gone.
 2. **`project/<author>/logs/runs.jsonl`.** One line per script execution, with
    inputs, outputs, and the commit. This is what ties a number to the run that
    produced it.
@@ -211,11 +214,11 @@ python3 -m tools.logging_ --seat adversary --limit 5
 — but none of it is memory. A brief is the input to a decision, not the
 decision, and "did we ever explore X" is answered by the round entries in the
 changelog, not by a folder of prompts somebody would have to reverse-engineer. If a voice said something that changed the project's
-direction, that belongs in `state.md` with the reason.
+direction, that belongs in the state with the reason.
 
 **When you learn something the project should keep, write it down now.** Not at
 the end of the session, not in your own words in a scratch file — into
-`state.md` with a changelog line, or into the run record. Nothing reconstructs
+the state as an entry, or into the run record. Nothing reconstructs
 it later.
 
 A run is stamped with `python3 -m tools.runid --project . --new` at the top of a
@@ -225,52 +228,66 @@ cannot collide.
 
 ---
 
-## One round at a time — /round
+## Everyone works at once — there is no lock
 
-A **round** is one bounded stretch of work that ends with `state.md` rewritten.
-`state.md` is long prose rewritten at every gate, and git cannot merge that, so
-exactly one person holds it at a time. A push is atomic, which makes it a usable
-mutex: exactly one claim wins, and the loser finds out at claim time instead of
-after a round's work.
+Several people work on this project at the same time. Nothing here may be
+allowed to serialise them.
 
+The obvious design — one `state.md` holding everything — forces exactly that.
+It is long prose that each round rewrites, git cannot merge two rewrites of long
+prose, and the only fix on one file is to let one person write at a time. So the
+state is a DIRECTORY instead:
+
+```bash
+python3 -m tools.state show                    # read it all, newest first
+python3 -m tools.state show --kind entries     # just the dated entries
+python3 -m tools.state new "what changed"      # start an entry, correctly named
+python3 -m tools.state new --block "RULE E ADOPTED"
 ```
-/round                                   finish one: write the entry, promote, release
-/round start "peer rule for microcaps"   optional — claim it first
-/round status                            who holds it, and is the changelog behind
-```
 
-**Bare `/round` is the command.** It works whether or not a round was ever
-claimed; when none was, work out what was taken up from the conversation, say it
-back for correction, and skip the release. Never tell someone to go back and
-run `start` — that is a two-person feature, and nobody working alone should be
-made to perform it.
+`new` creates one file under `project/global/state/entries/` (or `blocks/`)
+with its front matter filled in. Two people running it at the same moment create
+two DIFFERENT files, and git merges file additions with no conflict — so nobody
+waits, nothing is claimed, and nothing has to be released.
 
-`start` earns its keep when a coauthor might be working right now: claiming up
-front surfaces a collision in the first minute rather than after you have both
-spent an afternoon on the same question. Claim before reading state, and release
-after writing it even if the round was killed — an unreleased lock blocks
-everyone, and it fails silently.
+`show` is a reader. It prints; it writes no file, makes no commit, pushes
+nothing. There is deliberately no assembled `state.md` on disk, because a
+generated shared file is exactly what two people working at once would collide
+on.
 
-Underneath, that is `python3 -m tools.lock claim|status|release`; use `/round`
-rather than the raw tool so the promotion and the changelog are not skipped.
+Two rules keep it that way:
 
-**A round is not a session.** A round is a unit of *work* and can span several
-context windows; a session is one conversation. A long round survives any number
-of `/clear`s. Do not end a round because the context filled up, and do not keep
-one open for days because nothing forced you to close it.
+- **Never edit another author's entry or block.** They are append-only records.
+  If one is wrong, write a new one saying so.
+- **`core.md` is the one shared file** — thesis, settled facts, open questions,
+  killed ideas. Rewrite it freely; it is short and changes rarely, so two people
+  editing it the same day is a small readable conflict rather than two rewrites
+  of a thousand lines.
+
+### Keeping the state current — ask, do not wait to be told
+
+There is no command for this and nothing to close. Writing the state is part of
+finishing work, and it is YOUR job to raise it rather than the human's job to
+remember.
+
+**Ask "update state?" when any of these is true:**
+
+- a result or a number changed, or a method choice was made;
+- something was settled, or killed, or a direction was dropped;
+- the human approved, steered, or killed something at a gate;
+- you are about to commit work a collaborator would need explained.
 @@DEBATE_SECTION@@
 ---
 
-## /refresh — checkpoint before the context runs out
+## /handover — checkpoint before the context runs out
 
-When the session gets long, run `/refresh`. It rewrites your `session.md` so a
-cold session could resume from it alone, writes down anything already settled,
-and **leaves the round lock alone** — you are still holding the round when the
-next session starts, which is correct. Then it stops; it cannot clear its own
+When the session gets long, run `/handover`. It runs the gap check, writes the
+session's entry, promotes what settled, and rewrites your `session.md` so a cold
+session could resume from it alone. Then it stops; it cannot clear its own
 context.
 
-Suggest it proactively when a session has run long. If the work is actually
-finished, `/round` is the command, not this one.
+Suggest it proactively when a session has run long. It releases nothing and
+blocks nobody — there is no lock.
 
 ---
 
@@ -278,7 +295,7 @@ finished, `/round` is the command, not this one.
 
 `/report` writes an HTML report to the repo root: executive summary, what is
 settled, open issues, and a chronology. It reads only the committed records —
-`state.md` and its changelog, each `session.md`, the run records, and git — and
+the state entries, each `session.md`, the run records, and git — and
 assembles the timeline with:
 
 ```bash
@@ -299,17 +316,17 @@ changelog has to be written when the decision is made, not reconstructed after.
 
 ### When the changelog falls behind
 
-You write the changelog, during `/refresh`. `/refresh` only runs when somebody
-invokes it, so a session that ends any other way — the context filled up, the
-terminal closed, the work was done and everyone moved on — leaves the commits
-in git and the reason nowhere. Nothing notices, because the commits look fine.
+You write the entries, and `/handover` only runs when somebody invokes it, so a
+session that ends any other way — the context filled up, the terminal closed,
+the work was done and everyone moved on — leaves the commits in git and the
+reason nowhere. Nothing notices, because the commits look fine.
 
 ```bash
 python3 -m tools.chronology --gap --human
 ```
 
-That names the commits with no entry after them. `lock release` runs it for you
-and warns; `/refresh` and `/report` both start with it. When it shows a gap,
+That names the commits with no entry after them. `/handover` and `/report` both
+start with it. When it shows a gap,
 write the entries while the reason is still recoverable — from this
 conversation, from the diff, from `session.md`. Say which ones you cannot
 reconstruct instead of inventing a reason: a wrong entry in the changelog is
@@ -319,7 +336,7 @@ worse than a missing one, because it will be believed.
 
 ## Memory discipline
 
-1. **Project truth** (committed, human-gated): `project/global/state.md`.
+1. **Project truth** (committed, human-gated): `project/global/state/`.
 2. **Working memory** (committed, rewritten often): `project/<author>/session.md`
    and `project/global/method_spec.md`.
 3. **Records** (committed, append-only): `project/<author>/logs/runs.jsonl` —
@@ -396,8 +413,8 @@ ls ~/.litdb/.venv/bin/python 2>/dev/null || echo "no litdb"
 - Generate `draft/references.bib` from litdb rather than hand-maintaining it,
   and use the citekeys it assigns.
 - Notes about a paper belong in litdb, linked to the paper. Notes about the
-  *project* belong in `state.md`. When in doubt: would this still matter if the
-  paper were dropped from the project? If yes, litdb; if no, `state.md`.
+  *project* belong in the state. When in doubt: would this still matter if the
+  paper were dropped from the project? If yes, litdb; if no, the state.
 
 **When it is not there**, say so once and carry on with an ordinary `.bib`. Do
 not half-build a literature database out of scratch files — an improvised one is

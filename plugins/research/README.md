@@ -68,7 +68,7 @@ expensive to fix later:
 
 Two committed records, small enough to live in git forever.
 
-- **The changelog** in `project/global/state.md`. One entry at the end of every
+- **The state** in `project/global/state/`, one file per entry. One at the end of every
   round — what it took up, and what came of it — plus any substantive change as
   it happens. Newest first, append only. Killed ideas go in with the reason.
   The round entry is written even when the round settled nothing, which is what
@@ -122,7 +122,7 @@ change that* is `--kinds changelog`, since every entry carries its reason.
 took up whether or not it changed anything.
 
 No accumulation step runs first, and none is needed: the changelog is the
-incremental artifact, and `/refresh` is what keeps it current. If the changelog
+incremental artifact, and `/handover` is what keeps it current. If the record
 is stale the report says so rather than papering over it.
 
 ## Existing projects

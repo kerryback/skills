@@ -1,5 +1,5 @@
 ---
-description: Set up (or restructure) a research repository — per-author folders, portable paths, one canonical dataset, provenance, a round lock, and a generated CLAUDE.md.
+description: Set up (or restructure) a research repository — per-author folders, portable paths, one canonical dataset, provenance, a state directory several people can write to at once, and a generated CLAUDE.md.
 argument-hint: "[optional: project name]"
 ---
 

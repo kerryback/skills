@@ -6,7 +6,7 @@ cover letter, the grant proposal. **Read it before you write, not after.** Prose
 composed flat and sanded down later never fully recovers.
 
 It is binding, and it applies to drafting fresh as much as to revising. It does
-not apply to `state.md`, `session.md`, commit messages, or notes between
+not apply to the state files, `session.md`, commit messages, or notes between
 coauthors — only to what an editor, a referee, or a reader will see.
 
 The guide is vendored, so it works for a coauthor who has installed nothing.
@@ -21,7 +21,7 @@ For a full referee-grade pass when a draft is close to circulating, use the
 
 `writing-guide.md` is the only writing standard this project has. Never start a
 second file of conventions beside it, and never put a prose rule anywhere else —
-not in `CLAUDE.md`, not in a section of `state.md`. A rule about writing goes
+not in `CLAUDE.md`, not in a section of the state. A rule about writing goes
 into the guide, in the section it bears on. Two places to look means neither is
 definitive.
 

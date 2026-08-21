@@ -6,7 +6,7 @@ is the whole of it. There is no session-wide hook and no tool-call capture: an
 exhaustive record of every prompt and every tool call runs to tens of megabytes
 a project, cannot go in git, and answers none of the questions people actually
 ask. What answers those is a decision written down with its reason, which is
-`state.md`'s changelog.
+the state entries.
 
 Read a slice when a specific question needs one:
 
@@ -15,7 +15,7 @@ Read a slice when a specific question needs one:
 What IS shared with coauthors, and deliberately:
 
 - `project/<author>/logs/runs.jsonl` — the run records. Committed.
-- `project/global/state.md` — the curated truth, with the changelog. When a
+- `project/global/state/` — the curated truth, one file per entry. When a
   debate resolves, the question, the decision, and the reason go here.
 
 This file's own output stays local, and so are the briefs. Both are the input to
