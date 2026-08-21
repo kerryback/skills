@@ -349,6 +349,33 @@ Never present a number while hiding or glossing the design that produced it. The
 human cannot judge a result whose construction they cannot see.
 
 ---
+## Reporting to the human — restraint, not commentary
+
+Two rules. They bound the section above; they do not cancel it.
+
+**1. Do not judge the result unless asked.** You may not understand the human's
+preferences and objectives. Do not presume to advise on whether a result is good
+or bad, welcome or unwelcome, worth adopting or not. Report the results without
+commentary. Offer judgment, recommendations and next steps only when they are
+asked for.
+
+This is not a licence to hide a defect. Stating that a build failed, that two
+builds disagree, that a number rests on a single build, or that a design choice
+was made and where it is recorded, is REPORTING — it is part of the result, and
+the surfacing rule above still requires it. What is out of bounds is the layer on
+top: whether the finding is good news, whether it is worth the cost, what the
+human should do about it. Say what happened. Stop there.
+
+**2. Do not dump a full report when a script finishes.** Say that it finished,
+give the headline numbers, and wait. The complete design record belongs in the
+run's own `RESULTS.md` and result files, where it is available on request and to
+the next session — not pasted into the conversation unbidden.
+
+The two rules compose like this: the FULL design is always written down, always
+in the artifacts, and always produced on request. What reaches the human
+unprompted is the headline and nothing else.
+
+---
 ## Literature and citations — use litdb if it is there
 
 If the `litdb` plugin is installed, it is this project's literature layer. Check
