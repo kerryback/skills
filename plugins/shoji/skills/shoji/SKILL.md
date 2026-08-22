@@ -150,6 +150,10 @@ PDF keeps the frame, the footer, and the slide numbers.
 - Keep the title's letter spacing. The tracking is what makes this design read
   the way it does — don't override `letter-spacing` on headings.
 - Relative paths for images and assets; the deck folder moves.
+- No long inline code inside a card, a stat, or a compared column. Inline code
+  never wraps, so one wide backticked string forces its column open and collapses
+  the rest of the row. Put commands and paths in a `.note`, a `.lead`, or a
+  fenced block, where the full panel width is available.
 - Preserve the user's wording when restyling an existing deck. Change classes
   and layout, not prose, unless asked.
 

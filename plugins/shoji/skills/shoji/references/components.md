@@ -95,6 +95,13 @@ look.
 `.cards` is the grid; `.cards-2` and `.cards-3` fix the column count. Card titles
 must be spans, never headings.
 
+Keep long inline code out of a card. Inline code never wraps, so a backticked
+string wider than the card forces that column open and squeezes the others into
+unreadable slivers that spill past the base rule — a three-card row with
+`/plugin install finance-data@kerryback-skills` in one card is enough to do it.
+Put the command in a `.note` under the row, or in a `.lead` above it, where the
+full panel width is available.
+
 ```markdown
 ::: {.cards .cards-3}
 ::: {.card}
@@ -238,7 +245,9 @@ rules:
 
 Fenced code blocks get a pale fill and a plum left rule; `highlight-style: github`
 in the front matter keeps the syntax colors quiet. Inline code sits in a tinted
-chip and never breaks across lines. LaTeX math renders through MathJax as usual.
+chip and never breaks across lines — which is why it does not belong in a card,
+a stat, or a compared column; anywhere narrow, it breaks the layout rather than
+wrapping. LaTeX math renders through MathJax as usual.
 
 ````markdown
 ```python
