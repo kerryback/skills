@@ -37,16 +37,36 @@ tunnel, and no waiting at the start of class. Ask Claude to check the setup and
 it reports whether the app is reachable, whether the token works, and whether a
 poll file loads.
 
-## Three ways in
+## Ways in, and the way out
 
 | | |
 | --- | --- |
 | `/survey <a question>` | that question, on the projector, now |
 | `/survey <a file>` | a poll you had Claude write earlier |
-| `/survey` | bring the room up; QR and join code on the projector, nothing loaded |
+| `/survey` | a new room; QR and join code on the projector, nothing loaded |
+| `/survey stop` | end the session; the display says "No session running" |
 
-"Write me a poll for Thursday" is the fourth, and it is ordinary conversation
+"Write me a poll for Thursday" is another, and it is ordinary conversation
 rather than a command — Claude writes the JSON file, and Thursday you load it.
+
+A question typed on the spot and a prepared file join the same session, so they
+share one menu. Bare `/survey` starts a new one: it ends whatever was left
+running, so Tuesday's class never opens with last Thursday's questions still in
+the menu. Ask for a new poll or a fresh session when loading a file and you get
+the same clean start.
+
+## The projector
+
+Claude opens the display on the machine it is running on. When that isn't the
+machine plugged into the projector, the other one goes to
+<https://poll.kerryback.com/display> and types the six-digit display code Claude
+prints at the start of the session. Both can be open at once and stay in sync,
+so you can advance questions from your own laptop while the room watches the
+podium screen.
+
+The display code is not the room code students type, and it never appears on the
+projector — it drives the deck. A new session mints a new one; the podium page
+waits on "No session running" in between and asks for the new code by itself.
 
 ## In the room
 
@@ -96,6 +116,7 @@ the popular answer is, and quiet students follow it.
 ## The app
 
 Source and HTTP API: <https://github.com/kerryback/survey>. It holds one session
-in memory and stores nothing, so a redeploy loses the class in progress and
-there is no history to mine afterwards. `results` downloads a CSV if you want
-one.
+in memory and stores nothing — no database, no export, no file on disk — so a
+redeploy loses the class in progress and there is no history to mine afterwards.
+Ask Claude how a question went while the session is still up and it reads the
+tallies off the live state; once the session ends they are gone.

@@ -27,7 +27,7 @@ Three ways in, and they are the same session underneath:
 | "write me a poll for Thursday" | you write the file; Thursday they load it |
 
 The third is ordinary conversation, not a command. What this skill gives it is
-the schema in section 4, so the file you write actually loads.
+the schema in section 5, so the file you write actually loads.
 
 `/survey` works out the question type from how the sentence is phrased. When the
 instructor would rather say than be guessed at, there is a command per type —
@@ -37,13 +37,23 @@ the type is settled, don't re-infer it from the wording.
 
 ## What to do with the argument
 
-1. Empty → `start`. Bring the room up with nothing loaded, so the welcome screen
-   with the QR is on the projector before it is needed.
+1. Empty → `start`. A new room with nothing loaded, so the welcome screen with
+   the QR is on the projector before it is needed. It ends whatever session was
+   still running, which is the point: class starts empty, not with last week's
+   questions in the menu.
 2. Names a file → `file`. It names a file if it ends in `.json`, contains a path
    separator, or matches something on disk. If it looks like a file but isn't
    there, say so and list the `.json` files in the folder — don't quietly turn
    `clsss-4.json` into a question about a filename.
-3. Anything else → `ask`. It is a question; write it out and put it up.
+3. Says to end it and nothing more — "stop", "end the session", "we're done",
+   "that's it for today" → `stop`. The room code dies and the projector goes to
+   "No session running" on its own. A sentence that ends with a question mark is
+   a question, not this.
+4. Anything else → `ask`. It is a question; write it out and put it up.
+
+`file` and `ask` join whatever is already running. When the instructor's wording
+says this is the start of something — "new poll", "fresh session", "start a new
+one with these" — pass `--new` and they get a new room instead.
 
 You are in front of a class. Don't ask a clarifying question, don't confirm
 first, don't think out loud. Make the call and push. Reading it wrong costs one
@@ -105,8 +115,8 @@ everything else, so it appears in the menu alongside the prepared questions and
 can be returned to later.
 
 Then report in one line: the question, its type, which answer you marked if any,
-and — only when the session just started — the student link and room code. Don't
-reprint the link for every question; it hasn't changed.
+and — only when the session just started — the student link, the room code and
+the display code. Don't reprint them for every question; they haven't changed.
 
 ## 2. `/survey <a file>`
 
@@ -114,16 +124,40 @@ reprint the link for every question; it hasn't changed.
 python3 "<skill-dir>/scripts/survey.py" file <path>
 ```
 
-The questions append and the pointer does not move, so loading a file at the top
-of class leaves the welcome screen up, and loading one mid-class doesn't yank the
-projector off the question the room is answering. Tell the instructor how many
-questions arrived and that the menu is on `m`.
+Add `--new` — `file <path> --new` — to end whatever was still running first and
+load the file into a new room with a new code. That is for the top of class when
+last week's session is still up; mid-class it would throw away the answers.
+
+Without it the questions append and the pointer does not move, so loading a file
+into a fresh room leaves the welcome screen up, and loading one mid-class doesn't
+yank the projector off the question the room is answering. Tell the instructor
+how many questions arrived and that the menu is on `m`.
 
 Everything appends, which is the rule worth knowing: a prepared file and a
-question typed on the spot go into the same growing session. Nothing the
-instructor types discards answers — only `stop` or `reset`, or asking outright.
+question typed on the spot go into the same growing session. Nothing discards
+answers except the four things that say they do — `start`, `--new`, `stop` and
+`reset` — so don't reach for any of them mid-class.
 
-## 3. Running it
+## 3. Getting the projector up
+
+The script opens the display in a browser on this machine, which is right when
+this machine is the one plugged into the projector.
+
+When it isn't — a podium PC, a second laptop, an iPad — the other machine goes
+to <https://poll.kerryback.com/display> and types the six-digit display code,
+which is in the JSON as `display_code`. So read that code out at the start of a
+session, along with the student link and the room code. It is not the room code
+and it is never shown on the projector: it drives the deck, and a code on screen
+is a code the back row can photograph.
+
+Both screens can be open at once and they stay in sync, so the instructor can
+advance questions from a laptop while the room watches the podium screen.
+
+The code lasts as long as the session. A new session mints a new one, so the
+podium screen asks for it again next class — it sits on the display page between
+classes and puts the box up by itself when a session starts.
+
+## 4. Running it
 
 The instructor's job, not yours. It is all on the display page, and the keyboard
 beats the buttons:
@@ -161,7 +195,7 @@ Opinion questions have nothing to bias, so they draw live.
 Students see their own question and their own answer, never the tally. The
 projector is where the room looks together.
 
-## 4. Writing a poll before class
+## 5. Writing a poll before class
 
 A poll file is JSON. Put it in the course folder, named for the class it belongs
 to — `class-4-duration.json` — so it can be run again next term.
@@ -230,23 +264,23 @@ python3 "<skill-dir>/scripts/survey.py" check <file>
 - Ask a scale question before deciding whether to move on. It is the cheapest
   way to find out you have lost the room.
 
-## 5. Afterwards
+## 6. Afterwards
 
 ```
 python3 "<skill-dir>/scripts/survey.py" status     # live state + every tally
-python3 "<skill-dir>/scripts/survey.py" results    # download the CSV
 python3 "<skill-dir>/scripts/survey.py" stop       # end the session
 python3 "<skill-dir>/scripts/survey.py" reset      # empty it, keep the room open
 ```
 
 `status` is how you answer "how did they do on question 3" without opening
-anything. `results` writes a CSV into the current folder — one row per option,
-correct answers flagged, nothing identifying a student. It is optional; skip it
-if the answers were only for the room.
+anything. It reads the tallies out of the running session, and it is the only
+way to see them afterwards: nothing is written down and there is no file to
+keep. When the session ends, the answers are gone.
 
-`stop` ends the class: the room code stops working and the projector page says
-so. Leaving a session running between classes is fine too — the next `file` or
-`ask` appends to it, so `stop` first if you want a clean start and a new code.
+`stop` ends the class: the room code stops working, and every projector and
+phone still connected goes to "No session running" without anybody touching
+them. Leaving a session running between classes is fine too — `start` and
+`--new` clear it on their own next time.
 
 ## Question types
 
@@ -261,9 +295,11 @@ so. Leaving a session running between classes is fine too — the next `file` or
 
 ## Notes
 
-- Nothing is stored. The session lives in the server's memory, so a redeploy of
-  the app loses the class in progress. Don't push to `kerryback/survey` on a
-  class day, and pull the CSV before `stop` if you want it.
+- Nothing is stored, and nothing is downloadable. The session lives in the
+  server's memory and never touches a disk, which is what makes the anonymity
+  real. A redeploy of the app loses the class in progress, so don't push to
+  `kerryback/survey` on a class day. If a tally matters after class, read it off
+  `status` while the session is still up.
 - The room code is fresh for each session and shown on the welcome screen. It
   keeps a forwarded link from letting outsiders in; it is not in the URL.
 - The QR carries the code, so a student who scans it only has to tap Join. One

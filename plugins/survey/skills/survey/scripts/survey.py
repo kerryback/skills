@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """The front door for `/survey`. One command, whatever state the room is in.
 
-  survey.py start                bring the room up; join link on the projector
+  survey.py start                a new room, nothing loaded; join link up
   survey.py ask                  one question, read as JSON on stdin, live now
   survey.py file <path>          add a prepared poll file to the session
   survey.py status               what is running, and what the tally looks like
-  survey.py results              download the CSV
   survey.py stop                 end the session
   survey.py check [<file>]       is the app reachable, is the token good
 
@@ -16,7 +15,9 @@ only the standard library, so the plugin has no dependencies to install and the
 first `/survey` of a term is as fast as the hundredth.
 
 `ask` and `file` create the session if there isn't one, so the first command of a
-class is one command.
+class is one command. `start`, and `--new` on either of those two, first throws
+away whatever was still running, so a class never opens with last week's
+questions in the menu.
 
 Prints JSON on stdout. Claude reads that and tells the instructor what happened.
 """
@@ -153,11 +154,19 @@ def api(path: str, payload: dict | None = None, method: str | None = None,
 
 
 def facts(body: dict) -> dict:
-    """The three things that go on the projector."""
+    """What the instructor needs to say out loud, and to get the screen up.
+
+    Two audiences in one dict. The link and the room code are for the room. The
+    display page and its code are for whatever machine is driving the projector
+    -- often not this one, which is why the six digits exist alongside the long
+    URL this script can open by itself.
+    """
     return {
         "student_link": body.get("student_url", ""),
         "room_code": body.get("room_code", ""),
         "display_url": body.get("display_url", ""),
+        "display_page": body.get("display_page", ""),
+        "display_code": body.get("display_code", ""),
     }
 
 
@@ -187,12 +196,33 @@ def read_deck(path_text: str) -> tuple[dict, str]:
 # --- subcommands --------------------------------------------------------------
 
 
+def clear(state: dict) -> bool:
+    """End the session described by `state`, if there is one. True if there was.
+
+    Stop rather than reset, so the room code dies with the session: a link
+    forwarded last week shouldn't let anyone answer this week's questions.
+    """
+    if not state.get("running"):
+        return False
+    api("/api/stop", {})
+    return True
+
+
 def cmd_start(args) -> None:
+    """A new room, every time.
+
+    A session outlives the class that made it -- the app holds it in memory
+    until something replaces it -- so this ends whatever is still running
+    before opening its own. Otherwise Tuesday starts with last Thursday's
+    questions and answers already in the menu.
+    """
+    replaced = clear(api("/api/state"))
     body = api("/api/session", {})
     open_display(body, args.no_open)
     out({
         "ok": True,
         "started": body.get("started", False),
+        "replaced": replaced,
         **facts(body),
         "questions": body.get("questions", 0),
         "here": body.get("here", 0),
@@ -211,6 +241,9 @@ def cmd_ask(args) -> None:
         return
 
     before = api("/api/state")
+    replaced = args.new and clear(before)
+    if replaced:
+        before = {}
     body = api("/api/question", question)
     started = not before.get("running")
     if started:
@@ -218,6 +251,7 @@ def cmd_ask(args) -> None:
     out({
         "ok": True,
         "started": started,
+        "replaced": replaced,
         "asked": body.get("text"),
         "type": body.get("type"),
         "index": body.get("index"),
@@ -229,6 +263,9 @@ def cmd_ask(args) -> None:
 def cmd_file(args) -> None:
     raw, name = read_deck(args.path)
     before = api("/api/state")
+    replaced = args.new and clear(before)
+    if replaced:
+        before = {}
     body = api("/api/deck", {"name": name, "deck": raw})
     started = not before.get("running")
     if started:
@@ -236,6 +273,7 @@ def cmd_file(args) -> None:
     out({
         "ok": True,
         "started": started,
+        "replaced": replaced,
         "title": body.get("title"),
         "added": body.get("added"),
         "types": body.get("types"),
@@ -264,41 +302,8 @@ def cmd_status(args) -> None:
     })
 
 
-def cmd_results(args) -> None:
-    """Download the CSV into the folder the instructor is working in."""
-    base, token = require_token()
-    request = urllib.request.Request(
-        f"{base}/api/results.csv",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-            disposition = response.headers.get("Content-Disposition", "")
-            body = response.read().decode()
-    except urllib.error.HTTPError as exc:
-        raw = exc.read().decode(errors="replace")
-        try:
-            message = json.loads(raw).get("error") or json.loads(raw).get("detail")
-        except json.JSONDecodeError:
-            message = None
-        if exc.code == 409:
-            die("Nothing is running, so there are no answers to write.")
-        die(str(message or raw.strip() or f"HTTP {exc.code}"))
-        return
-    except (urllib.error.URLError, OSError) as exc:
-        die(f"Couldn't reach {base}: {exc}")
-        return
-
-    name = "survey-results.csv"
-    marker = 'filename="'
-    if marker in disposition:
-        name = disposition.split(marker, 1)[1].split('"', 1)[0] or name
-    target = Path(args.into or Path.cwd()) / name
-    target.write_text(body)
-    out({"ok": True, "path": str(target), "rows": max(0, len(body.splitlines()) - 1)})
-
-
 def cmd_stop(args) -> None:
+    """End the class. The projector says "No session running" by itself."""
     body = api("/api/stop", {})
     out({"ok": True, "running": False, "stopped": bool(body.get("stopped"))})
 
@@ -358,18 +363,19 @@ def main() -> None:
                         help="don't open the display in a browser")
     subs = parser.add_subparsers(dest="command", required=True)
 
-    subs.add_parser("start", help="bring the room up with nothing loaded")
+    subs.add_parser("start", help="a new room, nothing loaded")
 
     ask = subs.add_parser("ask", help="put one question up now (JSON on stdin)")
     ask.add_argument("json", nargs="?", help="the question as JSON, or - for stdin")
+    ask.add_argument("--new", action="store_true",
+                     help="end any session still running first")
 
     add = subs.add_parser("file", help="add a prepared poll file to the session")
     add.add_argument("path")
+    add.add_argument("--new", action="store_true",
+                     help="end any session still running first")
 
     subs.add_parser("status", help="what's running, and the tally so far")
-
-    got = subs.add_parser("results", help="download the CSV")
-    got.add_argument("--into", help="folder to write it to (default: here)")
 
     subs.add_parser("stop", help="end the session")
     subs.add_parser("reset", help="empty the session, keeping the room open")
@@ -383,7 +389,6 @@ def main() -> None:
         "ask": cmd_ask,
         "file": cmd_file,
         "status": cmd_status,
-        "results": cmd_results,
         "stop": cmd_stop,
         "reset": cmd_reset,
         "check": cmd_check,

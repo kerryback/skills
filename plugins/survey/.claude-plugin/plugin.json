@@ -1,6 +1,6 @@
 {
   "name": "survey",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Put a question to the class and show the answers on the projector. Type /survey followed by the question and it goes up immediately \u2014 Claude reads the sentence, works out the question type and the right answer, and the app runs it: multiple choice, select all that apply, word clouds, confidence scales, numeric estimates, and rankings, all updating live as students answer. /survey with a filename loads a poll written before class, and the projector's menu jumps to any question at any time. Runs at a fixed public address, so students join with no tunnel and no waiting. Anonymous by design, so concept checks get honest answers.",
   "author": {
     "name": "Kerry Back"
