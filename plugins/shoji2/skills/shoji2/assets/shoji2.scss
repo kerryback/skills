@@ -1,0 +1,879 @@
+/*-- scss:defaults --*/
+
+// Shoji 2 — a Quarto reveal.js theme derived from the PowerPoint "Shoji" design.
+// Palette and typography come from that theme:
+//   dk2 #595460 (plum), lt2 #EBEDEB (pale), accent1 #97A7B8 (dusty blue),
+//   bold letter-spaced titles, generous line spacing, offset rectangular frame.
+//
+// This is shoji with the frame pulled in: thinner rules, a shallower title band,
+// a narrower left seam, a base rule dropped closer to the foot, and tighter
+// margins — about 29% more text area than shoji on the same 1280×720 canvas.
+// The type is set 12% smaller to match, so a slide holds noticeably more.
+// Same class vocabulary as shoji: a deck can be switched over by swapping the
+// `theme:` line.
+
+$plum:       #595460;
+$plum-dark:  #443f4c;
+$blue:       #97A7B8;
+$blue-deep:  #6f8497;
+$pale:       #EBEDEB;
+$panel:      #fbfbfa;
+$ink:        #3b3842;
+$ink-muted:  #6f6b77;
+$sage:       #A5B592;
+$sand:       #D1C499;
+
+// Meiryo is the PowerPoint theme font; Zen Kaku Gothic New is the closest
+// web-available match, with Meiryo first for anyone who has it installed.
+@import url('https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+$font-family-sans-serif: Meiryo, 'Zen Kaku Gothic New', 'Segoe UI', system-ui, -apple-system, sans-serif;
+$font-family-monospace: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+
+$presentation-font-size-root: 28px;
+$presentation-line-height: 1.5;
+$presentation-h1-font-size: 1.7em;
+$presentation-h2-font-size: 1.4em;
+$presentation-h3-font-size: 0.8em;
+$presentation-heading-font-weight: 700;
+$presentation-heading-line-height: 1.25;
+
+$body-color: $ink;
+$body-bg: $pale;
+$presentation-heading-color: $plum;
+$link-color: $blue-deep;
+$link-color-hover: $plum;
+$code-block-font-size: 0.7em;
+$code-color: $plum;
+
+/*-- scss:rules --*/
+
+// ── The grid ────────────────────────────────────────────────────────────
+// The source design is a Mondrian-ish grid: every rectangle — pale, white,
+// plum, blue — lands on one of a handful of shared lines, and thin plum rules
+// run along them. Measuring every layout in the .pptx, the lines that recur are
+// x ≈ 8%, 38% and 91%, and y ≈ 12%, 19%, 50%, 69% and 87%. Those are the
+// constants below; each layout is just a different selection of rectangles
+// from them, which is what keeps slides aligned with each other.
+//
+// Shoji 2 moves the outer lines outward — seam to 5.6%, right column to 94%,
+// the top line to 9% and the base rule to 92% — and halves the visual weight of
+// the blocks that sit on them. The interior lines (38% and 50%) do not move, so
+// the picture layouts and the foot strip still divide where they did. What
+// changes is how much of the canvas the frame consumes, not the design's
+// proportions.
+//
+// The frame is painted as layered background rectangles on the slide itself
+// rather than with pseudo-elements: a layout needs five or six rectangles and
+// an element has only two pseudo-elements. Backgrounds also sit behind content
+// by definition, so no z-index juggling is needed.
+//
+// Everything is in px because the reveal canvas is a fixed 1280×720 (see the
+// front matter): px here are canvas units, and scale with the deck. Percentages
+// would be worse than they look — percentage padding resolves against the
+// slide's WIDTH even on the top and bottom, so it cannot line up with a
+// horizontal gridline.
+//
+// 1280×720 is 16:9, the shape of the screen the deck is shown on. The canvas
+// keeps its own aspect ratio when reveal scales it, so a canvas that is not the
+// window's shape gets letterboxed — the frame's rectangles stay inside a fixed
+// region while the pale viewport background fills the rest of the window. The
+// front matter's `max-scale` matters for the same reason: reveal's default caps
+// the canvas at 2× (2560px wide here), and past that the deck simply stops
+// growing.
+
+$canvas-w: 1280px;
+$canvas-h: 720px;
+$rule:      4px;
+
+// vertical lines
+$vx-seam:  72px;   //  5.6% — left seam
+$vx-split: 486px;  // 38%   — divides the foot strip
+$vx-col:   1204px; // 94%   — right column, on band slides
+$vx-mid:   678px;  // the panel's midpoint, for the picture layouts
+
+// horizontal lines
+$hy-top:   64px;   //  9%  — top of a centred band, top of an unbanded panel
+$hy-band:  108px;  // 15%  — foot of the title band on a content slide
+$hy-mid:   360px;  // 50%
+$hy-low:   552px;  // 77%  — top of a foot band, one band-height above the base
+$hy-base:  660px;  // 92%  — the base rule, on every slide
+
+// text margins, measured off those lines
+$pad-left:   $vx-seam + 44px;                 // 116px
+$pad-right:  $canvas-w - $vx-col;              //  76px, so content ends on the right line
+$pad-bottom: $canvas-h - $hy-base + 20px;     //  80px
+
+// one gutter for cards, stats and columns, so their edges agree slide to slide
+$col-gap: 20px;
+
+@function block($color) {
+  @return linear-gradient($color, $color);
+}
+
+.reveal-viewport {
+  background: $pale;
+}
+
+.reveal {
+  letter-spacing: 0.012em;
+}
+
+// ── Content slides ──────────────────────────────────────────────────────
+// Every leaf section (a stack's children, or a plain slide). The default puts
+// the title in a plum band across the top, over a full-width panel, with the
+// blue block in the foot strip — the source deck's two-content layout.
+// `.band-bottom`, `.plain-title` and the picture layouts select different
+// rectangles, so consecutive slides need not share one silhouette.
+//
+// Each background-image list runs front-to-back: the first rectangle paints on
+// top of the ones after it.
+
+.reveal .slides > section:not(.stack),
+.reveal .slides > section.stack > section {
+  // reveal uses content-box, which would add the padding below to the slide
+  // height and push the frame off the canvas.
+  box-sizing: border-box;
+  height: 100%;
+  text-align: left;
+  padding: $hy-band + 28px $pad-right $pad-bottom $pad-left;
+
+  background-color: $pale;
+  background-repeat: no-repeat;
+  background-image:
+    block($plum),   // rule dividing the foot strip
+    block($blue),   // blue block in the foot strip
+    block($plum),   // base rule, full bleed
+    block($panel);  // the white panel
+  background-position:
+    #{$vx-split} #{$hy-base + $rule},
+    0 #{$hy-base + $rule},
+    0 #{$hy-base},
+    0 #{$hy-band};
+  background-size:
+    #{$rule} #{$canvas-h - $hy-base - $rule},
+    #{$vx-split} #{$canvas-h - $hy-base - $rule},
+    #{$canvas-w} #{$rule},
+    #{$canvas-w} #{$hy-base - $hy-band};
+
+  // The band. Absolute, so a two-line title grows into it rather than pushing
+  // the body text down.
+  > h2 {
+    box-sizing: border-box;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: $hy-band;
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 0 $pad-right 0 $pad-left;
+    background: $plum;
+    color: $panel;
+    font-size: 1.2em;
+    letter-spacing: 0.075em;
+  }
+
+  // ── Band along the foot instead ──
+  &.band-bottom {
+    padding: 28px $pad-right #{$canvas-h - $hy-low + 28px} $pad-left;
+
+    background-image:
+      block($plum),   // seam rule, full height
+      block($blue),   // blue block, beside the band
+      block($plum),   // base rule, full bleed
+      block($panel);  // the white panel
+    background-position:
+      #{$vx-seam} 0,
+      0 #{$hy-low},
+      0 #{$hy-base},
+      #{$vx-seam + $rule} 0;
+    background-size:
+      #{$rule} #{$canvas-h},
+      #{$vx-seam} #{$hy-base - $hy-low},
+      #{$canvas-w} #{$rule},
+      #{$canvas-w - $vx-seam - $rule} #{$hy-low};
+
+    > h2 {
+      top: $hy-low;
+      left: $vx-seam + $rule;
+      height: $hy-base - $hy-low;
+      padding-left: $pad-left - $vx-seam - $rule;
+    }
+  }
+
+  // ── No band: the title sits in plum on the panel ──
+  &.plain-title,
+  &.no-title,
+  &.image-left,
+  &.image-right,
+  &:has(> h2:empty) {
+    padding-top: $hy-top + 28px;
+
+    background-image:
+      block($plum),   // seam rule, full height
+      block($blue),   // blue block in the left margin
+      block($plum),   // plum block, top right corner
+      block($plum),   // base rule, full bleed
+      block($panel);  // the white panel
+    background-position:
+      #{$vx-seam} 0,
+      0 #{$hy-mid},
+      #{$vx-col} 0,
+      0 #{$hy-base},
+      #{$vx-seam + $rule} #{$hy-top};
+    background-size:
+      #{$rule} #{$canvas-h},
+      #{$vx-seam} #{$hy-base - $hy-mid},
+      #{$canvas-w - $vx-col} #{$hy-top},
+      #{$canvas-w} #{$rule},
+      #{$canvas-w - $vx-seam - $rule} #{$hy-base - $hy-top};
+
+    > h2 {
+      position: static;
+      display: block;
+      height: auto;
+      padding: 0;
+      background: none;
+      color: $plum;
+      font-size: 1.4em;
+      letter-spacing: 0.045em;
+      margin: 0 0 0.7em 0;
+    }
+  }
+
+  // ...and these hide the heading altogether. Written after the group above,
+  // which restores `display: block` on every title it touches.
+  &.no-title > h2,
+  > h2:empty {
+    display: none;
+  }
+}
+
+// Stacks are containers only — no frame of their own.
+.reveal .slides > section.stack {
+  background: none;
+}
+
+// ── The band slide ──────────────────────────────────────────────────────
+// Used by the title slide and by section dividers, and taken from the source
+// deck's "Title Only" layout: a plum band across the middle, the blue block
+// filling the left margin beside it, blue blocks in the two right-hand corners,
+// and a pale column holding the band off the right edge.
+
+@mixin grid-band-slide {
+  background-color: $pale;
+  background-repeat: no-repeat;
+  background-image:
+    block($plum),   // seam rule, in the top margin
+    block($plum),   // seam rule, in the foot margin
+    block($blue),   // blue block in the left margin
+    block($blue),   // blue block, top right corner
+    block($blue),   // blue block, bottom right corner
+    block($pale),   // pale column, holding the band off the right edge
+    block($plum);   // the band
+  background-position:
+    #{$vx-seam} 0,
+    #{$vx-seam} #{$hy-base},
+    0 #{$hy-top},
+    #{$vx-col} 0,
+    #{$vx-col} #{$hy-base},
+    #{$vx-col} #{$hy-top},
+    #{$vx-seam} #{$hy-top};
+  background-size:
+    #{$rule} #{$hy-top},
+    #{$rule} #{$canvas-h - $hy-base},
+    #{$vx-seam} #{$hy-base - $hy-top},
+    #{$canvas-w - $vx-col} #{$hy-top},
+    #{$canvas-w - $vx-col} #{$canvas-h - $hy-base},
+    #{$canvas-w - $vx-col} #{$hy-base - $hy-top},
+    #{$canvas-w - $vx-seam} #{$hy-base - $hy-top};
+}
+
+// ── Title slide ─────────────────────────────────────────────────────────
+
+.reveal .slides > section#title-slide {
+  box-sizing: border-box;
+  padding: 0 $pad-right 0 $pad-left;
+  // reveal sets `display: block` inline on the current slide, so !important is
+  // the only way to centre the content vertically.
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
+  @include grid-band-slide;
+
+  h1.title {
+    color: $panel;
+    font-size: 1.55em;
+    line-height: 1.2;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    margin: 0 0 0.45em 0;
+  }
+
+  p.subtitle {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.72em;
+    font-weight: 400;
+    letter-spacing: 0.09em;
+    margin: 0 0 1.1em 0;
+  }
+
+  .quarto-title-authors,
+  .quarto-title-author,
+  .author,
+  .institute,
+  p.date,
+  .date {
+    display: block;
+    color: rgba(255, 255, 255, 0.75);
+    letter-spacing: 0.1em;
+    margin: 0.12em 0;
+    padding: 0;
+    text-align: left;
+    justify-content: flex-start;
+  }
+
+  .quarto-title-authors,
+  .author,
+  .institute,
+  p.date,
+  .date {
+    font-size: 0.55em;
+  }
+
+  .quarto-title-author,
+  .quarto-title-author-name {
+    font-size: 1em;
+    color: inherit;
+  }
+}
+
+// ── Section dividers ────────────────────────────────────────────────────
+// Any level-1 heading slide, or anything tagged {.divider}.
+
+.reveal .slides > section.stack > section.level1,
+.reveal .slides > section.stack > section.divider,
+.reveal .slides > section:not(.stack).divider {
+  box-sizing: border-box;
+  padding: 0 $pad-right 0 $pad-left;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  @include grid-band-slide;
+
+  // undoes the content-slide title band
+  h1,
+  > h2 {
+    position: static;
+    display: block;
+    height: auto;
+    background: none;
+    color: $panel;
+    font-size: 1.4em;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    margin: 0;
+    padding: 0;
+  }
+
+  p, .lead {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.66em;
+    letter-spacing: 0.07em;
+    margin: 0.7em 0 0 0;
+  }
+}
+
+// ── Headings ────────────────────────────────────────────────────────────
+
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4 {
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: none;
+  margin: 0 0 0.7em 0;
+  color: $plum;
+}
+
+.reveal h3 {
+  color: $blue-deep;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-bottom: 0.6em;
+}
+
+// Same look as an h3, for use inside a fenced div — a markdown heading there
+// makes Pandoc turn the div into a nested <section>, which reveal then treats
+// as a vertical stack and navigation breaks.
+.reveal .eyebrow {
+  display: block;
+  color: $blue-deep;
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-bottom: 0.6em;
+}
+
+.reveal h4 {
+  font-size: 0.85em;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4em;
+}
+
+// Slides with no title reclaim the space.
+.reveal .slides section h2:empty,
+.reveal .slides section.no-title h2 {
+  display: none;
+}
+
+// ── Body text and lists ─────────────────────────────────────────────────
+
+.reveal p {
+  line-height: 1.5;
+}
+
+.reveal ul,
+.reveal ol {
+  margin-left: 0.2em;
+}
+
+.reveal li {
+  margin-bottom: 0.4em;
+  line-height: 1.45;
+}
+
+// Quarto sets list-style-type on nested lists with `.reveal ul ul`, which
+// would otherwise draw a second marker beside the square below.
+.reveal ul,
+.reveal ul ul,
+.reveal ul ul ul {
+  list-style: none;
+}
+
+.reveal ul {
+  > li {
+    position: relative;
+    padding-left: 0.9em;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.55em;
+      width: 0.3em;
+      height: 0.3em;
+      background: $blue-deep;
+    }
+  }
+
+  ul > li::before {
+    background: none;
+    border: 1px solid $blue-deep;
+  }
+}
+
+.reveal strong {
+  color: $plum;
+  font-weight: 700;
+}
+
+.reveal em {
+  color: $ink-muted;
+  font-style: italic;
+}
+
+// A quiet, letter-spaced standfirst line under a title.
+.reveal .lead {
+  color: $ink-muted;
+  font-size: 0.82em;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.9em;
+}
+
+.reveal blockquote {
+  background: none;
+  box-shadow: none;
+  border-left: 4px solid $blue;
+  margin: 0.7em 0;
+  padding: 0.15em 0 0.15em 0.9em;
+  font-style: normal;
+  color: $ink-muted;
+  width: auto;
+}
+
+// ── Cards ───────────────────────────────────────────────────────────────
+
+.reveal .cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: $col-gap;
+  margin: 0.5em 0;
+}
+
+.reveal .cards-2 { grid-template-columns: repeat(2, 1fr); }
+.reveal .cards-3 { grid-template-columns: repeat(3, 1fr); }
+
+.reveal .card {
+  background: $pale;
+  border-top: 4px solid $plum;
+  padding: 0.7em 0.8em;
+  font-size: 0.78em;
+  line-height: 1.4;
+
+  .card-title,
+  h4 {
+    display: block;
+    color: $plum;
+    font-weight: 700;
+    font-size: 1em;
+    letter-spacing: 0.05em;
+    margin: 0 0 0.4em 0;
+  }
+
+  p { margin: 0 0 0.4em 0; }
+  p:last-child { margin-bottom: 0; }
+  ul { margin: 0.2em 0 0 0; }
+  li { margin-bottom: 0.2em; }
+}
+
+.reveal .card-blue { border-top-color: $blue; }
+.reveal .card-sage { border-top-color: $sage; }
+.reveal .card-sand { border-top-color: darken($sand, 14%); }
+
+// ── Callouts ────────────────────────────────────────────────────────────
+
+.reveal .note {
+  background: $pale;
+  border-left: 4px solid $blue-deep;
+  padding: 0.55em 0.9em;
+  margin: 0.6em 0;
+  font-size: 0.8em;
+  line-height: 1.4;
+
+  p:last-child { margin-bottom: 0; }
+}
+
+.reveal .note-plum { border-left-color: $plum; }
+
+// Quarto's own callouts, restyled to match `.note`. Quarto styles them with
+// `.reveal div.callout.callout-style-default…` selectors, so these have to
+// carry the same class chain to win. Padding lives on the callout itself so
+// the title and the body share one left edge — putting it on the inner
+// elements would resolve their `em` against two different font sizes.
+.reveal div.callout.callout-style-default,
+.reveal div.callout.callout-style-simple {
+  display: block;
+  border: none;
+  border-left: 4px solid $blue-deep;
+  border-radius: 0;
+  box-shadow: none;
+  background: $pale;
+  margin: 0.6em 0;
+  padding: 0.5em 0.9em;
+  // matches `.note`, and keeps the inner `em` paddings on one scale
+  font-size: 0.8em;
+
+  // `div.callout-title` rather than `.callout-title`: Quarto's own rules name
+  // the element too, and would otherwise win on specificity (its `opacity`
+  // fades the title, its padding pulls it off the body's left edge).
+  div.callout-title {
+    background: transparent !important;
+    padding: 0;
+    opacity: 1;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.15em;
+  }
+
+  div.callout-title,
+  div.callout-title p,
+  div.callout-title strong {
+    color: $plum;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  // The default icons are fixed-color SVGs that fight the palette.
+  .callout-icon-container { display: none; }
+
+  div.callout-body,
+  div.callout-body-container,
+  div.callout-content {
+    padding: 0;
+    font-size: 1em;
+
+    p:last-child { margin-bottom: 0; }
+  }
+
+  &.callout-note { border-left-color: $blue-deep; }
+  &.callout-important { border-left-color: $plum; }
+  &.callout-tip { border-left-color: $sage; }
+  &.callout-warning { border-left-color: darken($sand, 20%); }
+  &.callout-caution { border-left-color: darken($sand, 20%); }
+}
+
+// ── Statistics ──────────────────────────────────────────────────────────
+
+.reveal .stats {
+  display: flex;
+  gap: $col-gap;
+  margin: 0.7em 0 1em 0;
+}
+
+.reveal .stat {
+  flex: 1;
+
+  .stat-value {
+    display: block;
+    font-size: 1.7em;
+    font-weight: 700;
+    color: $plum;
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+
+  .stat-label {
+    display: block;
+    margin-top: 0.4em;
+    font-size: 0.55em;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    line-height: 1.3;
+    color: $ink-muted;
+  }
+}
+
+// ── Numbered steps ──────────────────────────────────────────────────────
+// Works both as ::: {.steps} around a numbered list and as a class on the
+// list itself.
+
+.reveal .steps {
+  counter-reset: step;
+  margin: 0.5em 0 0 0;
+}
+
+.reveal ol.steps,
+.reveal .steps ol,
+.reveal .steps ul {
+  list-style: none;
+  margin-left: 0;
+  padding-left: 0;
+
+  > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 2.2em;
+    margin-bottom: 0.65em;
+    font-size: 0.86em;
+
+    &::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0.05em;
+      width: 1.6em;
+      height: 1.6em;
+      background: $plum;
+      color: $panel;
+      font-size: 0.8em;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+}
+
+// ── Columns ─────────────────────────────────────────────────────────────
+
+.reveal .columns {
+  gap: $col-gap;
+}
+
+// Quarto lays columns out as 50%-wide inline-blocks; without border-box any
+// padding or border pushes the second column onto its own line.
+.reveal .columns > .column {
+  box-sizing: border-box;
+}
+
+.reveal .column > h3:first-child,
+.reveal .column > h4:first-child {
+  margin-top: 0;
+}
+
+// A plum hairline between two compared columns.
+.reveal section.compare .columns > .column:first-child {
+  border-right: 1px solid rgba($plum, 0.3);
+  padding-right: 1.3em;
+}
+
+.reveal section.compare .columns > .column + .column {
+  padding-left: 1.3em;
+}
+
+// ── Tables ──────────────────────────────────────────────────────────────
+
+.reveal table {
+  border-collapse: collapse;
+  font-size: 0.72em;
+  margin: 0.5em 0;
+  width: 100%;
+
+  th {
+    background: $plum;
+    color: $panel;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    padding: 0.5em 0.7em;
+    border: none;
+    text-align: left;
+  }
+
+  td {
+    padding: 0.45em 0.7em;
+    border: none;
+    border-bottom: 1px solid rgba($plum, 0.14);
+  }
+
+  tbody tr:nth-child(even) td {
+    background: rgba($pale, 0.75);
+  }
+}
+
+// ── Code ────────────────────────────────────────────────────────────────
+
+.reveal div.sourceCode,
+.reveal pre {
+  box-sizing: border-box;
+  box-shadow: none;
+  width: 100%;
+  margin: 0.5em 0;
+  background: #f1f2f0;
+  border-left: 4px solid $plum;
+}
+
+.reveal pre {
+  border-left: none;
+}
+
+.reveal pre code {
+  padding: 0.7em 0.9em;
+  background: transparent;
+  max-height: 20em;
+}
+
+.reveal code {
+  font-family: $font-family-monospace;
+  letter-spacing: 0;
+}
+
+.reveal :not(pre) > code {
+  background: rgba($blue, 0.25);
+  color: $plum-dark;
+  padding: 0.05em 0.3em;
+  // an identifier split across two lines reads as two identifiers
+  white-space: nowrap;
+}
+
+// ── Figures ─────────────────────────────────────────────────────────────
+
+// px, not vh: inside the scaled canvas a vh resolves against the browser window,
+// so a vh cap makes the same figure a different size on every screen.
+.reveal img,
+.reveal figure img {
+  border: none;
+  box-shadow: none;
+  max-height: 470px;
+  object-fit: contain;
+}
+
+.reveal figcaption {
+  font-size: 0.58em;
+  letter-spacing: 0.06em;
+  color: $ink-muted;
+  text-align: left;
+  margin-top: 0.3em;
+}
+
+// Half-bleed image beside text, echoing the source deck's picture layouts.
+// Usage: {.image-left} or {.image-right} on the slide, with the image in a
+// ::: {.image-panel} div and the text in ::: {.content-panel}.
+.reveal .slides > section.image-left,
+.reveal .slides > section.image-right,
+.reveal .slides > section.stack > section.image-left,
+.reveal .slides > section.stack > section.image-right {
+  .image-panel {
+    position: absolute;
+    top: $hy-top;
+    bottom: $canvas-h - $hy-base;
+    width: $vx-mid - $vx-seam - $rule;
+    overflow: hidden;
+    z-index: 2;
+    margin: 0;
+
+    p { margin: 0; }
+
+    img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      max-height: none;
+      object-fit: cover;
+      margin: 0;
+    }
+  }
+
+  .content-panel { margin: 0; }
+}
+
+// The text column is carved out with the slide's own padding, so the image
+// can sit flush against the panel edge.
+.reveal .slides > section.image-left,
+.reveal .slides > section.stack > section.image-left {
+  padding-left: $vx-mid + 32px;
+
+  .image-panel { left: $vx-seam + $rule; }
+}
+
+.reveal .slides > section.image-right,
+.reveal .slides > section.stack > section.image-right {
+  padding-right: $canvas-w - $vx-mid + 32px;
+
+  .image-panel { left: $vx-mid; }
+}
+
+// ── Footer, slide number, progress ──────────────────────────────────────
+
+// `div.footer` and `opacity`: Quarto fades the footer with its own rule, which
+// takes it below a readable contrast on the pale page.
+.reveal div.footer,
+.reveal div.footer p {
+  color: $plum;
+  opacity: 1;
+  font-size: 0.5em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.reveal .slide-number {
+  background: transparent;
+  color: $plum;
+  font-size: 0.5em;
+  letter-spacing: 0.08em;
+}
+
+.reveal .progress {
+  color: $plum;
+  height: 4px;
+}
