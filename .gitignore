@@ -20,5 +20,12 @@
 # stays here so it can be worked on (or put back) without living on GitHub.
 plugins/cloning/
 
+# The lab variant of finance-data: same skill plus the licensed Sharadar Core US
+# Equity Bundle, reached over MotherDuck. Stays off GitHub because it documents
+# a licensed dataset and expects a MOTHERDUCK_TOKEN. This is what the lab638
+# containers run; plugins/finance-data is the free-sources skill that ships in
+# the marketplace, and the two must not be confused again.
+plugins/finance-data-augmented/
+
 # Browser-tool scratch: screenshots, console logs, and files it downloaded.
 .playwright-mcp/
