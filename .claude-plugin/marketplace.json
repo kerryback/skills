@@ -33,8 +33,12 @@
     {
       "name": "survey",
       "source": "./plugins/survey",
-      "version": "1.1.0",
       "description": "Put a question to the class and show the answers on the projector. Type `/survey What's the capital of France? Paris, Topeka or Frankfurt` and it goes up immediately \u2014 Claude reads the sentence, works out that it is multiple choice and which option is right, and the app runs it: multiple choice, select all that apply, word clouds, confidence scales, numeric estimates and rankings, each drawn live as answers arrive. `/survey <file>` loads a poll written before class, and the projector's menu jumps to any question at any time, so a prepared class is a set of questions to reach for rather than a queue to walk. Students answer at a fixed public address, so there is no tunnel to start and nothing to install beyond an API token. Anonymous by design: no names, no roster, nothing stored per student, and concept-check results stay hidden while voting is open so the room doesn't follow the leading bar."
+    },
+    {
+      "name": "cardstock",
+      "source": "./plugins/cardstock",
+      "description": "Build a slide deck in Kerry Back's Quarto reveal.js house style — a vendored theme with cards, section dividers, comparison tables, and step flows, rendered to HTML and exported to PDF, PowerPoint, or PNG. Use when the user invokes /cardstock, asks for a cardstock deck by name, or is editing a deck already built with it. For a general request to make slides or a presentation with no style specified, prefer the pptx skill."
     },
     {
       "name": "shoji",
@@ -45,7 +49,6 @@
     {
       "name": "shoji2",
       "source": "./plugins/shoji2",
-      "version": "1.0.0",
       "description": "Shoji with a slimmer frame and smaller type. The same plum, pale-gray and dusty-blue Quarto reveal.js theme drawn from the Shoji PowerPoint design, with the rules thinned to 4px, the title band shallower, the seam narrower and the margins tightened \u2014 29% more text area on the same 1280\u00d7720 canvas, set at 28px instead of 32px. Same class vocabulary as shoji: cards, callouts, stats, numbered steps, compared columns, half-bleed picture layouts. Use it when a deck is text- or code-heavy and was fighting the panel's edges; use shoji when the deck is sparse and wants the air."
     },
     {
