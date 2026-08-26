@@ -783,6 +783,104 @@ $col-gap: 20px;
   white-space: nowrap;
 }
 
+// ── Prompt box ──────────────────────────────────────────────────────────
+// For putting a prompt on a slide: the words you type to an AI, set in mono on
+// a dusty-blue field so they read as quoted input rather than as the deck's own
+// voice. `.box-title` labels it — "Prompt" is the house label.
+
+.reveal .prompt-box {
+  background: rgba($blue, 0.22);
+  border-left: 4px solid $blue-deep;
+  padding: 0.6em 0.9em;
+  margin: 0.6em 0;
+  font-family: $font-family-monospace;
+  font-size: 0.68em;
+  line-height: 1.55;
+  color: $ink;
+
+  .box-title {
+    display: block;
+    font-family: $font-family-sans-serif;
+    color: $plum;
+    font-weight: 700;
+    font-size: 1.15em;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.35em;
+  }
+
+  p { margin: 0 0 0.4em 0; }
+  p:last-child { margin-bottom: 0; }
+
+  code { background: none; padding: 0; color: inherit; white-space: pre-wrap; }
+}
+
+// ── Scroll box ──────────────────────────────────────────────────────────
+// A reading panel for something too long to fit and too whole to cut: a full
+// system prompt, a SKILL.md, a transcript. Ink on panel white, not the code
+// fill, so it stays legible at length. The wrapper div is the scroller — give
+// it a height inline and it handles the overflow. The `pre` rules inside undo
+// the theme's code styling, which otherwise caps the listing at 20em and gives
+// it a second scrollbar floating inside this one.
+//
+// The scrollbar is deliberately always visible: macOS hides overlay scrollbars
+// until something moves, so a clipped block just looks like it ends there.
+
+.reveal .box-scroll {
+  overflow-y: auto;
+  background: $panel;
+  border-left: 4px solid $plum;
+  padding: 0.6em 0.9em;
+  margin: 0.6em 0;
+  color: $ink;
+  line-height: 1.5;
+
+  &::-webkit-scrollbar {
+    width: 12px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba($plum, 0.10);
+  }
+
+  // min-height matters more than it looks: a 150-screen listing would
+  // otherwise get a thumb a few pixels tall.
+  &::-webkit-scrollbar-thumb {
+    background: $blue;
+    min-height: 40px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: $blue-deep;
+  }
+
+  div.sourceCode,
+  pre {
+    background: transparent;
+    border-left: none;
+    margin: 0;
+    width: 100%;
+  }
+
+  pre,
+  pre code {
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+  }
+}
+
+// Firefox ignores ::-webkit-scrollbar and wants scrollbar-color instead. Scoped
+// to this class: setting it unscoped makes Chromium fall back to its standard
+// overlay scrollbars and drop every rule above.
+@supports (-moz-appearance: none) {
+  .reveal .box-scroll {
+    scrollbar-width: auto;
+    scrollbar-color: $blue rgba($plum, 0.10);
+  }
+}
+
 // ── Figures ─────────────────────────────────────────────────────────────
 
 // px, not vh: inside the scaled canvas a vh resolves against the browser window,

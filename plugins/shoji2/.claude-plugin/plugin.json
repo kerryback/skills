@@ -1,6 +1,6 @@
 {
   "name": "shoji2",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Shoji with a slimmer frame and smaller type. The same plum, pale-gray and dusty-blue Quarto reveal.js theme drawn from the Shoji PowerPoint design, with the rules thinned to 4px, the title band shallower, the seam narrower and the margins tightened — 29% more text area on the same 1280×720 canvas, set at 28px instead of 32px. Same class vocabulary as shoji: cards, callouts, stats, numbered steps, compared columns, half-bleed picture layouts. Use it when a deck is text- or code-heavy and was fighting the panel's edges; use shoji when the deck is sparse and wants the air.",
   "author": {
     "name": "Kerry Back"

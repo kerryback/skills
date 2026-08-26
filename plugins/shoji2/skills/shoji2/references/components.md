@@ -259,6 +259,46 @@ def replicating_portfolio(u, d, r, cu, cd):
 The price is $C = \Delta S + B$.
 ````
 
+## Prompt box
+
+For showing a prompt — the words typed to an AI — on a slide. Mono type on a
+dusty-blue field, with a `.box-title` label across the top. The house label is
+"Prompt".
+
+```markdown
+::: {.prompt-box}
+::: {.box-title}
+Prompt
+:::
+Summarize revenue by category and chart the top five.
+:::
+```
+
+## Scroll box
+
+Some content is too long for a slide and should not be cut: a full system
+prompt, a whole SKILL.md, a long transcript. A scroll box — `.box-scroll` —
+scrolls the block inside the slide, with a scrollbar visible before you touch
+it, since macOS hides overlay scrollbars until something moves and a clipped
+block otherwise looks like it simply ends.
+
+It is a reading panel, not a code panel: ink on panel white, with the plum left
+rule. The wrapper is the scroller, so give it a height inline and let the
+content overflow. The `<pre>` is what keeps a prompt's line breaks and
+indentation, so use raw HTML here rather than a fenced div.
+
+````markdown
+```{=html}
+<div class="box-scroll" style="height:430px">
+<pre>...the long text...</pre>
+</div>
+```
+````
+
+Use it sparingly — one per deck is usually plenty. A slide the audience has to
+scroll is a slide they cannot read from the back of the room; it earns its place
+when the point *is* that the thing is long.
+
 ## Blockquote
 
 ```markdown
