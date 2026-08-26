@@ -286,8 +286,8 @@ them. Leaving a session running between classes is fine too — `start` and
 
 | type | students see | projector shows |
 | --- | --- | --- |
-| `choice` | tappable options, A/B/C | a pie, each slice labelled with its % of the people who answered |
-| `multi` | the same, tick any number, then Submit | a bar per option, measured against everyone who answered, so they add to more than 100% |
+| `choice` | tappable options, A/B/C | a bar per option, labelled with the number of people who picked it |
+| `multi` | the same, tick any number, then Submit | the same bars; the counts add to more than the number of people, since each person can pick several |
 | `wordcloud` | a text box | answers sized by how many said them |
 | `scale` | a row of numbers | distribution plus the mean |
 | `number` | a number box | histogram, mean, median, true answer marked |

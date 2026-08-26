@@ -147,13 +147,18 @@ function barRow(label, fraction, value, correct) {
   return row;
 }
 
+// The number on each bar is how many people picked it, not a share: a count is
+// the thing a room can act on ("nine of you") and it needs no arithmetic to
+// read. Bars are scaled to the largest option so the tallest one fills the
+// track -- with a share scale the whole chart is a stub until most of the room
+// has answered.
 function drawChoice(box, question, results, revealed) {
   const bars = el("div", "bars");
   const correct = new Set(revealed ? results.answer || [] : []);
+  const top = Math.max(1, ...results.options.map((option) => option.count));
   results.options.forEach((option, index) => {
-    const pct = Math.round(option.share * 100);
     bars.append(
-      barRow(option.text, option.share, `${option.count} · ${pct}%`, correct.has(index))
+      barRow(option.text, option.count / top, String(option.count), correct.has(index))
     );
   });
   box.append(bars);
