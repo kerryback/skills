@@ -131,7 +131,7 @@ result = df.groupby("Category")["Revenue"].sum()
 
 ::: {.prompt-box}
 ::: {.box-title}
-What you tell Claude
+Prompt
 :::
 Summarize revenue by category and chart the top five.
 :::
@@ -192,24 +192,31 @@ Inline shell command styling: `[quarto render deck.qmd]{.shell-cmd}`.
 - `{.quote-slide}` — dark quote slide (`.quote-text`, `.quote-source`,
   `.amber` for emphasis inside the quote).
 
-## Long listings you can scroll
+## Scroll box
 
 Some content is too long for a slide and should not be cut: a full system
-prompt, a whole SKILL.md, a long transcript. `.prompt-scroll` makes the block
-itself scroll inside the slide, with a scrollbar that is visible before you
-touch it — macOS hides overlay scrollbars until something moves, so a clipped
-block otherwise looks like it simply ends.
+prompt, a whole SKILL.md, a long transcript. A scroll box — `.box-scroll` —
+makes the block itself scroll inside the slide, with a scrollbar that is
+visible before you touch it — macOS hides overlay scrollbars until something
+moves, so a clipped block otherwise looks like it simply ends.
+
+It is a reading panel rather than a code panel: dark text on white, so text
+stays legible at length. That is the difference from `.code-box`, which is dark
+and meant for short listings.
 
 The wrapper is the scroller, so give it a height inline and let the content
 overflow:
 
 ```
 ```{=html}
-<div class="prompt-scroll" style="height:620px">
+<div class="box-scroll" style="height:620px">
 <pre>...the long text...</pre>
 </div>
 ```
 ```
+
+The `<pre>` is what keeps the line breaks and indentation of a prompt intact, so
+raw HTML rather than a fenced div is the form to use here.
 
 Use it sparingly — one per deck is usually plenty. A slide the audience has to
 scroll is a slide they cannot read from the back of the room; it earns its place

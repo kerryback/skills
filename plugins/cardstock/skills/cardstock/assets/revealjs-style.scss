@@ -1283,46 +1283,61 @@ $card-purple-title: #7c3aed;
 // These stay on screen. min-height on the thumb matters more than it looks: the
 // system-prompt block is ~150 screens tall, so a proportional thumb would come
 // out about four pixels.
-@mixin visible-scrollbar {
+@mixin visible-scrollbar($track: #0f172a, $thumb: #94a3b8, $thumb-hover: #cbd5e1) {
   &::-webkit-scrollbar {
     width: 14px;
   }
 
   &::-webkit-scrollbar-track {
-    background: #0f172a;
+    background: $track;
     border-radius: 7px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #94a3b8;
+    background: $thumb;
     border-radius: 7px;
     min-height: 48px;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: #cbd5e1;
+    background: $thumb-hover;
   }
 }
 
-// ── Long prompt/skill listings (.prompt-scroll) ──
-// The wrapper div is the scroller: fixed height, overflow-y:auto, set inline on
-// the element. Without this the theme's `.reveal pre` rules cap the pre inside
-// it at 600px and give it its own scrollbar, so the bar ends up floating inside
-// the panel instead of on its edge, with a dead strip below it. Let the pre run
-// to full height and the wrapper does the scrolling. Font size is deliberately
-// left alone so the text stays the size it has been presented at.
-.prompt-scroll {
-  @include visible-scrollbar;
+// ── Scroll box (.box-scroll) — long listings you scroll in place ──
+// A reading panel, not a code panel: dark text on white, so a full system
+// prompt or SKILL.md stays legible at length. The wrapper div is the scroller —
+// give it a height inline and it handles the overflow itself. Without that the
+// theme's `.reveal pre` rules cap the pre inside it at 600px and give it its own
+// scrollbar, so the bar ends up floating inside the panel instead of on its
+// edge, with a dead strip below it. Let the pre run to full height and the
+// wrapper does the scrolling. Font size is deliberately left alone so the text
+// stays the size it has been presented at.
+.box-scroll {
+  @include visible-scrollbar(#e2e8f0, #94a3b8, #64748b);
+  overflow-y: auto;
+  background: #fff;
+  color: $dark-navy;
+  border-radius: 10px;
+  padding: 1.2em 1.5em;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 
   pre {
     max-height: none;
     overflow: visible;
     background: transparent;
+    color: inherit;
     padding: 0;
     margin: 0;
     box-shadow: none;
     border-radius: 0;
     width: 100%;
+  }
+
+  pre code,
+  code {
+    color: inherit;
+    background: transparent;
   }
 }
 
@@ -1330,10 +1345,14 @@ $card-purple-title: #7c3aed;
 // unscoped would make Chromium switch to standard overlay scrollbars and drop
 // every rule above, which is how this went wrong the first time.
 @supports (-moz-appearance: none) {
-  .reveal pre,
-  .prompt-scroll {
+  .reveal pre {
     scrollbar-width: auto;
     scrollbar-color: #94a3b8 #0f172a;
+  }
+
+  .box-scroll {
+    scrollbar-width: auto;
+    scrollbar-color: #94a3b8 #e2e8f0;
   }
 }
 
