@@ -522,9 +522,13 @@ $col-gap: 20px;
 .reveal .card {
   background: $pale;
   border-top: 4px solid $plum;
-  padding: 0.7em 0.8em;
-  font-size: 0.78em;
-  line-height: 1.4;
+  // Cards carry most of the content in a text-heavy deck, and at 0.78em on
+  // shoji2's 28px root they were the smallest type on the slide -- smaller,
+  // relative to the canvas, than shoji's own cards. 0.9em puts them back
+  // within reach of that. Padding comes in slightly to pay for the height.
+  padding: 0.6em 0.75em;
+  font-size: 0.9em;
+  line-height: 1.35;
 
   .card-title,
   h4 {
@@ -641,7 +645,10 @@ $col-gap: 20px;
   .stat-label {
     display: block;
     margin-top: 0.4em;
-    font-size: 0.55em;
+    // 0.55em was 15.4px on the 28px root -- tracked uppercase at that size is
+    // not readable on a projector. The value above it carries the emphasis,
+    // so the label only has to be legible, not small.
+    font-size: 0.64em;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     line-height: 1.3;
@@ -781,6 +788,11 @@ $col-gap: 20px;
   padding: 0.05em 0.3em;
   // an identifier split across two lines reads as two identifiers
   white-space: nowrap;
+  // reveal defaults inline code to 0.875em of its context, and monospace reads
+  // smaller than the sans at the same px. Inside a card that landed at 22px
+  // against 25px of body text. Keep it a shade below the surrounding text, not
+  // an eighth below.
+  font-size: 0.95em;
 }
 
 // ── Prompt box ──────────────────────────────────────────────────────────
@@ -894,7 +906,8 @@ $col-gap: 20px;
 }
 
 .reveal figcaption {
-  font-size: 0.58em;
+  // Same reasoning as .stat-label: a caption nobody can read is not a caption.
+  font-size: 0.68em;
   letter-spacing: 0.06em;
   color: $ink-muted;
   text-align: left;
