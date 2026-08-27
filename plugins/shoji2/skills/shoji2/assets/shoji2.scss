@@ -839,6 +839,10 @@ $col-gap: 20px;
 
 .reveal .box-scroll {
   overflow-y: auto;
+  // border-box so the inline height an author sets is the height the box
+  // occupies. With content-box the padding is added on top, and a height
+  // measured to fit the text area overshoots it by the padding.
+  box-sizing: border-box;
   background: $panel;
   border-left: 4px solid $plum;
   padding: 0.6em 0.9em;
