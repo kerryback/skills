@@ -92,11 +92,18 @@ for. A question typed on the spot joins the same set and can be returned to.
 | type | students see | projector shows |
 | --- | --- | --- |
 | `choice` | tappable options, A/B/C | a bar per option, labelled with the number of people who picked it |
-| `multi` | the same, tick any number, then Submit | a bar per option, measured against everyone who answered — so they add to more than 100% |
+| `multi` | the same, tick any number, then Submit | the same bars, labelled with counts; they add to more than the number of people, since each person can pick several |
 | `wordcloud` | a text box | answers sized by how many said them |
 | `scale` | a row of numbers | distribution plus the mean |
 | `number` | a number box | histogram, mean, median, true answer marked |
 | `rank` | a reorderable list | a heatmap: categories across, ranks down, colour by % of the room |
+
+Every `choice` and `multi` question draws as a horizontal bar per option,
+labelled with the number of people who picked it — never a pie and never a
+percentage. A count is what a room can act on ("nine of you") and it needs no
+arithmetic to read off a projector. Bars are scaled to the largest option, so
+the leader always fills the track. A two-option yes/no is drawn the same way as
+a six-option question.
 
 If you would rather say the type than have it guessed, there is a command for
 each: `/survey:choice`, `/survey:select-all`, `/survey:word-cloud`,

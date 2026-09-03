@@ -231,9 +231,17 @@ where the question genuinely has a right answer -- a 0-based index into
 withholds the distribution while voting is open and adds a Reveal, which is what
 you want for a concept check and wrong for everything else here.
 
-`multi` is select all that apply. Its bars are percentages of the people who
-answered rather than of the ticks, so they add to more than 100% -- which is the
-reading that means something: "two-thirds of the room is shaky on convexity".
+Every `choice` and `multi` question draws as a horizontal bar per option,
+labelled with the number of people who picked it. Not a pie, and not a
+percentage: a count is what a room can act on -- "nine of you" -- and it needs
+no arithmetic to read off a projector. Bars are scaled to the largest option so
+the leader always fills the track. This holds for a two-option yes/no as much as
+for a six-option question; there is no size or shape of question that turns it
+into a pie.
+
+`multi` is select all that apply, and its counts add to more than the number of
+people answering, since each person ticks several. The projector says so under
+the bars rather than leaving the room to wonder whether the chart is broken.
 
 Because any question can be reached from the menu at any time, a prepared file
 can hold more than one class will use — questions for wherever the discussion

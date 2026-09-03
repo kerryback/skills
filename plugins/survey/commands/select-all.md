@@ -1,5 +1,5 @@
 ---
-description: Ask the class to pick every option that applies, with each shown as a percentage of the people who answered.
+description: Ask the class to pick every option that applies, with a bar per option showing how many people picked it.
 argument-hint: "[the question, then the options]"
 ---
 
@@ -14,9 +14,10 @@ three to six short ones yourself.
 Make the question say that more than one is allowed — "select all that apply",
 "which of these" — so nobody stops at the first thing they agree with.
 
-The projector shows each option as a percentage of the people who answered, so
-the bars add to more than 100%. That is the point: it reads as "two-thirds of
-the room is shaky on duration", which is the number worth having.
+The projector shows a bar per option labelled with the number of people who
+picked it -- never a pie and never a percentage. The counts add to more than the
+number answering, since each student ticks several; the projector says so under
+the bars.
 
 Don't set `answer` unless the instructor says there is a right set. These are
 usually questions about what students think or where they feel unsure, and a
