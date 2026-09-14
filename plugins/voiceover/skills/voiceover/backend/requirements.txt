@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-httpx
-pymupdf
-python-multipart
-python-dotenv
-imageio-ffmpeg
