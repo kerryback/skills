@@ -23,7 +23,12 @@
       "name": "two-stage-dcf",
       "source": "./plugins/two-stage-dcf",
       "description": "Two-stage enterprise valuation from staged financial statements and company text. Classifies every reported balance-sheet line and foots it, computes the historical driver ratios with a script, reads the MD&A, transcripts and press releases for evidence on each driver, and writes two HTML pages: the argument for each assumption, with quoted citations and a measured ranking of what moves the answer, and the valuation it produces. The numbers live in a CSV that rebuilds both pages, so the assumptions can be argued over and revised; when they are settled it delivers an Excel workbook whose model is live formulas, with sensitivity and driver-ranking sheets and a Check sheet that goes red if the formulas ever disagree with the Python engine."
+    },
+    {
+      "name": "risk-parity",
+      "source": "./plugins/risk-parity",
+      "description": "The risk parity (equal risk contribution) portfolio and the covariance matrix it needs, from historical returns, prices, or a covariance matrix: long-only weights in which every asset supplies the same share of portfolio variance, with each asset's risk share and inverse-volatility weight alongside."
     }
   ],
-  "description": "Research data and valuation skills for Claude Code: a personal literature and notes knowledge base, free financial and economic data, empirical asset-pricing data from WRDS, and two-stage DCF enterprise valuation."
+  "description": "Research data and valuation skills for Claude Code: a personal literature and notes knowledge base, free financial and economic data, empirical asset-pricing data from WRDS, two-stage DCF enterprise valuation, and risk parity portfolio construction."
 }
