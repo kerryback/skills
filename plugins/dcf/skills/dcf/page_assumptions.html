@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+__STYLES__
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">Choosing the assumptions</p>
+  <h1>__COMPANY__</h1>
+  <p class="sub">__SUBTITLE__</p>
+</header>
+
+<p class="lead">Every number below is a suggestion, not a conclusion. They are a
+defensible starting point drawn from the history and from what management has
+said, and they are where the argument begins rather than where it ends. Each
+driver then gets a section of its own: what its history shows, what actually
+makes it move, what would make you choose differently, and the quoted evidence.
+The decision is yours.</p>
+
+<p class="drive">This page deliberately shows no valuation. Read it, settle on
+your numbers, and see what they are worth on <a href="__VALUATION_HREF__">the
+valuation page</a>.</p>
+
+<h2>Suggested assumptions</h2>
+<div class="scroller">__INPUTS__</div>
+__RATES__
+
+<h2>Driver by driver</h2>
+__GUIDANCE__
+
+<h2>What the history showed</h2>
+__HISTORY_NOTES__
+
+<h2>Cost of capital</h2>
+<p class="note body">__WACC_NOTE__</p>
+
+<h2>Classification of every reported balance-sheet line</h2>
+<p class="note">Which lines consume cash as the business grows, which are claims
+on what it produces, and which do neither. Everything downstream inherits this,
+so it is worth disagreeing with here rather than later.</p>
+<div class="scroller">__CLASSIFICATION__</div>
+
+<h2>The model</h2>
+<p class="note body">
+  Sales grow at <i>g</i>. EBITDA is a margin on sales. Net PP&amp;E at the end of
+  year <i>t</i> is next year's sales divided by the sales-to-PP&amp;E turnover —
+  the one line that leads sales by a year, because capacity is built ahead of the
+  volume it serves. Depreciation is a rate on prior-year net PP&amp;E, and capex is
+  the plug that reconciles the two; in steady state it lands at (<i>g</i> +
+  <i>d</i>) times prior net PP&amp;E. Every other operating asset and liability is
+  a ratio to the same year's sales. Free cash flow is EBITDA less cash taxes on
+  EBIT, less capex, less the change in working capital. Taxes are unlevered; the
+  interest shield lives in the discount rate. A running NOL carryforward shelters
+  the explicit years; anything still alive after year 6 is valued separately and
+  appears in the bridge, so the perpetuity is taxed at the full rate and stays a
+  genuine steady state.
+</p>
+
+<p class="note">Written by the <code>dcf</code> skill. The numbers came out of
+<code>dcf_engine.py</code>; the judgement did not.</p>
+
+</main>
+__LIVE__
+</body>
+</html>

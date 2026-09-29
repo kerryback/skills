@@ -1,15 +1,20 @@
-"""Write the valuation as a self-contained one-page report.
+"""Write the two pages: how to choose the assumptions, and what they are worth.
 
-The page carries no script at all. Every figure on it is rendered here from
-``dcf_engine.run_model`` and ``dcf_engine.sensitivity_grid``, which means the
-recursion exists once in Python and once in the workbook's formulas, and the
-report cannot drift from the engine because it does no arithmetic.
+They are separate documents on purpose. The assumptions page is an argument --
+each driver's history, what makes it move, what would make you choose
+differently, and the quoted evidence -- and it shows no valuation at all, so
+that reading it does not anchor you to an answer. The valuation page is the
+answer, with a link back.
 
-Driving the model is the workbook's job. This file is the readable record: what
-was assumed, why, what the history showed, how every balance-sheet line was
-classified, and what the answer is sensitive to.
+Neither page does arithmetic. Every figure is rendered here from
+``dcf_engine.run_model`` and ``dcf_engine.sensitivity_grid``, so the recursion
+exists once in Python and once in the workbook's formulas, and a page cannot
+disagree with the engine that wrote it.
 
-No network references of any kind -- it has to open in a lab container.
+A shipped page carries no script. The live-reload poller is injected only when
+``live=True``, which is the watch loop, never the artifact you send someone.
+
+No network references of any kind -- they have to open in a lab container.
 """
 
 import html
@@ -19,7 +24,34 @@ from dcf_engine import (N_EXPLICIT, PERPETUITY_YEAR, TRANSITION_YEAR,
                         run_model, sensitivity_axes, sensitivity_grid)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE = os.path.join(HERE, "app_template.html")
+STYLES = os.path.join(HERE, "styles.css")
+ASSUMPTIONS_TEMPLATE = os.path.join(HERE, "page_assumptions.html")
+VALUATION_TEMPLATE = os.path.join(HERE, "page_valuation.html")
+
+#: Injected only in watch mode. It asks the server whether the file it is
+#: looking at has changed, and reloads if so -- no arithmetic, and absent from
+#: anything anyone receives.
+LIVE_RELOAD = """<script>
+(function () {
+  var seen = null;
+  function check() {
+    return fetch(location.href, { method: "HEAD", cache: "no-store" })
+      .then(function (r) {
+        var stamp = r.headers.get("Last-Modified") || r.headers.get("ETag");
+        if (!stamp) return;
+        if (seen && stamp !== seen) location.reload();
+        seen = stamp;
+      })
+      .catch(function () {});
+  }
+  // Seed immediately rather than on the first tick. Otherwise a rebuild that
+  // lands between load and that tick is recorded as the baseline and the page
+  // never reloads -- which is precisely what happens when you rebuild straight
+  // after opening the page.
+  check();
+  setInterval(check, 1000);
+})();
+</script>"""
 
 SCALAR_ROWS = [
     ("group", "Growth and margin"),
@@ -287,61 +319,131 @@ def _history_notes(bundle):
 
 
 # --------------------------------------------------------------------------
+# rendering
+# --------------------------------------------------------------------------
 
-def build_app(bundle, out_path):
-    """Render the report for ``bundle`` and return the path written."""
-    result = run_model(bundle)
+def _styles():
+    with open(STYLES, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def _header_bits(bundle):
     meta = bundle["meta"]
-
     company = meta.get("company", "Company")
     if meta.get("ticker"):
         company += f" ({meta['ticker']})"
-
     subtitle = (
-        f"Valued as of the end of fiscal {meta.get('fiscal_year_0', '')}"
-        + (f" ({meta['fiscal_year_end']})" if meta.get("fiscal_year_end") else "")
-        + f". All figures in {meta.get('units', 'the units of the statements')}. "
-        f"A comparison with today's market price is a comparison across that gap."
+        f"Fiscal {meta.get('fiscal_year_0', '')}"
+        + (f" ended {meta['fiscal_year_end']}" if meta.get("fiscal_year_end") else "")
+        + f" is year 0. All figures in "
+        f"{meta.get('units', 'the units of the statements')}."
     )
+    return company, subtitle
 
-    with open(TEMPLATE, encoding="utf-8") as fh:
+
+def _render(template_path, tokens):
+    with open(template_path, encoding="utf-8") as fh:
         page = fh.read()
-
-    for token, value in [
-        ("__TITLE__", esc(f"{meta.get('company', 'Company')} — two-stage valuation")),
-        ("__COMPANY__", esc(company)),
-        ("__SUBTITLE__", esc(subtitle)),
-        ("__WARNINGS__", _warnings(result)),
-        ("__EV__", fmt(result["ev_ops"], "num")),
-        ("__EQUITY__", fmt(result["equity_value"], "num")),
-        ("__PER_SHARE__", fmt(result["value_per_share"], "share")),
-        ("__INPUTS__", _inputs_table(bundle)),
-        ("__RATES__", _rates_block(bundle)),
-        ("__SCHEDULE__", _schedule_table(result)),
-        ("__BRIDGE__", _bridge_table(bundle, result)),
-        ("__SENSITIVITY__", _sensitivity_table(bundle)),
-        ("__WACC_NOTE__", esc(bundle["rates"].get("wacc_derivation")
-                              or "No derivation was recorded for the discount rate.")),
-        ("__GUIDANCE__", _guidance(bundle)),
-        ("__HISTORY_NOTES__", _history_notes(bundle)),
-        ("__CLASSIFICATION__", _classification_table(bundle)),
-    ]:
+    for token, value in tokens.items():
         page = page.replace(token, value)
-
     leftover = [t for t in page.split("__") if t.isupper() and t.isidentifier()]
     if leftover:
         raise RuntimeError(f"template tokens left unfilled: {sorted(set(leftover))}")
+    return page
 
+
+def _write(page, out_path):
     with open(out_path, "w", encoding="utf-8") as fh:
         fh.write(page)
     return out_path
 
 
-if __name__ == "__main__":
-    import json
-    import sys
+def build_assumptions(bundle, out_path, valuation_href="valuation.html", live=False):
+    """The advisory document. Shows no valuation, by design."""
+    company, subtitle = _header_bits(bundle)
+    page = _render(ASSUMPTIONS_TEMPLATE, {
+        "__STYLES__": _styles(),
+        "__TITLE__": esc(f"{bundle['meta'].get('company', 'Company')} "
+                         f"— choosing the assumptions"),
+        "__COMPANY__": esc(company),
+        "__SUBTITLE__": esc(subtitle),
+        "__VALUATION_HREF__": esc(valuation_href),
+        "__INPUTS__": _inputs_table(bundle),
+        "__RATES__": _rates_block(bundle),
+        "__GUIDANCE__": _guidance(bundle),
+        "__HISTORY_NOTES__": _history_notes(bundle),
+        "__WACC_NOTE__": esc(bundle["rates"].get("wacc_derivation")
+                             or "No derivation was recorded for the discount rate."),
+        "__CLASSIFICATION__": _classification_table(bundle),
+        "__LIVE__": LIVE_RELOAD if live else "",
+    })
+    return _write(page, out_path)
 
-    if len(sys.argv) != 3:
-        raise SystemExit("usage: build_app.py <bundle.json> <out.html>")
-    with open(sys.argv[1], encoding="utf-8") as fh:
-        print(build_app(json.load(fh), sys.argv[2]))
+
+def build_valuation(bundle, out_path, assumptions_href="assumptions.html",
+                    csv_name="assumptions.csv", live=False):
+    """The answer, with a link back to the argument."""
+    result = run_model(bundle)
+    company, subtitle = _header_bits(bundle)
+    page = _render(VALUATION_TEMPLATE, {
+        "__STYLES__": _styles(),
+        "__TITLE__": esc(f"{bundle['meta'].get('company', 'Company')} "
+                         f"— two-stage valuation"),
+        "__COMPANY__": esc(company),
+        "__SUBTITLE__": esc(
+            subtitle + " A comparison with today's market price is a comparison "
+            "across that gap."),
+        "__ASSUMPTIONS_HREF__": esc(assumptions_href),
+        "__CSV_NAME__": esc(csv_name),
+        "__WARNINGS__": _warnings(result),
+        "__EV__": fmt(result["ev_ops"], "num"),
+        "__EQUITY__": fmt(result["equity_value"], "num"),
+        "__PER_SHARE__": fmt(result["value_per_share"], "share"),
+        "__INPUTS__": _inputs_table(bundle),
+        "__RATES__": _rates_block(bundle),
+        "__SCHEDULE__": _schedule_table(result),
+        "__BRIDGE__": _bridge_table(bundle, result),
+        "__SENSITIVITY__": _sensitivity_table(bundle),
+        "__WACC_NOTE__": esc(bundle["rates"].get("wacc_derivation")
+                             or "No derivation was recorded for the discount rate."),
+        "__LIVE__": LIVE_RELOAD if live else "",
+    })
+    return _write(page, out_path)
+
+
+def build_pages(bundle, out_dir, slug=None, live=False, csv_name="assumptions.csv"):
+    """Both pages, cross-linked. Returns ``(assumptions_path, valuation_path)``."""
+    os.makedirs(out_dir, exist_ok=True)
+    slug = slug or (bundle["meta"].get("ticker") or "company").lower()
+    names = (f"{slug}-assumptions.html", f"{slug}-valuation.html")
+    paths = [os.path.join(out_dir, n) for n in names]
+    build_assumptions(bundle, paths[0], valuation_href=names[1], live=live)
+    build_valuation(bundle, paths[1], assumptions_href=names[0],
+                    csv_name=csv_name, live=live)
+    return tuple(paths)
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+
+    from dcf_assumptions import apply_assumptions_csv
+
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("bundle")
+    ap.add_argument("out_dir")
+    ap.add_argument("--csv", help="assumptions CSV to overlay onto the bundle")
+    ap.add_argument("--slug", help="file-name stem; defaults to the ticker")
+    ap.add_argument("--live", action="store_true",
+                    help="inject the reload poller (watch loop only, never a "
+                         "page you send someone)")
+    args = ap.parse_args()
+
+    with open(args.bundle, encoding="utf-8") as fh:
+        bundle = json.load(fh)
+    if args.csv:
+        bundle = apply_assumptions_csv(bundle, args.csv)
+
+    for path in build_pages(bundle, args.out_dir, slug=args.slug, live=args.live,
+                            csv_name=os.path.basename(args.csv or "assumptions.csv")):
+        print(path)

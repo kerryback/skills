@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+__STYLES__
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <p class="eyebrow">Two-stage enterprise valuation</p>
+  <h1>__COMPANY__</h1>
+  <p class="sub">__SUBTITLE__</p>
+</header>
+
+__WARNINGS__
+
+<div class="headline">
+  <div><span class="lab">Enterprise value</span><span class="val">__EV__</span></div>
+  <div><span class="lab">Equity value</span><span class="val">__EQUITY__</span></div>
+  <div><span class="lab">Value per share</span><span class="val big">__PER_SHARE__</span></div>
+</div>
+
+<p class="drive">These are the assumptions in force, not a recommendation. The
+case for each one, and what would make you choose differently, is on <a
+href="__ASSUMPTIONS_HREF__">the assumptions page</a>. To change a number, edit
+<code>__CSV_NAME__</code> and this page rebuilds.</p>
+
+<h2>Assumptions in force</h2>
+<div class="scroller">__INPUTS__</div>
+__RATES__
+
+<h2>Forecast</h2>
+<div class="scroller">__SCHEDULE__</div>
+<p class="note">Year 6 runs on the terminal assumptions and absorbs the
+balance-sheet transition. The perpetuity sits on year 7, which is why year 7 is
+shown but not discounted into the explicit sum.</p>
+
+<h2>From enterprise value to the shareholders</h2>
+<div class="scroller">__BRIDGE__</div>
+
+<h2>Sensitivity — value per share</h2>
+<div class="scroller">__SENSITIVITY__</div>
+
+<h2>Cost of capital</h2>
+<p class="note body">__WACC_NOTE__</p>
+
+<p class="note">Every figure on this page came out of <code>dcf_engine.py</code>.
+There is no arithmetic in this file.</p>
+
+</main>
+__LIVE__
+</body>
+</html>

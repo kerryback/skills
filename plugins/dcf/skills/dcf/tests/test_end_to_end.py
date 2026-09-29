@@ -15,7 +15,7 @@ import os
 
 import pytest
 
-from build_app import build_app
+from build_pages import build_pages
 from dcf_engine import run_model
 from dcf_history import check_footing, historical_ratios
 from dcf_load import load_statements
@@ -290,18 +290,30 @@ def test_the_bridge_carries_this_company_s_claims(statements):
     assert "Plus cash and cash equivalents" in labels
 
 
-def test_both_artifacts_build(statements, tmp_path):
+def test_all_three_artifacts_build(statements, tmp_path):
     pytest.importorskip("openpyxl")
     from build_workbook import build_workbook
+    from dcf_assumptions import apply_assumptions_csv, write_assumptions_csv
 
     bundle = acdc_bundle(statements)
-    html = tmp_path / "acdc-dcf.html"
+    assumptions, valuation = build_pages(bundle, str(tmp_path), slug="acdc")
     xlsx = tmp_path / "acdc-dcf.xlsx"
-    build_app(bundle, str(html))
     build_workbook(bundle, str(xlsx))
+    csv_path = write_assumptions_csv(bundle, tmp_path / "assumptions.csv")
 
-    assert html.exists() and xlsx.exists()
-    text = html.read_text(encoding="utf-8")
-    assert "http://" not in text and "https://" not in text
-    assert "ProFrac" in text
-    assert "Tax receivable agreement liability" in text   # the notes panel
+    assert xlsx.exists()
+    for path in (assumptions, valuation):
+        text = open(path, encoding="utf-8").read()
+        assert "http://" not in text and "https://" not in text
+        assert "<script" not in text.lower()
+        assert "ProFrac" in text
+    assert "Tax receivable agreement liability" in open(assumptions).read()
+
+    # The CSV is authoritative for the numbers once written, and stable: apply
+    # it, write it again, and nothing moves.
+    from dcf_engine import run_model
+    once = apply_assumptions_csv(bundle, str(csv_path))
+    again = write_assumptions_csv(once, tmp_path / "assumptions2.csv")
+    twice = apply_assumptions_csv(once, str(again))
+    assert run_model(twice)["ev_ops"] == pytest.approx(run_model(once)["ev_ops"])
+    assert open(csv_path).read() == open(again).read()

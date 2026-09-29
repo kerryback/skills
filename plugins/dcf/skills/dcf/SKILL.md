@@ -13,9 +13,9 @@ description: >-
   Classifies every reported balance-sheet line and gets that approved before
   forecasting, computes the historical ratios with a script, reads the MD&A,
   risk factors, transcripts and press releases for evidence on each driver,
-  suggests assumptions and explains how to choose each one, then writes a
-  one-page HTML advisory document and an Excel workbook with live formulas that
-  the user drives. Expects the
+  suggests assumptions and explains how to choose each one, then writes two HTML
+  pages -- the argument and the answer -- plus an Excel workbook with live
+  formulas, driven by an assumptions CSV that rebuilds them. Expects the
   statements and text to be staged in a folder already — it fetches nothing.
 ---
 
@@ -157,26 +157,51 @@ Discuss, iterate, and only move on when the user is satisfied.
 
 ### Phase 5 — build
 
-Write `bundle.json` per `reference/model.md`, then:
+Write `bundle.json` per `reference/model.md`, split the numbers out into a CSV,
+and build:
 
 ```bash
-python build_app.py bundle.json <slug>-dcf.html
+python dcf_assumptions.py bundle.json assumptions.csv
+python build_pages.py bundle.json . --csv assumptions.csv
 python build_workbook.py bundle.json <slug>-dcf.xlsx
 ```
 
-The HTML is the advisory document: the suggested assumptions beside the history
-that informed them, the forecast they produce, the bridge, a sensitivity grid,
-and then a section per driver on how to choose it, with the quoted evidence. It
-holds no script and does no arithmetic. The workbook is where the user puts their
-own numbers in: every Model cell is a live formula over its Inputs sheet.
+Three artifacts, with different jobs.
+
+`<slug>-assumptions.html` is the argument: the suggested numbers beside the
+history that informed them, then a section per driver on how to choose it with
+the quoted evidence, plus the classification table and the cost of capital. It
+deliberately shows no valuation, so reading it does not anchor the reader to an
+answer.
+
+`<slug>-valuation.html` is the answer: the assumptions in force, the forecast,
+the bridge, the sensitivity grid and any warnings, with a link back.
+
+`assumptions.csv` holds the numbers and nothing else. It is the thing that
+changes. Everything slow-moving stays in `bundle.json`.
+
+### The loop
+
+When the user comes back with different numbers, edit the CSV and rebuild — do
+not hand-edit the HTML, and do not edit the numbers in `bundle.json`.
+
+```bash
+python serve.py .                    # once, in another shell
+python build_pages.py bundle.json . --csv assumptions.csv --live
+```
+
+`--live` injects a small poller that reloads the open page when the file
+changes, so the user does not have to touch the browser. It is injected only
+with that flag: rebuild without it before sending anything to anyone, so the
+artifact stays script-free.
 
 Report the enterprise value, the bridge, the value per share, and every warning
 the engine returned. Warnings are not decoration — a negative implied capex or a
 non-positive terminal EBIT means the assumptions are describing a company that
 does not exist.
 
-Point the user at the workbook to try their own numbers, and at the HTML for the
-reasoning and for anything they want to send someone. If they settle on
+Point the user at the assumptions page for the reasoning, the valuation page for
+the answer, and the workbook for trying numbers without going through you. If they settle on
 different assumptions, edit the bundle and rebuild both rather than hand-editing
 either artifact — and update the `rationale` to match what they chose, including
 where they overruled you.
@@ -188,9 +213,11 @@ where they overruled you.
 | `dcf_engine.py` | the recursion, the terminal value, the NOL, the bridge. Pure. |
 | `dcf_load.py` | staged statements into a normalised dict |
 | `dcf_history.py` | the footing check, and the historical driver ratios |
-| `build_app.py` | the one-page HTML report |
+| `dcf_assumptions.py` | the numbers, to and from `assumptions.csv` |
+| `build_pages.py` | the assumptions page and the valuation page |
 | `build_workbook.py` | the Excel workbook with live formulas |
-| `app_template.html` | the report's shell and styling |
+| `serve.py` | a no-cache static server for the watch loop |
+| `page_assumptions.html`, `page_valuation.html`, `styles.css` | their shells |
 | `reference/model.md` | the arithmetic and the bundle schema |
 | `reference/classification.md` | the buckets, and the cases that are genuinely hard |
 | `reference/staging.md` | the folder layout expected |

@@ -180,6 +180,12 @@ They are what makes the HTML an advisory document rather than a bare answer: the
 numbers in `explicit` and `terminal` are suggestions, and these three fields are
 what let someone choose differently.
 
+The numbers in `explicit` and `terminal` can be carried in an `assumptions.csv`
+instead and overlaid with `dcf_assumptions.apply_assumptions_csv`. That CSV is
+the part that changes; everything else in the bundle is settled once. It must
+name every row the bundle expects -- a missing row raises rather than silently
+keeping the old value.
+
 `history` is carried only so the artifacts can show historical columns beside
 the forecast columns. The engine ignores it. Its `ratios` are shaped exactly as
 `dcf_history.historical_ratios` returns them.
@@ -204,8 +210,8 @@ and a units mismatch between the statements and the share count.
 
 ## Where the arithmetic lives
 
-Twice: in this module, and in the workbook's Excel formulas. The HTML report
-renders figures the engine already computed and holds no script, so it is not a
+Twice: in this module, and in the workbook's Excel formulas. Both HTML pages
+render figures the engine already computed and hold no script, so they are not a
 third implementation and cannot disagree with the engine.
 
 The workbook's Check sheet holds the engine's base-case figures beside formulas
