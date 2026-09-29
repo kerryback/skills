@@ -145,6 +145,17 @@ def historical_ratios(financials, classification, sales_line,
             f"A margin from a loss year is not a starting point for a forecast; "
             f"anchor on the profitable years or on what the company says about "
             f"recovery.")
+    uncovered = [year for year in years
+                 if ebitda.get(year) is not None
+                 and depreciation.get(year) is not None
+                 and ebitda[year] - depreciation[year] <= 0]
+    if uncovered:
+        notes.append(
+            f"EBITDA did not cover depreciation in "
+            f"{', '.join(str(y) for y in sorted(uncovered))}, so EBIT was not "
+            f"positive even though EBITDA was. That is the case the NOL "
+            f"carryforward exists for: check the tax footnote for the balance "
+            f"and for a valuation allowance before assuming any shield.")
     if len(ratios["sales_growth"]) < 2:
         notes.append(
             "Fewer than two growth observations. There is not enough history "
