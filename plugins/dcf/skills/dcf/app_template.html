@@ -19,18 +19,9 @@
     --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --ground: #13171d; --panel: #1a1f27; --ink: #e6eaf0; --muted: #a2adbd;
-      --rule: #2b323c; --accent: #9db8ef; --accent-soft: #1b2332;
-      --flag: #e3b766; --flag-soft: #2a2416;
-    }
-  }
-  :root[data-theme="dark"] {
-    --ground: #13171d; --panel: #1a1f27; --ink: #e6eaf0; --muted: #a2adbd;
-    --rule: #2b323c; --accent: #9db8ef; --accent-soft: #1b2332;
-    --flag: #e3b766; --flag-soft: #2a2416;
-  }
+  /* Light only. A valuation gets read on a projector and printed as often as
+     it gets read on a laptop, and the dark rendering served neither. */
+  :root { color-scheme: light; }
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--ground); color: var(--ink);

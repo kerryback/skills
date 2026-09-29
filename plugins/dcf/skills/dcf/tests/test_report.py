@@ -56,6 +56,13 @@ def test_the_page_carries_no_script_at_all(page):
     assert "onclick" not in page.lower()
 
 
+def test_the_page_is_light_only(page):
+    """It gets projected and printed as often as it gets read on a laptop."""
+    assert "prefers-color-scheme" not in page
+    assert 'data-theme' not in page
+    assert "color-scheme: light" in page
+
+
 def test_the_page_is_self_contained(page):
     assert "http://" not in page
     assert "https://" not in page
