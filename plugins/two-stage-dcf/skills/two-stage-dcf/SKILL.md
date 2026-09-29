@@ -191,12 +191,16 @@ depart from it, say what the reason was.
 Then build the two pages and stop.
 
 ```bash
-python dcf_assumptions.py bundle.json assumptions.csv
-python build_pages.py bundle.json . --csv assumptions.csv --live
 python serve.py .                     # once, in another shell
+python dcf_assumptions.py bundle.json assumptions.csv
+python build_pages.py bundle.json . --csv assumptions.csv --live --open
 ```
 
-Give the user the two links and wait. The assumptions page is what they read;
+`--open` puts the assumptions page in front of the user rather than leaving them
+to go and find it. Start `serve.py` first so it opens the URL that live-reloads
+rather than a `file://` path, which cannot.
+
+Give the user both links and wait. The assumptions page is what they read;
 the conversation that follows is them telling you which numbers to change. Do
 not build the workbook yet — it is the finished deliverable, not a working
 document.
@@ -238,8 +242,11 @@ Only once the user says the assumptions are settled. Rebuild the pages *without*
 
 ```bash
 python build_pages.py bundle.json . --csv assumptions.csv
-python build_workbook.py bundle.json <slug>-dcf.xlsx --csv assumptions.csv
+python build_workbook.py bundle.json <slug>-dcf.xlsx --csv assumptions.csv --open
 ```
+
+`--open` launches the workbook. On a machine with no desktop it says so and
+prints the path instead, which is all anyone can do; it never fails the run.
 
 Three artifacts, with different jobs.
 
@@ -284,6 +291,7 @@ where they overruled you.
 | `build_pages.py` | the assumptions page and the valuation page |
 | `build_workbook.py` | the Excel workbook with live formulas |
 | `serve.py` | a no-cache static server for the watch loop |
+| `dcf_open.py` | hand a built artifact to the browser or to Excel |
 | `page_assumptions.html`, `page_valuation.html`, `styles.css` | their shells |
 | `reference/model.md` | the arithmetic and the bundle schema |
 | `reference/classification.md` | the buckets, and the cases that are genuinely hard |

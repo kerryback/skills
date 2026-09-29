@@ -474,6 +474,11 @@ if __name__ == "__main__":
     ap.add_argument("--live", action="store_true",
                     help="inject the reload poller (watch loop only, never a "
                          "page you send someone)")
+    ap.add_argument("--open", dest="open_page", action="store_true",
+                    help="open the assumptions page when it is written")
+    ap.add_argument("--port", type=int, default=8791,
+                    help="serve.py's port, so --open uses the URL that "
+                         "live-reloads rather than a file:// path")
     args = ap.parse_args()
 
     with open(args.bundle, encoding="utf-8") as fh:
@@ -481,6 +486,11 @@ if __name__ == "__main__":
     if args.csv:
         bundle = apply_assumptions_csv(bundle, args.csv)
 
-    for path in build_pages(bundle, args.out_dir, slug=args.slug, live=args.live,
-                            csv_name=os.path.basename(args.csv or "assumptions.csv")):
+    written = build_pages(bundle, args.out_dir, slug=args.slug, live=args.live,
+                          csv_name=os.path.basename(args.csv or "assumptions.csv"))
+    for path in written:
         print(path)
+
+    if args.open_page:
+        from dcf_open import open_page
+        open_page(written[0], port=args.port)

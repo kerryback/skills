@@ -104,8 +104,24 @@ def test_the_snapshot_sheets_say_they_are_snapshots(built):
     """They hold values, not formulas, and must not pretend otherwise."""
     wb = openpyxl.load_workbook(built)
     for name in ("Sensitivity", "Drivers"):
-        assert "snapshot" in str(wb[name]["A2"].value).lower()
-        assert "rebuild" in str(wb[name]["A2"].value).lower()
+        head = " ".join(str(wb[name].cell(r, 1).value or "") for r in (2, 3)).lower()
+        assert "snapshot" in head
+        assert "rebuild" in head
+
+
+def test_the_drivers_sheet_says_what_it_varies(built):
+    """The sheet once showed only the terminal level, which read as though the
+    perpetuity alone was moving. It has to say that every year moves."""
+    wb = openpyxl.load_workbook(built)
+    ws = wb["Drivers"]
+    caption = str(ws["A2"].value)
+    assert "EVERY forecast year" in caption
+    assert "not the perpetuity alone" in caption
+    assert "equity value" in caption
+    assert "refined" in caption
+    body = " ".join(str(c.value) for row in ws.iter_rows() for c in row
+                    if c.value is not None)
+    assert "explicit years move too" in body
 
 
 def test_the_drivers_sheet_ranks_widest_first(built):

@@ -402,6 +402,15 @@ def _write_bridge(ws, bundle, singles, model, shield_row, claims):
             "terminal_value": 4, "pv_terminal": 5, "pv_explicit": 3}
 
 
+DRIVERS_CAPTION = (
+    "How much a change in each driver moves the equity value, given the baseline "
+    "assumptions. Each driver is moved by the amount shown in EVERY forecast year "
+    "at once -- the five explicit years and the perpetuity together, not the "
+    "perpetuity alone. These are a local measure around the current baseline and "
+    "will shift somewhat as the assumptions are refined. The percentages are the "
+    "same for the equity value and for the value per share, since the share count "
+    "does not move.")
+
 SNAPSHOT = ("A snapshot, not a formula: every cell is a full re-run of the model "
             "at different assumptions, which Excel cannot do from a formula. "
             "Change an Input and rebuild to refresh this sheet.")
@@ -453,9 +462,12 @@ def _write_drivers(ws, bundle):
     """Which drivers move the answer, and one-way tables for each."""
     ws["A1"] = "Drivers — what actually moves the answer"
     ws["A1"].font = Font(bold=True, size=14)
-    ws["A2"] = SNAPSHOT
+    ws["A2"] = DRIVERS_CAPTION
     ws["A2"].font = Font(italic=True, size=9)
     ws["A2"].alignment = Alignment(wrap_text=True)
+    ws["A3"] = SNAPSHOT
+    ws["A3"].font = Font(italic=True, size=9)
+    ws["A3"].alignment = Alignment(wrap_text=True)
 
     ranking = driver_ranking(bundle)
     base = ranking[0]["base"] if ranking else None
@@ -479,11 +491,15 @@ def _write_drivers(ws, bundle):
 
     r += 2
     ws.cell(r, 1, "One-way tables, two notches each way").font = GROUP
+    r += 1
+    ws.cell(r, 1, "The notch is applied to every forecast year. The level row "
+                  "shows where the terminal ends up; the explicit years move by "
+                  "the same amount.").font = Font(italic=True, size=9)
     r += 2
     for name, key, label in driver_entries(bundle):
         points = one_way_sensitivity(bundle, name, key)
         ws.cell(r, 1, label).font = TOTAL
-        ws.cell(r + 1, 1, "terminal level")
+        ws.cell(r + 1, 1, "terminal level (explicit years move too)")
         ws.cell(r + 2, 1, "value per share")
         for j, (shift, level, value) in enumerate(points):
             ws.cell(r, 2 + j, "base" if shift == 0 else f"{shift * 100:+g}")
@@ -650,6 +666,8 @@ if __name__ == "__main__":
     ap.add_argument("bundle")
     ap.add_argument("out")
     ap.add_argument("--csv", help="assumptions CSV to overlay onto the bundle")
+    ap.add_argument("--open", dest="open_it", action="store_true",
+                    help="open the workbook when it is written")
     args = ap.parse_args()
 
     with open(args.bundle, encoding="utf-8") as fh:
@@ -657,4 +675,9 @@ if __name__ == "__main__":
     if args.csv:
         from dcf_assumptions import apply_assumptions_csv
         bundle = apply_assumptions_csv(bundle, args.csv)
-    print(build_workbook(bundle, args.out))
+    written = build_workbook(bundle, args.out)
+    print(written)
+
+    if args.open_it:
+        from dcf_open import open_path
+        open_path(written)
