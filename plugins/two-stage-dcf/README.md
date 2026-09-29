@@ -44,7 +44,7 @@ It fetches nothing. Point it at a folder that already holds the statements.
 
 ```
 /plugin marketplace add kerryback/skills
-/plugin install dcf@kerryback
+/plugin install two-stage-dcf@kerryback
 ```
 
 ## Tests

@@ -22,7 +22,7 @@
     {
       "name": "two-stage-dcf",
       "source": "./plugins/two-stage-dcf",
-      "description": "Two-stage enterprise valuation from staged financial statements and company text: classify every balance-sheet line, propose assumptions grounded in history and in the 10-K and transcripts, and emit an interactive HTML app and an Excel workbook with live formulas."
+      "description": "Two-stage enterprise valuation from staged financial statements and company text. Classifies every reported balance-sheet line and foots it, computes the historical driver ratios with a script, reads the MD&A, transcripts and press releases for evidence on each driver, and writes two HTML pages: the argument for each assumption, with quoted citations and a measured ranking of what moves the answer, and the valuation it produces. The numbers live in a CSV that rebuilds both pages, so the assumptions can be argued over and revised; when they are settled it delivers an Excel workbook whose model is live formulas, with sensitivity and driver-ranking sheets and a Check sheet that goes red if the formulas ever disagree with the Python engine."
     }
   ],
   "description": "Research data and valuation skills for Claude Code: a personal literature and notes knowledge base, free financial and economic data, empirical asset-pricing data from WRDS, and two-stage DCF enterprise valuation."
