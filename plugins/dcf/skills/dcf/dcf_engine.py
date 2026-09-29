@@ -246,6 +246,12 @@ def _nol_shield_pv(nol, ebit7, growth, rate, wacc, limitation, max_years=200):
 # valuation
 # --------------------------------------------------------------------------
 
+def _label(key):
+    """Turn a bundle key into something a reader can put in a sentence."""
+    text = str(key).replace("_", " ").strip()
+    return text[:1].upper() + text[1:] if text else text
+
+
 def _warnings(bundle, rows, perpetuity_row, nol_at_six, pv_nol, unexhausted):
     a, base = bundle["assumptions"], bundle["base"]
     out = []
@@ -316,11 +322,11 @@ def run_model(bundle):
     if pv_nol:
         bridge.append({"label": "PV of remaining NOL carryforward", "amount": pv_nol})
     for k, v in base.get("nonoperating_assets", {}).items():
-        bridge.append({"label": f"Plus {k}", "amount": float(v)})
+        bridge.append({"label": f"Plus {_label(k).lower()}", "amount": float(v)})
     for k, v in base.get("debt_claims", {}).items():
-        bridge.append({"label": f"Less {k}", "amount": -float(v)})
+        bridge.append({"label": f"Less {_label(k).lower()}", "amount": -float(v)})
     for k, v in base.get("equity_claims", {}).items():
-        bridge.append({"label": f"Less {k}", "amount": -float(v)})
+        bridge.append({"label": f"Less {_label(k).lower()}", "amount": -float(v)})
 
     equity_value = sum(item["amount"] for item in bridge)
     shares = bundle["meta"].get("diluted_shares") or 0.0
