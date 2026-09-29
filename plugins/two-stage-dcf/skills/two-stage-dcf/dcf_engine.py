@@ -459,9 +459,13 @@ def driver_ranking(bundle, result_key="value_per_share"):
         low, high = points[0][2], points[1][2]
         if low is None or high is None:
             continue
+        span = abs(high - low)
         rows.append({"driver": label, "name": name, "key": key,
                      "shift": shift_label(name, kind, size),
                      "low": low, "high": high,
-                     "span": abs(high - low), "base": base})
+                     "span": span, "base": base,
+                     # As a share of value, so it can be shown without
+                     # disclosing the level.
+                     "span_share": span / abs(base) if base else None})
     rows.sort(key=lambda r: r["span"], reverse=True)
     return rows

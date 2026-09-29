@@ -248,3 +248,29 @@ def test_a_company_with_no_history_still_renders(tmp_path):
     assert "raised nothing worth flagging" in pathlib.Path(a).read_text()
     for path in (a, v):
         assert not re.search(r"__[A-Z_]+__", pathlib.Path(path).read_text())
+
+
+def test_the_assumptions_page_measures_what_moves_the_answer(built):
+    """Claims about what matters have to sit next to the measurement."""
+    page = built["assumptions"]
+    assert "Which arguments are worth having" in page
+    assert "Moves the value by" in page
+    assert "Moving it 1pp each way moves the value" in page
+
+
+def test_the_ranking_is_ordered_widest_first(built):
+    import re as _re
+    page = built["assumptions"]
+    block = page[page.index("Which arguments are worth having"):
+                 page.index("Driver by driver")]
+    shares = [float(x) for x in _re.findall(r"<td>([\d.]+)%</td>", block)]
+    assert shares == sorted(shares, reverse=True)
+    assert len(shares) >= 5
+
+
+def test_the_ranking_reveals_spans_not_levels(built):
+    """It says where to spend attention without disclosing the answer."""
+    page = built["assumptions"]
+    want = run_model(rich_bundle())
+    assert fmt(want["value_per_share"], "share") not in page
+    assert fmt(want["equity_value"], "num") not in page

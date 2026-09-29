@@ -140,6 +140,30 @@ You advise; the user decides. Everything you put in the assumption table is a
 suggestion, and the artifacts say so on their face. What the user actually needs
 from you is not a defence of your numbers but enough to choose their own.
 
+Before you write a word of guidance, measure:
+
+```python
+from dcf_engine import driver_ranking
+for row in driver_ranking(bundle):
+    print(row["driver"], row["shift"], row["span_share"])
+```
+
+This moves each driver one notch each way, in every year at once, and re-runs
+the model. Never claim that a driver is what the valuation turns on, or that one
+barely matters, without checking it here first. The intuition is wrong often
+enough to be worth the twenty seconds: on JBSS the sales-to-PP&E turnover is the
+most conspicuous thing on the balance sheet and moves the answer about a seventh
+as much as sales growth does.
+
+The ranking goes onto the assumptions page as its own section, as a share of
+value rather than a level, and each driver's own span appears beside its
+history. So a claim in your prose that the measured span contradicts will be
+contradicted in plain sight, on the same page.
+
+Say what a driver governs, which is often not the same as how much it moves the
+answer. A driver with a narrow span is worth a sentence saying so, because
+knowing which arguments to skip is as useful as knowing which to have.
+
 So for every driver write, into the bundle:
 
 - `guidance` — how to choose this driver. What makes it move, which of the
@@ -183,8 +207,9 @@ Each time the user gives you numbers: edit `assumptions.csv`, rebuild with
 `--live`, and say what moved and by how much. Never hand-edit the HTML, and
 never edit the numbers inside `bundle.json` — the CSV is where numbers live.
 
-If they ask why a driver matters, `dcf_engine.driver_ranking(bundle)` tells you
-which ones actually move the answer and which are not worth the argument.
+When the user asks whether a driver is worth arguing about, the ranking on the
+assumptions page already answers it -- and if a change makes a driver matter
+more or less than it did, rebuild and say so.
 
 Keep going until they say the assumptions are settled.
 

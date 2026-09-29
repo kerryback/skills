@@ -21,7 +21,8 @@ import html
 import os
 
 from dcf_engine import (N_EXPLICIT, PERPETUITY_YEAR, TRANSITION_YEAR,
-                        run_model, sensitivity_axes, sensitivity_grid)
+                        driver_ranking, run_model, sensitivity_axes,
+                        sensitivity_grid)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STYLES = os.path.join(HERE, "styles.css")
@@ -251,8 +252,8 @@ def _classification_table(bundle):
     return "".join(out) + "</tbody></table>"
 
 
-def _history_strip(bundle, row):
-    """The driver's own history and the suggested path, on one line."""
+def _history_strip(bundle, row, ranked=None):
+    """The driver's own history, the suggested path, and what it is worth."""
     history = _history_series(bundle, row)
     years = ((bundle.get("history") or {}).get("years") or [])[-6:]
     kind = row[2]
@@ -267,6 +268,10 @@ def _history_strip(bundle, row):
     parts.append("Suggested " + ", ".join(
         f"<b>{fmt(v, kind)}</b>" for v in spec["explicit"])
         + f", then <b>{fmt(spec['terminal'], kind)}</b> forever")
+    entry = (ranked or {}).get((row[0], row[3] if len(row) > 3 else None))
+    if entry and entry["span_share"] is not None:
+        parts.append(f"Moving it {entry['shift']} each way moves the value "
+                     f"<b>{entry['span_share'] * 100:,.1f}%</b>")
     return "<p class='strip'>" + " &nbsp;·&nbsp; ".join(parts) + "</p>"
 
 
@@ -280,7 +285,37 @@ def _citations(spec):
     return "".join(out)
 
 
-def _guidance(bundle):
+def _ranking(bundle):
+    """Driver spans, keyed by (name, key). Computed once per page."""
+    return {(r["name"], r["key"]): r for r in driver_ranking(bundle)}
+
+
+def _ranking_table(bundle, ranked):
+    """Which arguments are worth having, measured rather than asserted.
+
+    Spans are shown as a share of value, never as a level, so the page can say
+    what matters without telling you the answer.
+    """
+    rows = sorted(ranked.values(), key=lambda r: r["span_share"] or 0, reverse=True)
+    if not rows:
+        return "<p class='note'>No driver could be varied without breaking the "\
+               "model, so there is nothing to rank.</p>"
+    widest = rows[0]["span_share"] or 1.0
+
+    out = ["<table><thead><tr><th>Driver</th><th>Moved</th>"
+           "<th>Moves the value by</th><th></th></tr></thead><tbody>"]
+    for row in rows:
+        share = row["span_share"] or 0.0
+        width = max(2, round(100 * share / widest))
+        out.append(
+            f"<tr><td>{esc(row['driver'])}</td>"
+            f"<td>{esc(row['shift'])}</td>"
+            f"<td>{share * 100:,.1f}%</td>"
+            f"<td class='bar'><span style='width:{width}%'></span></td></tr>")
+    return "".join(out) + "</tbody></table>"
+
+
+def _guidance(bundle, ranked=None):
     """The advisory document: how to choose each driver, not a defence of one."""
     out = []
     for row in _input_rows(bundle):
@@ -291,7 +326,7 @@ def _guidance(bundle):
         if not body:
             continue
         out.append(f"<section class='guide'><h3>{esc(row[1])}</h3>")
-        out.append(_history_strip(bundle, row))
+        out.append(_history_strip(bundle, row, ranked))
         out.append(f"<p class='how'>{esc(body)}</p>")
         out.append(_citations(spec))
         if spec.get("guidance") and spec.get("rationale"):
@@ -361,6 +396,7 @@ def _write(page, out_path):
 def build_assumptions(bundle, out_path, valuation_href="valuation.html", live=False):
     """The advisory document. Shows no valuation, by design."""
     company, subtitle = _header_bits(bundle)
+    ranked = _ranking(bundle)
     page = _render(ASSUMPTIONS_TEMPLATE, {
         "__STYLES__": _styles(),
         "__TITLE__": esc(f"{bundle['meta'].get('company', 'Company')} "
@@ -370,7 +406,8 @@ def build_assumptions(bundle, out_path, valuation_href="valuation.html", live=Fa
         "__VALUATION_HREF__": esc(valuation_href),
         "__INPUTS__": _inputs_table(bundle),
         "__RATES__": _rates_block(bundle),
-        "__GUIDANCE__": _guidance(bundle),
+        "__RANKING__": _ranking_table(bundle, ranked),
+        "__GUIDANCE__": _guidance(bundle, ranked),
         "__HISTORY_NOTES__": _history_notes(bundle),
         "__WACC_NOTE__": esc(bundle["rates"].get("wacc_derivation")
                              or "No derivation was recorded for the discount rate."),

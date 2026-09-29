@@ -128,3 +128,10 @@
     margin: 1.1rem 0 0; color: var(--ink);
   }
   .drive code { font-family: var(--mono); font-size: .92em; }
+
+/* The driver ranking: a bar you can read across at a glance. */
+td.bar { width: 40%; min-width: 8rem; }
+td.bar span {
+  display: block; height: .55rem; border-radius: 2px;
+  background: var(--accent); opacity: .75;
+}
