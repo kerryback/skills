@@ -4,19 +4,18 @@ Five explicit forecast years on sales growth, EBITDA margin, a sales-to-net-PP&E
 turnover, a depreciation rate, and a ratio of each retained operating asset and
 liability to next-year sales; then the same ratios held constant forever.
 
-Timing. Year 0 is the last actual fiscal year. Every balance-sheet quantity in
-forecast year ``t`` is the balance at the *end* of year ``t``, stated against
-year ``t+1`` sales -- the assets and liabilities that support next year's sales.
-Net PP&E is entered as a turnover ``S(t+1) / NPPE(t)`` because that is how the
-ratio is conventionally quoted; every other operating balance is entered as a
-ratio to ``S(t+1)``.
+Timing. Year 0 is the last actual fiscal year. Balance-sheet quantities in
+forecast year ``t`` are the balance at the *end* of year ``t``. Working-capital
+items are stated against that same year's sales; net PP&E is the exception,
+entered as a turnover on next year's sales, ``S(t+1) / NPPE(t)``, because
+capacity is built ahead of the sales it supports.
 
     S(t)      = S(t-1) (1 + g(t))
     EBITDA(t) = m(t) S(t)
-    NPPE(t)   = S(t+1) / k(t)
+    NPPE(t)   = S(t+1) / k(t)                       capacity built ahead
     D(t)      = d(t) NPPE(t-1)
     X(t)      = NPPE(t) - NPPE(t-1) + D(t)          capex, the plug
-    NWC(t)    = (sum a_i(t) - sum l_j(t)) S(t+1)
+    NWC(t)    = (sum a_i(t) - sum l_j(t)) S(t)
     EBIT(t)   = EBITDA(t) - D(t)
     FCF(t)    = EBITDA(t) - Tax(t) - X(t) - (NWC(t) - NWC(t-1))
 
@@ -24,12 +23,11 @@ Capex is the plug rather than an assumption because in steady state it lands at
 ``(g + d)`` times prior net PP&E, which is positive for any sensible growth
 rate. Making depreciation the plug instead lets it go negative.
 
-Year 5's balance sheet is what supports year 6 sales, so unless year 5's ratios
-already equal the terminal ratios, year 6 carries a one-time level adjustment
-that must not be capitalised into a perpetuity. Year 6 therefore runs entirely
-on terminal assumptions and absorbs the transition, and the perpetuity sits on
-year 7, whose net PP&E and working capital are both set by terminal ratios
-against year-7 sales:
+Unless year 5's ratios already equal the terminal ratios, year 6 carries a
+one-time level adjustment that must not be capitalised into a perpetuity. Year 6
+therefore runs entirely on terminal assumptions and absorbs the transition, and
+the perpetuity sits on year 7, whose net PP&E and working capital are both set
+by terminal ratios -- PP&E on year-7 sales, working capital on year-6 sales:
 
     EV = sum over t = 1..6 of FCF(t) / (1+r)^t
          + [ FCF(7) / (r - g) ] / (1+r)^6
@@ -141,10 +139,15 @@ def sales_path(base_sales, growth, through):
     return s
 
 
-def _nwc(assets, liabilities, next_sales, t):
+def _nwc(assets, liabilities, sales, t):
+    """Working capital is stated against the same year's sales.
+
+    Net PP&E is the exception and is handled in ``build_schedule``: capacity is
+    built ahead of the sales it supports, so it is a turnover on next year's.
+    """
     a = sum(driver(spec, t) for spec in assets.values())
     l = sum(driver(spec, t) for spec in liabilities.values())
-    return (a - l) * next_sales
+    return (a - l) * sales
 
 
 def build_schedule(bundle):
@@ -165,7 +168,7 @@ def build_schedule(bundle):
         nppe = next_sales / driver(a["sales_to_net_ppe"], t)
         dep = driver(a["depreciation_rate"], t) * nppe_prev
         capex = nppe - nppe_prev + dep
-        nwc = _nwc(a["operating_assets"], a["operating_liabilities"], next_sales, t)
+        nwc = _nwc(a["operating_assets"], a["operating_liabilities"], sales, t)
         ebitda = driver(a["ebitda_margin"], t) * sales
         rows.append({
             "year": t,

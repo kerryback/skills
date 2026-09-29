@@ -2,13 +2,14 @@
 
 ## Timing
 
-Year 0 is the last actual fiscal year. Every balance-sheet quantity in forecast
-year `t` is the balance at the *end* of year `t`, stated against year `t+1`
-sales — the assets and liabilities that support next year's sales.
+Year 0 is the last actual fiscal year. Balance-sheet quantities in forecast year
+`t` are the balance at the *end* of year `t`.
 
-Net PP&E is entered as a turnover, `S(t+1) / NPPE(t)`, because that is how the
-ratio is conventionally quoted. Every other operating balance is entered as a
-ratio to `S(t+1)`.
+Working capital is stated against that same year's sales. Net PP&E is the one
+exception: it is entered as a turnover on the *following* year's sales,
+`S(t+1) / NPPE(t)`, because capacity is built ahead of the sales it supports.
+That asymmetry is deliberate — a plant comes on line before the volume does,
+whereas receivables and payables arise from the volume itself.
 
 Years 6 and later take the terminal value of every driver. That is what makes
 year 6 the transition year and year 7 a clean steady state.
@@ -18,11 +19,11 @@ year 6 the transition year and year 7 a clean steady state.
 ```
   S(t)      = S(t-1) (1 + g(t))
   EBITDA(t) = m(t) S(t)
-  NPPE(t)   = S(t+1) / k(t)
+  NPPE(t)   = S(t+1) / k(t)                       capacity built ahead
   D(t)      = d(t) NPPE(t-1)
   X(t)      = NPPE(t) - NPPE(t-1) + D(t)          capex, the plug
-  A(t,i)    = a_i(t) S(t+1)                       each operating asset
-  L(t,j)    = l_j(t) S(t+1)                       each operating liability
+  A(t,i)    = a_i(t) S(t)                         each operating asset
+  L(t,j)    = l_j(t) S(t)                         each operating liability
   NWC(t)    = sum_i A(t,i) - sum_j L(t,j)
   EBIT(t)   = EBITDA(t) - D(t)
   FCF(t)    = EBITDA(t) - Tax(t) - X(t) - (NWC(t) - NWC(t-1))
@@ -57,13 +58,13 @@ A running federal carryforward, for years 1 through 6:
 
 ## Terminal value
 
-Year 5's balance sheet supports year 6 sales, so unless year 5's ratios already
-equal the terminal ratios, year 6's capex and working-capital investment carry a
-one-time level adjustment. Capitalising that into a perpetuity would be wrong.
+Unless year 5's ratios already equal the terminal ratios, year 6's capex and
+working-capital investment carry a one-time level adjustment. Capitalising that
+into a perpetuity would be wrong.
 
 Year 6 therefore runs on terminal assumptions and absorbs the transition, and
 the perpetuity sits on year 7, whose net PP&E and working capital are both set
-by terminal ratios against year-7 sales:
+by terminal ratios — PP&E on year-7 sales, working capital on year-6 sales:
 
 ```
   EV = sum over t = 1..6 of FCF(t) / (1+r)^t
@@ -142,13 +143,18 @@ across a gap, and the report says so on its face. There is no mid-year conventio
   },
   "assumptions": {
     "sales_growth":      {"explicit": [0.05, 0.04, 0.03, 0.03, 0.025],
-                          "terminal": 0.02, "rationale": "..."},
+                          "terminal": 0.02,
+                          "guidance": "how to choose this driver",
+                          "citations": [{"quote": "...", "speaker": "...",
+                                         "source": "transcripts/..."}],
+                          "rationale": "why the suggestion sits where it does"},
     "ebitda_margin":     {"explicit": [...], "terminal": 0.0, "rationale": "..."},
     "sales_to_net_ppe":  {"explicit": [...], "terminal": 0.0, "rationale": "..."},
     "depreciation_rate": {"explicit": [...], "terminal": 0.0, "rationale": "..."},
     "cash_tax_rate":     {"explicit": [...], "terminal": 0.0, "rationale": "..."},
     "operating_assets":      {"receivables": {"explicit": [...], "terminal": 0.0,
                                               "rationale": "..."}},
+    // ratios to the same year's sales; sales_to_net_ppe above is the exception
     "operating_liabilities": {"payables": {"explicit": [...], "terminal": 0.0,
                                            "rationale": "..."}}
   },
@@ -168,6 +174,11 @@ Rules the engine enforces, each raising rather than guessing:
   and likewise for liabilities
 - no key appears on both sides of working capital
 - `rates.wacc` exceeds `assumptions.sales_growth.terminal`
+
+`guidance`, `citations` and `rationale` are optional and the engine ignores them.
+They are what makes the HTML an advisory document rather than a bare answer: the
+numbers in `explicit` and `terminal` are suggestions, and these three fields are
+what let someone choose differently.
 
 `history` is carried only so the artifacts can show historical columns beside
 the forecast columns. The engine ignores it. Its `ratios` are shaped exactly as

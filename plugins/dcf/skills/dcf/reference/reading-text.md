@@ -65,6 +65,8 @@ the asset base, find out why before forecasting.
 
 ### Operating assets and liabilities
 
+These are ratios to the same year's sales, unlike net PP&E above.
+
 Look for: days sales outstanding and days payable, and any commentary on them;
 customer payment terms changing; inventory build ahead of a ramp or a wind-down;
 factoring or supply-chain finance programmes, which move payables in ways that

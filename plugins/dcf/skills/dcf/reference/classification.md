@@ -7,8 +7,8 @@ grows, or is it a claim on what the business produces?"
 | Bucket | What it means | Where it shows up |
 |---|---|---|
 | `net_ppe` | the productive asset base | driven by the sales-to-PP&E turnover |
-| `operating_asset` | grows with sales, consumes cash | a ratio to next-year sales, in NWC |
-| `operating_liability` | grows with sales, supplies cash | a ratio to next-year sales, in NWC |
+| `operating_asset` | grows with sales, consumes cash | a ratio to that year's sales, in NWC |
+| `operating_liability` | grows with sales, supplies cash | a ratio to that year's sales, in NWC |
 | `nonoperating_asset` | not needed to run the business | added in the bridge at book |
 | `debt_claim` | a claim that must be paid before equity | subtracted in the bridge |
 | `equity_claim` | someone else's slice of the equity | subtracted in the bridge |

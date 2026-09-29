@@ -22,6 +22,13 @@ def rich_bundle():
     b["assumptions"]["operating_assets"]["inventories"] = const(0.08)
     b["assumptions"]["ebitda_margin"]["explicit"] = [-0.05, 0.02, 0.12, 0.18, 0.21]
     b["assumptions"]["ebitda_margin"]["rationale"] = "A loss year, then a recovery."
+    b["assumptions"]["sales_growth"]["guidance"] = (
+        "How to think about the margin on volume: guidance covers one year, so "
+        "years 2 through 5 are a fade you have to argue for.")
+    b["assumptions"]["sales_growth"]["citations"] = [
+        {"quote": "Nut costs are the whole story this year.",
+         "speaker": "Frank S. Pellegrino",
+         "source": "transcripts/FY2026Q4.txt"}]
     b["assumptions"]["sales_growth"]["explicit"] = [0.30, 0.15, 0.08, 0.05, 0.04]
     b["assumptions"]["sales_to_net_ppe"]["explicit"] = [1.6, 1.7, 1.8, 1.9, 2.4]
     b["classification"] = [
@@ -56,11 +63,10 @@ def test_the_page_carries_no_script_at_all(page):
     assert "onclick" not in page.lower()
 
 
-def test_the_page_is_light_only(page):
-    """It gets projected and printed as often as it gets read on a laptop."""
-    assert "prefers-color-scheme" not in page
-    assert 'data-theme' not in page
-    assert "color-scheme: light" in page
+def test_the_page_follows_the_reader_s_appearance_setting(page):
+    """The page does not impose a theme; it reads prefers-color-scheme."""
+    assert "prefers-color-scheme: dark" in page
+    assert "--ground: #ffffff" in page      # the light default
 
 
 def test_the_page_is_self_contained(page):
@@ -81,8 +87,46 @@ def test_the_headline_numbers_are_the_engine_s(page):
 
 def test_the_page_says_where_to_go_to_change_anything(page):
     flat = " ".join(page.split())      # the prose is line-wrapped in the template
-    assert "not a calculator" in flat
     assert "live formula" in flat
+    assert "does not recalculate" in flat
+
+
+def test_the_numbers_are_presented_as_suggestions_not_conclusions(page):
+    flat = " ".join(page.split())
+    assert "Suggested assumptions" in flat
+    assert "a suggestion, not a conclusion" in flat
+    assert "The decision is yours" in flat
+
+
+def test_each_driver_gets_a_guidance_section(page):
+    assert "Choosing the assumptions" in page
+    assert "<section class='guide'>" in page
+    # The driver with guidance in the fixture, and its history strip.
+    assert "How to think about the margin" in page
+    assert "History" in page and "Suggested" in page
+
+
+def test_citations_are_quoted_and_attributed(page):
+    assert "Nut costs are the whole story" in page
+    assert "Frank S. Pellegrino" in page
+    assert "<cite>" in page
+
+
+def test_a_driver_with_only_a_rationale_still_appears(page):
+    """Guidance is preferred, but a bare rationale is better than silence."""
+    assert "A loss year, then a recovery." in page
+
+
+def test_a_bundle_with_no_guidance_at_all_says_so(tmp_path):
+    b = rich_bundle()
+    for name in ("sales_growth", "ebitda_margin"):
+        b["assumptions"][name].pop("rationale", None)
+        b["assumptions"][name].pop("guidance", None)
+        b["assumptions"][name].pop("citations", None)
+    out = tmp_path / "bare.html"
+    build_app(b, str(out))
+    text = out.read_text(encoding="utf-8")
+    assert "not enough to choose from" in text
 
 
 def test_warnings_are_rendered(page):
@@ -96,8 +140,7 @@ def test_the_classification_and_its_reasons_travel_with_the_page(page):
     assert "operating_liability" in page
 
 
-def test_rationales_and_history_notes_travel_with_the_page(page):
-    assert "A loss year, then a recovery." in page
+def test_history_notes_and_the_wacc_derivation_travel_with_the_page(page):
     assert "did not cover depreciation" in page
     assert "CAPM: 4.2" in page
 

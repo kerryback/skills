@@ -54,7 +54,8 @@ def _write_inputs(ws, bundle):
     ws["A1"].font = Font(bold=True, size=14)
     ws["A2"] = (f"Fiscal year {meta.get('fiscal_year_0', '')} is year 0. "
                 f"All figures in {meta.get('units', 'the units of the statements')}. "
-                f"Balance-sheet ratios are stated against next year's sales.")
+                f"Working-capital ratios are stated against the same year's sales; "
+                f"net PP&E is a turnover on next year's.")
     ws["A2"].font = Font(italic=True, size=9)
 
     row = 4
@@ -95,13 +96,13 @@ def _write_inputs(ws, bundle):
     labels = {c.get("key"): c["line"] for c in bundle.get("classification", [])
               if c.get("key")}
 
-    block("Operating assets, as a share of next-year sales")
+    block("Operating assets, as a share of sales")
     asset_rows = []
     for key, spec in a["operating_assets"].items():
         line(f"oa::{key}", labels.get(key, key), spec, PCT)
         asset_rows.append(rows[f"oa::{key}"])
 
-    block("Operating liabilities, as a share of next-year sales")
+    block("Operating liabilities, as a share of sales")
     liability_rows = []
     for key, spec in a["operating_liabilities"].items():
         line(f"ol::{key}", labels.get(key, key), spec, PCT)
@@ -233,7 +234,9 @@ def _write_model(ws, bundle, rows, singles, asset_rows, liability_rows):
 
         ratios = ratio_terms.replace(f"Inputs!{_input_col(1)}$",
                                      f"Inputs!{_input_col(t)}$")
-        ws.cell(m["nwc"], 1 + t, f"={ratios}*{col}{m['next_sales']}").number_format = NUM
+        # Working capital on this year's sales; net PP&E above is the one line
+        # that leads sales by a year.
+        ws.cell(m["nwc"], 1 + t, f"={ratios}*{col}{m['sales']}").number_format = NUM
         prior_nwc = one("nwc0") if t == 1 else f"{prev}{m['nwc']}"
         ws.cell(m["delta_nwc"], 1 + t,
                 f"={col}{m['nwc']}-{prior_nwc}").number_format = NUM

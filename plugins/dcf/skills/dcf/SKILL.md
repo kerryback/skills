@@ -3,9 +3,9 @@ name: dcf
 description: >-
   Build a two-stage enterprise valuation of a company from its historical
   financial statements and its text — five explicit forecast years on sales
-  growth, EBITDA margin, a sales-to-net-PP&E turnover, a depreciation rate, and
-  ratios of each operating asset and liability to next-year sales, then those
-  ratios held constant forever. Use this whenever the user wants a company
+  growth, EBITDA margin, a sales-to-net-PP&E turnover on next year's sales, a
+  depreciation rate, and ratios of each operating asset and liability to that
+  year's sales, then those ratios held constant forever. Use this whenever the user wants a company
   valued or a discounted cash flow model built: "value ProFrac", "what is ACDC
   worth", "build me a DCF", "two-stage enterprise valuation", "run a DCF on
   this 10-K", "is this stock cheap on a cash flow basis", or when they point at
@@ -13,8 +13,9 @@ description: >-
   Classifies every reported balance-sheet line and gets that approved before
   forecasting, computes the historical ratios with a script, reads the MD&A,
   risk factors, transcripts and press releases for evidence on each driver,
-  proposes assumptions and discusses them, then writes a one-page HTML report
-  and an Excel workbook with live formulas that the user drives. Expects the
+  suggests assumptions and explains how to choose each one, then writes a
+  one-page HTML advisory document and an Excel workbook with live formulas that
+  the user drives. Expects the
   statements and text to be staged in a folder already — it fetches nothing.
 ---
 
@@ -112,11 +113,29 @@ Show the user the evidence and wait, before you propose numbers from it.
 
 ### Phase 4 — propose (gate)
 
-Write the assumption table: every driver, years 1 through 5 and terminal, each
-with a short rationale naming the history it came from and the text that
-supported or contradicted it. Put the rationale in the bundle's `rationale`
-fields — they travel into the report's notes section and the
-workbook.
+You advise; the user decides. Everything you put in the assumption table is a
+suggestion, and the artifacts say so on their face. What the user actually needs
+from you is not a defence of your numbers but enough to choose their own.
+
+So for every driver write, into the bundle:
+
+- `guidance` — how to choose this driver. What makes it move, which of the
+  methods below fits this company, what the history is and is not evidence for,
+  and what would make you pick a different number. Write it to someone who has
+  not read the filings.
+- `citations` — the passages that bear on it, each a `{quote, speaker, source}`.
+  Quote, do not paraphrase, and name the file. Advice with nothing behind it in
+  the documents should say so rather than sounding confident.
+- `rationale` — one or two sentences on why the suggested path sits where it
+  does, given all of the above.
+
+Ways to project a line, worth naming explicitly when you advise: a constant
+percent of sales; a percent of sales varying by year, for a ratio in transition;
+a driver other than sales, such as inventory as days of cost of sales or
+depreciation as a rate on prior-year PP&E; and flat or zero, for one-time items
+and balances with no reason to move.
+
+Then give the user the table, the guidance and the citations, and wait.
 
 Sanity rules worth stating out loud when you propose:
 
@@ -127,6 +146,9 @@ Sanity rules worth stating out loud when you propose:
 - Year 6 runs on the terminal assumptions and absorbs any gap between year 5's
   balance-sheet ratios and the terminal ones. A large gap makes year 6's capex
   lumpy; the engine warns when it exceeds ten percent.
+- Working capital is a ratio to the same year's sales. Net PP&E is the one
+  exception, a turnover on next year's sales, because capacity is built ahead of
+  the volume it serves.
 - The WACC is a single number, editable on the workbook's Inputs sheet. Put
   the CAPM and cost-of-debt derivation in `rates.wacc_derivation` so the
   reasoning travels with both artifacts.
@@ -142,20 +164,22 @@ python build_app.py bundle.json <slug>-dcf.html
 python build_workbook.py bundle.json <slug>-dcf.xlsx
 ```
 
-The HTML is the readable record — assumptions beside history, the schedule, the
-bridge, a sensitivity grid, and every rationale, history note and classification
-reason. It holds no script and does no arithmetic. The workbook is the thing the
-user drives: every Model cell is a live formula over its Inputs sheet.
+The HTML is the advisory document: the suggested assumptions beside the history
+that informed them, the forecast they produce, the bridge, a sensitivity grid,
+and then a section per driver on how to choose it, with the quoted evidence. It
+holds no script and does no arithmetic. The workbook is where the user puts their
+own numbers in: every Model cell is a live formula over its Inputs sheet.
 
 Report the enterprise value, the bridge, the value per share, and every warning
 the engine returned. Warnings are not decoration — a negative implied capex or a
 non-positive terminal EBIT means the assumptions are describing a company that
 does not exist.
 
-Point the user at the workbook for anything they want to change, and at the
-HTML for anything they want to send someone. If they ask for different
-assumptions, edit the bundle and rebuild both rather than hand-editing either
-artifact.
+Point the user at the workbook to try their own numbers, and at the HTML for the
+reasoning and for anything they want to send someone. If they settle on
+different assumptions, edit the bundle and rebuild both rather than hand-editing
+either artifact — and update the `rationale` to match what they chose, including
+where they overruled you.
 
 ## What is in the folder
 

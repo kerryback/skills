@@ -19,9 +19,19 @@
     --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
-  /* Light only. A valuation gets read on a projector and printed as often as
-     it gets read on a laptop, and the dark rendering served neither. */
-  :root { color-scheme: light; }
+  /* Follow whatever the reader's machine is set to. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #13171d; --panel: #1a1f27; --ink: #e6eaf0; --muted: #a2adbd;
+      --rule: #2b323c; --accent: #9db8ef; --accent-soft: #1b2332;
+      --flag: #e3b766; --flag-soft: #2a2416;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #13171d; --panel: #1a1f27; --ink: #e6eaf0; --muted: #a2adbd;
+    --rule: #2b323c; --accent: #9db8ef; --accent-soft: #1b2332;
+    --flag: #e3b766; --flag-soft: #2a2416;
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--ground); color: var(--ink);
@@ -93,6 +103,30 @@
   .note.body { color: var(--ink); }
   .rationale { font-family: var(--sans); font-size: .85rem; margin: .6rem 0 0; }
   .rationale b { font-weight: 600; }
+
+  .lead {
+    font-size: 1.02rem; margin: .2rem 0 1.4rem; color: var(--ink);
+    border-left: 3px solid var(--accent); padding-left: .9rem;
+  }
+  .guide { margin: 0 0 2rem; }
+  .guide h3 {
+    font-family: var(--sans); font-size: 1rem; margin: 1.6rem 0 .1rem;
+    color: var(--accent); font-weight: 600;
+  }
+  .guide .strip {
+    font-family: var(--mono); font-size: .78rem; color: var(--muted);
+    margin: .25rem 0 .6rem; white-space: normal;
+  }
+  .guide .strip b { color: var(--ink); font-weight: 400; }
+  .guide p.how { margin: .5rem 0 0; font-size: .95rem; }
+  .guide blockquote {
+    margin: .7rem 0 0; padding: .5rem .9rem; background: var(--panel);
+    border-left: 3px solid var(--rule); font-size: .9rem;
+  }
+  .guide blockquote cite {
+    display: block; margin-top: .35rem; font-family: var(--sans);
+    font-size: .78rem; color: var(--muted); font-style: normal;
+  }
   .rates { font-family: var(--sans); font-size: .87rem; margin: .9rem 0 0; color: var(--muted); }
   .rates b { color: var(--ink); font-family: var(--mono); font-weight: 400; }
   .drive {
@@ -120,14 +154,19 @@ __WARNINGS__
   <div><span class="lab">Value per share</span><span class="val big">__PER_SHARE__</span></div>
 </div>
 
-<h2>Assumptions</h2>
+<h2>Suggested assumptions</h2>
+<p class="lead">Every number in the forecast columns below is a suggestion, not
+a conclusion. They are a defensible starting point drawn from the history and
+from what management has said, and they are where the argument begins rather
+than where it ends. The section after the forecast takes each driver in turn and
+sets out how to choose it.</p>
 <div class="scroller">__INPUTS__</div>
 __RATES__
 
-<p class="drive">This page records one set of assumptions; it is not a
-calculator. To change them, open the workbook beside it — every cell on its
-Model sheet is a live formula over its Inputs sheet — or edit the bundle and
-rebuild.</p>
+<p class="drive">To put your own numbers in, open the workbook beside this page:
+every cell on its Model sheet is a live formula over its Inputs sheet, so
+changing an Inputs cell moves the valuation. This page is the written record of
+one set of choices and does not recalculate.</p>
 
 <h2>Forecast</h2>
 <div class="scroller">__SCHEDULE__</div>
@@ -141,14 +180,16 @@ shown but not discounted into the explicit sum.</p>
 <h2>Sensitivity — value per share</h2>
 <div class="scroller">__SENSITIVITY__</div>
 
+<h2>Choosing the assumptions</h2>
+<p class="lead">One driver at a time: what the history shows, what the filings
+and calls say about it, what actually makes it move, and what the suggested path
+above assumes. The decision is yours; this is the case for and against.</p>
+__GUIDANCE__
+
 <h2>Notes</h2>
 <details open>
   <summary>Cost of capital</summary>
   <p class="note body">__WACC_NOTE__</p>
-</details>
-<details>
-  <summary>How each assumption was chosen</summary>
-  __RATIONALES__
 </details>
 <details>
   <summary>What the history showed</summary>
@@ -165,8 +206,10 @@ shown but not discounted into the explicit sum.</p>
     year <i>t</i> is next year's sales divided by the sales-to-PP&amp;E turnover.
     Depreciation is a rate on prior-year net PP&amp;E, and capex is the plug that
     reconciles the two — in steady state it lands at (<i>g</i> + <i>d</i>) times
-    prior net PP&amp;E. Every other operating asset and liability is a ratio to
-    next year's sales. Free cash flow is EBITDA less cash taxes on EBIT, less
+    prior net PP&amp;E, which is the one line that leads sales by a year because
+    capacity is built ahead of the sales it supports. Every other operating asset
+    and liability is a ratio to the same year's sales. Free cash flow is EBITDA
+    less cash taxes on EBIT, less
     capex, less the change in working capital. Taxes are unlevered; the interest
     shield lives in the discount rate. A running NOL carryforward shelters the
     explicit years under the limitation shown above; anything still alive after

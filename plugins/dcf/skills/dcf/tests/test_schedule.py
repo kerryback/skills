@@ -12,18 +12,18 @@ def const(v):
 def bundle(**over):
     """A company that is already in steady state at year 0.
 
-    Sales 1000, growth 5 percent, so year-1 sales are 1050. The turnover is 2.0
-    and balance-sheet ratios are stated against next-year sales, so a steady
-    state needs net PP&E of 1050/2 = 525 and working capital of 10 percent of
-    1050 at year 0. Starting there makes year 1 itself steady state, which is
-    what the closed-form Gordon test relies on.
+    Sales 1000, growth 5 percent, so year-1 sales are 1050. Net PP&E is a
+    turnover on next year's sales, so steady state needs 1050/2 = 525 at year 0.
+    Working capital is stated against the same year's sales, so it needs 10
+    percent of 1000 at year 0. Starting there makes year 1 itself steady state,
+    which is what the closed-form Gordon test relies on.
     """
     b = {
         "meta": {"company": "Test", "fiscal_year_0": 2025,
                  "units": "USD millions", "diluted_shares": 100.0},
         "base": {"sales": 1000.0, "net_ppe": 525.0,
-                 "operating_assets": {"receivables": 210.0},
-                 "operating_liabilities": {"payables": 105.0},
+                 "operating_assets": {"receivables": 200.0},
+                 "operating_liabilities": {"payables": 100.0},
                  "nonoperating_assets": {}, "debt_claims": {}, "equity_claims": {},
                  "nol": 0.0},
         "assumptions": {
@@ -77,12 +77,24 @@ def test_schedule_runs_to_year_seven():
     assert [r["year"] for r in build_schedule(bundle())] == [1, 2, 3, 4, 5, 6, 7]
 
 
+def test_working_capital_is_stated_against_the_same_year_s_sales():
+    rows = build_schedule(bundle())
+    r1 = rows[0]
+    assert r1["nwc"] == pytest.approx((0.20 - 0.10) * r1["sales"])
+    assert r1["nwc"] != pytest.approx((0.20 - 0.10) * r1["next_sales"])
+
+
+def test_net_ppe_is_the_exception_and_leads_sales_by_a_year():
+    r1 = build_schedule(bundle())[0]
+    assert r1["net_ppe"] == pytest.approx(r1["next_sales"] / 2.0)
+
+
 def test_empty_operating_liabilities_is_fine():
     b = bundle()
     b["base"]["operating_liabilities"] = {}
     b["assumptions"]["operating_liabilities"] = {}
     rows = build_schedule(b)
-    assert rows[0]["nwc"] == pytest.approx(0.20 * rows[0]["next_sales"])
+    assert rows[0]["nwc"] == pytest.approx(0.20 * rows[0]["sales"])
 
 
 def test_wrong_length_explicit_array_raises_with_driver_name():

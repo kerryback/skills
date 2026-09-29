@@ -4,8 +4,10 @@ Two-stage enterprise valuation from staged financial statements and company
 text.
 
 Five explicit forecast years on sales growth, EBITDA margin, a sales-to-net-PP&E
-turnover, a depreciation rate, and ratios of each operating asset and liability
-to next-year sales; then those ratios held constant forever. Capex is the plug,
+turnover on next year's sales, a depreciation rate, and ratios of each operating
+asset and liability to that year's sales; then those ratios held constant
+forever. PP&E leads sales by a year because capacity is built ahead of the volume
+it serves; working capital arises from the volume itself. Capex is the plug,
 so steady-state capex lands at (g + d) times prior net PP&E and cannot go
 negative on ordinary inputs. Year 6 runs on the terminal assumptions and absorbs
 the balance-sheet transition; the perpetuity sits on year 7, which is genuinely

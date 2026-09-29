@@ -53,20 +53,23 @@ def test_a_classified_line_absent_from_the_statement_raises():
         check_footing(classification, {"Cash": 100.0}, reported_total=100.0)
 
 
-def test_balance_ratios_are_stated_against_next_year_sales():
+def test_working_capital_ratios_use_their_own_year_s_sales():
     out = historical_ratios(FIN, CLASSIFICATION, sales_line="Revenues",
                             ebitda_line="EBITDA", depreciation_line="Depreciation")
-    # 2023's receivables support 2024 sales.
-    assert out["ratios"]["operating_assets"]["receivables"][2023] == \
-        pytest.approx(200.0 / 1200.0)
-    # The last year has no next-year sales, so it carries no balance ratio.
-    assert 2025 not in out["ratios"]["operating_assets"]["receivables"]
+    receivables = out["ratios"]["operating_assets"]["receivables"]
+    assert receivables[2023] == pytest.approx(200.0 / 1000.0)
+    # Needing no next year, the final year carries a ratio too.
+    assert receivables[2025] == pytest.approx(300.0 / 1500.0)
 
 
-def test_sales_to_net_ppe_is_a_turnover_on_next_year_sales():
+def test_net_ppe_is_the_exception_and_uses_next_year_sales():
+    """Capacity is built ahead of the sales it supports, so PP&E leads by a year."""
     out = historical_ratios(FIN, CLASSIFICATION, sales_line="Revenues",
                             ebitda_line="EBITDA", depreciation_line="Depreciation")
-    assert out["ratios"]["sales_to_net_ppe"][2023] == pytest.approx(1200.0 / 500.0)
+    turnover = out["ratios"]["sales_to_net_ppe"]
+    assert turnover[2023] == pytest.approx(1200.0 / 500.0)
+    # ... and the final year has no next year, so it carries no turnover.
+    assert 2025 not in turnover
 
 
 def test_income_ratios_use_their_own_year():

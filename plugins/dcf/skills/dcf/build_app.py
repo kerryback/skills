@@ -81,10 +81,10 @@ def _input_rows(bundle):
     """The assumption rows, in display order, as (key, label, kind, side)."""
     labels = _labels(bundle)
     rows = list(SCALAR_ROWS)
-    rows.append(("group", "Operating assets, as a share of next-year sales"))
+    rows.append(("group", "Operating assets, as a share of sales"))
     for key in bundle["assumptions"]["operating_assets"]:
         rows.append((key, labels.get(key, key), "pct", "operating_assets"))
-    rows.append(("group", "Operating liabilities, as a share of next-year sales"))
+    rows.append(("group", "Operating liabilities, as a share of sales"))
     for key in bundle["assumptions"]["operating_liabilities"]:
         rows.append((key, labels.get(key, key), "pct", "operating_liabilities"))
     rows.append(("group", "Taxes"))
@@ -219,17 +219,57 @@ def _classification_table(bundle):
     return "".join(out) + "</tbody></table>"
 
 
-def _rationales(bundle):
+def _history_strip(bundle, row):
+    """The driver's own history and the suggested path, on one line."""
+    history = _history_series(bundle, row)
+    years = ((bundle.get("history") or {}).get("years") or [])[-6:]
+    kind = row[2]
+    seen = [(y, history.get(y, history.get(str(y)))) for y in years]
+    seen = [(y, v) for y, v in seen if v is not None]
+
+    parts = []
+    if seen:
+        parts.append("History " + ", ".join(
+            f"{y} <b>{fmt(v, kind)}</b>" for y, v in seen))
+    spec = _spec(bundle, row)
+    parts.append("Suggested " + ", ".join(
+        f"<b>{fmt(v, kind)}</b>" for v in spec["explicit"])
+        + f", then <b>{fmt(spec['terminal'], kind)}</b> forever")
+    return "<p class='strip'>" + " &nbsp;·&nbsp; ".join(parts) + "</p>"
+
+
+def _citations(spec):
+    out = []
+    for c in spec.get("citations") or []:
+        who = ", ".join(x for x in (c.get("speaker"), c.get("source")) if x)
+        out.append(f"<blockquote>&ldquo;{esc(c['quote'])}&rdquo;"
+                   + (f"<cite>{esc(who)}</cite>" if who else "")
+                   + "</blockquote>")
+    return "".join(out)
+
+
+def _guidance(bundle):
+    """The advisory document: how to choose each driver, not a defence of one."""
     out = []
     for row in _input_rows(bundle):
         if row[0] == "group":
             continue
         spec = _spec(bundle, row)
-        if spec.get("rationale"):
-            out.append(f"<p class='rationale'><b>{esc(row[1])}.</b> "
-                       f"{esc(spec['rationale'])}</p>")
-    return "".join(out) or \
-        "<p class='note'>No rationales were recorded with these assumptions.</p>"
+        body = spec.get("guidance") or spec.get("rationale")
+        if not body:
+            continue
+        out.append(f"<section class='guide'><h3>{esc(row[1])}</h3>")
+        out.append(_history_strip(bundle, row))
+        out.append(f"<p class='how'>{esc(body)}</p>")
+        out.append(_citations(spec))
+        if spec.get("guidance") and spec.get("rationale"):
+            out.append(f"<p class='how'><i>Why the suggestion sits where it "
+                       f"does.</i> {esc(spec['rationale'])}</p>")
+        out.append("</section>")
+    return "".join(out) or (
+        "<p class='note'>No guidance was recorded with these assumptions. The "
+        "numbers above are then bare suggestions with nothing behind them, which "
+        "is not enough to choose from.</p>")
 
 
 def _warnings(result):
@@ -282,7 +322,7 @@ def build_app(bundle, out_path):
         ("__SENSITIVITY__", _sensitivity_table(bundle)),
         ("__WACC_NOTE__", esc(bundle["rates"].get("wacc_derivation")
                               or "No derivation was recorded for the discount rate.")),
-        ("__RATIONALES__", _rationales(bundle)),
+        ("__GUIDANCE__", _guidance(bundle)),
         ("__HISTORY_NOTES__", _history_notes(bundle)),
         ("__CLASSIFICATION__", _classification_table(bundle)),
     ]:

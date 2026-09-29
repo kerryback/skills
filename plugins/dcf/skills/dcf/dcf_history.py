@@ -9,10 +9,11 @@ error, not an omission -- that is precisely how a real liability goes missing
 from a valuation.
 
 ``historical_ratios`` computes each driver the same way the forecast does, so
-that history and forecast are comparable columns of one table. Balance-sheet
-items are divided by the *following* year's sales, because that is what the
-model assumes they support; income-statement items use their own year. The
-final year therefore carries no balance ratio, having no next year to support.
+that history and forecast are comparable columns of one table. Working-capital
+items are divided by their own year's sales. Net PP&E is the exception: it is
+reported as a turnover on the *following* year's sales, because capacity is
+built ahead of the sales it supports, so the final year carries no PP&E
+turnover.
 
 It also reports realised capex from the PP&E roll-forward, so the depreciation
 rate and the capex the model implies can be checked against what the company
@@ -90,12 +91,12 @@ def historical_ratios(financials, classification, sales_line,
         i = years.index(year)
         return sales.get(years[i + 1]) if i + 1 < len(years) else None
 
-    def against_next_sales(series):
+    def against_own_sales(series):
         out = {}
         for year in years:
-            nxt, value = next_sales(year), series.get(year)
-            if nxt and value is not None:
-                out[year] = value / nxt
+            own, value = sales.get(year), series.get(year)
+            if own and value is not None:
+                out[year] = value / own
         return out
 
     ratios = {
@@ -130,11 +131,11 @@ def historical_ratios(financials, classification, sales_line,
 
     for entry in by_bucket.get("operating_asset", []):
         key = entry.get("key", entry["line"])
-        ratios["operating_assets"][key] = against_next_sales(
+        ratios["operating_assets"][key] = against_own_sales(
             _series(lines, entry["line"]))
     for entry in by_bucket.get("operating_liability", []):
         key = entry.get("key", entry["line"])
-        ratios["operating_liabilities"][key] = against_next_sales(
+        ratios["operating_liabilities"][key] = against_own_sales(
             _series(lines, entry["line"]))
 
     notes = []
