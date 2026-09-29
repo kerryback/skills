@@ -17,8 +17,13 @@
     {
       "name": "wrds",
       "source": "./plugins/wrds",
-      "description": "Empirical asset-pricing data from WRDS (CRSP v2/Compustat) and Open Source Asset Pricing: extractable Python building blocks for connect (without a 2FA prompt), pull, merge, market cap aggregated across share classes, the CRSP-Compustat link, book equity, accounting alignment and firm age \u2014 every query run against live WRDS. Surfaces the constructions that are genuine decisions rather than common practice (Ken French vs Drechsler's WRDS script vs OpenAP, and the 4- vs 6-month reporting lag) instead of picking silently, and ships twelve WRDS reference scripts."
+      "description": "Empirical asset-pricing data from WRDS (CRSP v2/Compustat) and Open Source Asset Pricing: extractable Python building blocks for connect (without a 2FA prompt), pull, merge, market cap aggregated across share classes, the CRSP-Compustat link, book equity, accounting alignment and firm age — every query run against live WRDS. Surfaces the constructions that are genuine decisions rather than common practice (Ken French vs Drechsler's WRDS script vs OpenAP, and the 4- vs 6-month reporting lag) instead of picking silently, and ships twelve WRDS reference scripts."
+    },
+    {
+      "name": "dcf",
+      "source": "./plugins/dcf",
+      "description": "Two-stage enterprise valuation from staged financial statements and company text: classify every balance-sheet line, propose assumptions grounded in history and in the 10-K and transcripts, and emit an interactive HTML app and an Excel workbook with live formulas."
     }
   ],
-  "description": "Research data skills for Claude Code: a personal literature and notes knowledge base, free financial and economic data, and empirical asset-pricing data from WRDS."
+  "description": "Research data and valuation skills for Claude Code: a personal literature and notes knowledge base, free financial and economic data, empirical asset-pricing data from WRDS, and two-stage DCF enterprise valuation."
 }

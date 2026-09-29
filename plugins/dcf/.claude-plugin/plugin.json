@@ -1,0 +1,8 @@
+{
+  "name": "dcf",
+  "version": "0.1.0",
+  "description": "Two-stage enterprise valuation from staged financial statements and company text: forecast sales growth, EBITDA margin, a sales-to-net-PP&E turnover, a depreciation rate, and ratios of each operating asset and liability to next-year sales for five explicit years and then constant forever, with capex as the plug and a running NOL carryforward. Classifies every reported balance-sheet line before forecasting, proposes assumptions grounded in history and in the 10-K and transcripts, and emits an interactive one-page HTML app and an Excel workbook with live formulas that both check themselves against the Python engine.",
+  "author": { "name": "Kerry Back" },
+  "license": "MIT",
+  "keywords": ["dcf", "valuation", "enterprise-value", "corporate-finance", "financial-modeling"]
+}
