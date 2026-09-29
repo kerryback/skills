@@ -1,8 +1,23 @@
 # What this skill expects to find
 
 It fetches nothing. Point it at a folder that already holds the statements and,
-ideally, the text. If the statements are missing, it says so and stops rather
-than going to look.
+ideally, the text, or name the files directly. If the statements are missing, it
+says so and stops rather than going to look.
+
+```bash
+python dcf_inputs.py ~/data/jbss
+```
+
+```python
+from dcf_inputs import inventory, describe
+print(describe(inventory(financials="jbss.xlsx",
+                         filings=["10k/FY2026.htm"],
+                         transcripts=["calls/FY2026Q4.txt"])))
+```
+
+A folder is searched for the shapes these bundles arrive in. Naming files
+directly overrides whatever the search found, so a folder with two workbooks in
+it is not a problem -- say which one.
 
 ## The layout
 

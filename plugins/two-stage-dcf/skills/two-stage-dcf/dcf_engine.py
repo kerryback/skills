@@ -51,6 +51,12 @@ TRANSITION_YEAR = 6
 PERPETUITY_YEAR = 7
 LAST_YEAR = 7
 
+#: The perpetual sales growth rate to start from. Nominal, so it carries
+#: long-run inflation as well as real growth -- which is why it is well above
+#: any plausible real rate and still below nominal GDP. Depart from it when the
+#: company gives you a reason, and say what the reason was.
+DEFAULT_TERMINAL_GROWTH = 0.035
+
 SCALAR_DRIVERS = (
     "sales_growth",
     "ebitda_margin",
@@ -381,3 +387,81 @@ def sensitivity_axes(bundle, wacc_steps=(-0.02, -0.01, 0.0, 0.01, 0.02),
     growth = bundle["assumptions"]["sales_growth"]["terminal"]
     return ([wacc + d for d in wacc_steps],
             [growth + d for d in growth_steps])
+
+
+#: How far to move each driver for a like-for-like comparison. A percentage
+#: point is the natural notch for a rate; for a turnover it is meaningless --
+#: adding 0.01 to 6.3 is nothing -- so that one moves by a proportion of itself.
+NATURAL_SHIFT = {"sales_to_net_ppe": ("relative", 0.05)}
+DEFAULT_SHIFT = ("absolute", 0.01)
+
+
+def shift_label(name, kind, size):
+    if kind == "relative":
+        return f"{size * 100:g}% of itself"
+    return f"{size * 100:g}pp"
+
+
+def one_way_sensitivity(bundle, driver_name, key=None, shifts=None,
+                        result_key="value_per_share"):
+    """Move one driver by each shift, in every year at once, and value it.
+
+    Returns ``[(shift, terminal_level, value), ...]``, with ``value`` None where
+    the model refuses -- a growth rate pushed past the discount rate, say.
+    """
+    a = bundle["assumptions"]
+    spec = a[driver_name][key] if key else a[driver_name]
+    kind, size = NATURAL_SHIFT.get(driver_name, DEFAULT_SHIFT)
+    if shifts is None:
+        shifts = tuple(size * n for n in (-2, -1, 0, 1, 2))
+
+    out = []
+    for shift in shifts:
+        trial = copy.deepcopy(bundle)
+        ta = trial["assumptions"]
+        tspec = ta[driver_name][key] if key else ta[driver_name]
+        if kind == "relative":
+            tspec["explicit"] = [v * (1 + shift) for v in spec["explicit"]]
+            tspec["terminal"] = spec["terminal"] * (1 + shift)
+        else:
+            tspec["explicit"] = [v + shift for v in spec["explicit"]]
+            tspec["terminal"] = spec["terminal"] + shift
+        try:
+            value = run_model(trial)[result_key]
+        except ValueError:
+            value = None
+        out.append((shift, tspec["terminal"], value))
+    return out
+
+
+def driver_entries(bundle):
+    """Every driver, as ``(name, key, label)``, in display order."""
+    entries = [(name, None, name.replace("_", " ")) for name in SCALAR_DRIVERS]
+    for side in ("operating_assets", "operating_liabilities"):
+        for key in bundle["assumptions"][side]:
+            entries.append((side, key, key.replace("_", " ")))
+    return entries
+
+
+def driver_ranking(bundle, result_key="value_per_share"):
+    """Which drivers actually move the answer, widest span first.
+
+    Each is moved one natural notch up and down in every year at once. A driver
+    with a narrow span is one you can stop arguing about, which is as useful as
+    knowing which one matters.
+    """
+    base = run_model(bundle)[result_key]
+    rows = []
+    for name, key, label in driver_entries(bundle):
+        kind, size = NATURAL_SHIFT.get(name, DEFAULT_SHIFT)
+        points = one_way_sensitivity(bundle, name, key, shifts=(-size, size),
+                                     result_key=result_key)
+        low, high = points[0][2], points[1][2]
+        if low is None or high is None:
+            continue
+        rows.append({"driver": label, "name": name, "key": key,
+                     "shift": shift_label(name, kind, size),
+                     "low": low, "high": high,
+                     "span": abs(high - low), "base": base})
+    rows.sort(key=lambda r: r["span"], reverse=True)
+    return rows

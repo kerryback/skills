@@ -1,12 +1,12 @@
 ---
-name: dcf
+name: two-stage-dcf
 description: >-
   Build a two-stage enterprise valuation of a company from its historical
   financial statements and its text — five explicit forecast years on sales
   growth, EBITDA margin, a sales-to-net-PP&E turnover on next year's sales, a
   depreciation rate, and ratios of each operating asset and liability to that
-  year's sales, then those ratios held constant forever. Use this whenever the user wants a company
-  valued or a discounted cash flow model built: "value ProFrac", "what is ACDC
+  year's sales, then those ratios held constant forever. Use this whenever the
+  user wants a company valued or a discounted cash flow model built: "value ProFrac", "what is ACDC
   worth", "build me a DCF", "two-stage enterprise valuation", "run a DCF on
   this 10-K", "is this stock cheap on a cash flow basis", or when they point at
   a folder of statements and filings and ask what the business is worth.
@@ -14,8 +14,10 @@ description: >-
   forecasting, computes the historical ratios with a script, reads the MD&A,
   risk factors, transcripts and press releases for evidence on each driver,
   suggests assumptions and explains how to choose each one, then writes two HTML
-  pages -- the argument and the answer -- plus an Excel workbook with live
-  formulas, driven by an assumptions CSV that rebuilds them. Expects the
+  pages -- the argument and the answer -- and waits for the user to say which
+  numbers to change. Point it at a folder of statements and filings, or name the
+  files. When the assumptions are settled it delivers an Excel workbook with
+  live formulas plus sensitivity and driver-ranking sheets. Expects the
   statements and text to be staged in a folder already — it fetches nothing.
 ---
 
@@ -45,22 +47,43 @@ missing and stop — do not go looking for it on the web, and do not invent it.
 The scripts need `pandas` and `openpyxl`. Run them with whatever Python the
 project uses.
 
-## The five phases
+## The shape of a run
 
-Work through them in order. Three of them stop and wait for the user. Do not
-run ahead of a gate: the whole value of this skill is that the judgment calls
-get made by a person who knows the company.
+Six steps, in order. Three of them stop and wait, and the fourth stop is the
+long one: you build the two pages and then go round the loop with the user until
+they are satisfied. Do not run ahead of a gate -- the whole value of this skill
+is that the judgement calls get made by someone who knows the company.
+
+```
+  inputs -> classify -> history -> text -> propose, build, and WAIT
+                                              |
+                                    loop on the numbers
+                                              |
+                                              v
+                                    deliver the workbook
+```
 
 ### Phase 0 — inventory
 
-Load each statement and report what you found:
+The user points you at a folder, or names the files. Both work:
 
 ```bash
-python dcf_load.py    # or import load_statements and call it
+python dcf_inputs.py ~/data/jbss
 ```
 
-Say which fiscal years each statement covers, how many line items, and which of
-the text sources are present. Name what is missing.
+```python
+from dcf_inputs import inventory, describe
+print(describe(inventory(financials="jbss.xlsx",
+                         transcripts=["calls/FY2026Q4.txt"])))
+```
+
+Report what was found and what was not. Then load the statements and say which
+fiscal years each covers and how many line items.
+
+If there are no statements, stop and say what you need. Do not go looking on the
+web — this skill fetches nothing. If there is no text, carry on and say that the
+forecast will rest on history alone; that belongs on the assumptions page, not
+buried in the conversation.
 
 ### Phase 1 — classify (gate)
 
@@ -111,7 +134,7 @@ it — not a general summary of the company.
 
 Show the user the evidence and wait, before you propose numbers from it.
 
-### Phase 4 — propose (gate)
+### Phase 4 — propose, then build and wait (gate)
 
 You advise; the user decides. Everything you put in the assumption table is a
 suggestion, and the artifacts say so on their face. What the user actually needs
@@ -135,7 +158,35 @@ a driver other than sales, such as inventory as days of cost of sales or
 depreciation as a rate on prior-year PP&E; and flat or zero, for one-time items
 and balances with no reason to move.
 
-Then give the user the table, the guidance and the citations, and wait.
+Terminal sales growth starts at 3.5 percent — `dcf_engine.DEFAULT_TERMINAL_GROWTH`
+— unless the company gives you a reason to move it. It is a nominal perpetual
+rate, so it carries long-run inflation as well as real growth, which is why it
+sits well above any plausible real rate and still below nominal GDP. If you
+depart from it, say what the reason was.
+
+Then build the two pages and stop.
+
+```bash
+python dcf_assumptions.py bundle.json assumptions.csv
+python build_pages.py bundle.json . --csv assumptions.csv --live
+python serve.py .                     # once, in another shell
+```
+
+Give the user the two links and wait. The assumptions page is what they read;
+the conversation that follows is them telling you which numbers to change. Do
+not build the workbook yet — it is the finished deliverable, not a working
+document.
+
+### The loop
+
+Each time the user gives you numbers: edit `assumptions.csv`, rebuild with
+`--live`, and say what moved and by how much. Never hand-edit the HTML, and
+never edit the numbers inside `bundle.json` — the CSV is where numbers live.
+
+If they ask why a driver matters, `dcf_engine.driver_ranking(bundle)` tells you
+which ones actually move the answer and which are not worth the argument.
+
+Keep going until they say the assumptions are settled.
 
 Sanity rules worth stating out loud when you propose:
 
@@ -155,15 +206,14 @@ Sanity rules worth stating out loud when you propose:
 
 Discuss, iterate, and only move on when the user is satisfied.
 
-### Phase 5 — build
+### Phase 5 — deliver
 
-Write `bundle.json` per `reference/model.md`, split the numbers out into a CSV,
-and build:
+Only once the user says the assumptions are settled. Rebuild the pages *without*
+`--live`, so nothing you hand over carries a script, and write the workbook:
 
 ```bash
-python dcf_assumptions.py bundle.json assumptions.csv
 python build_pages.py bundle.json . --csv assumptions.csv
-python build_workbook.py bundle.json <slug>-dcf.xlsx
+python build_workbook.py bundle.json <slug>-dcf.xlsx --csv assumptions.csv
 ```
 
 Three artifacts, with different jobs.
@@ -180,28 +230,19 @@ the bridge, the sensitivity grid and any warnings, with a link back.
 `assumptions.csv` holds the numbers and nothing else. It is the thing that
 changes. Everything slow-moving stays in `bundle.json`.
 
-### The loop
+The workbook is the deliverable. Eight sheets: Inputs, Model, Bridge,
+Sensitivity, Drivers, Historical, NOL schedule, Check. Every cell on Model,
+Bridge and NOL schedule is a live formula over Inputs, so the user can drive it
+without you. Sensitivity and Drivers hold computed values — each cell there is a
+whole re-run of the model, which Excel cannot do from a formula — and both
+sheets say so on their face.
 
-When the user comes back with different numbers, edit the CSV and rebuild — do
-not hand-edit the HTML, and do not edit the numbers in `bundle.json`.
+Report the enterprise value, the bridge, the value per share, every warning, and
+the two or three drivers the Drivers sheet says the answer actually turns on.
 
-```bash
-python serve.py .                    # once, in another shell
-python build_pages.py bundle.json . --csv assumptions.csv --live
-```
-
-`--live` injects a small poller that reloads the open page when the file
-changes, so the user does not have to touch the browser. It is injected only
-with that flag: rebuild without it before sending anything to anyone, so the
-artifact stays script-free.
-
-Report the enterprise value, the bridge, the value per share, and every warning
-the engine returned. Warnings are not decoration — a negative implied capex or a
-non-positive terminal EBIT means the assumptions are describing a company that
-does not exist.
-
-Point the user at the assumptions page for the reasoning, the valuation page for
-the answer, and the workbook for trying numbers without going through you. If they settle on
+Warnings are not decoration — a negative implied capex or a non-positive
+terminal EBIT means the assumptions are describing a company that does not
+exist. If they settle on
 different assumptions, edit the bundle and rebuild both rather than hand-editing
 either artifact — and update the `rationale` to match what they chose, including
 where they overruled you.
@@ -211,6 +252,7 @@ where they overruled you.
 | File | What it does |
 |---|---|
 | `dcf_engine.py` | the recursion, the terminal value, the NOL, the bridge. Pure. |
+| `dcf_inputs.py` | find the staged inputs, from a folder or filenames |
 | `dcf_load.py` | staged statements into a normalised dict |
 | `dcf_history.py` | the footing check, and the historical driver ratios |
 | `dcf_assumptions.py` | the numbers, to and from `assumptions.csv` |

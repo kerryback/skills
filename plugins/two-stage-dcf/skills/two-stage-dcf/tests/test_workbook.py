@@ -86,3 +86,43 @@ def test_a_company_with_no_claims_still_builds(tmp_path):
     build_workbook(bundle(), str(out))
     wb = openpyxl.load_workbook(str(out))
     assert wb["Bridge"]["B3"].value.startswith("=")
+
+
+def test_the_sensitivity_and_drivers_sheets_are_there(built):
+    wb = openpyxl.load_workbook(built)
+    assert "Sensitivity" in wb.sheetnames
+    assert "Drivers" in wb.sheetnames
+
+
+def test_the_sheets_read_in_a_sensible_order(built):
+    wb = openpyxl.load_workbook(built)
+    assert wb.sheetnames == ["Inputs", "Model", "Bridge", "Sensitivity",
+                             "Drivers", "Historical", "NOL schedule", "Check"]
+
+
+def test_the_snapshot_sheets_say_they_are_snapshots(built):
+    """They hold values, not formulas, and must not pretend otherwise."""
+    wb = openpyxl.load_workbook(built)
+    for name in ("Sensitivity", "Drivers"):
+        assert "snapshot" in str(wb[name]["A2"].value).lower()
+        assert "rebuild" in str(wb[name]["A2"].value).lower()
+
+
+def test_the_drivers_sheet_ranks_widest_first(built):
+    wb = openpyxl.load_workbook(built)
+    ws = wb["Drivers"]
+    spans = []
+    for r in range(7, 40):
+        if ws.cell(r, 1).value and isinstance(ws.cell(r, 6).value, (int, float)):
+            spans.append(ws.cell(r, 6).value)
+        elif spans:
+            break
+    assert spans == sorted(spans, reverse=True)
+    assert len(spans) >= 5
+
+
+def test_the_check_sheet_verifies_the_sensitivity_centre(built):
+    wb = openpyxl.load_workbook(built)
+    text = " ".join(str(c.value) for row in wb["Check"].iter_rows()
+                    for c in row if c.value is not None)
+    assert "Sensitivity!" in text

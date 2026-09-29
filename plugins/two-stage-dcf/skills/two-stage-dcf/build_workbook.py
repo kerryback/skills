@@ -8,7 +8,15 @@ safeguard: the Check sheet holds the Python engine's base-case numbers beside
 formulas that resolve to FAIL and turn red the moment a cell disagrees. Excel
 evaluates them on open, so drift announces itself to whoever opens the file.
 
-Sheets: Inputs, Model, Bridge, Historical, NOL schedule, Check.
+Sheets: Inputs, Model, Bridge, Sensitivity, Drivers, Historical, NOL schedule,
+Check.
+
+One caveat, stated on the sheets themselves. The Sensitivity and Drivers sheets
+hold computed values, not formulas, because every cell on them is a complete
+re-run of the model at different assumptions and Excel cannot do that from a
+formula. They are a snapshot of the Inputs as they stood when the file was
+written. Change an Input and the Model, Bridge and NOL sheets follow; those two
+do not, until you rebuild.
 """
 
 import os
@@ -19,7 +27,8 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from dcf_engine import (LAST_YEAR, N_EXPLICIT, PERPETUITY_YEAR, TRANSITION_YEAR,
-                        run_model)
+                        driver_entries, driver_ranking, one_way_sensitivity,
+                        run_model, sensitivity_axes, sensitivity_grid)
 
 TOLERANCE = 1e-6
 SHIELD_YEARS = 200          # the horizon dcf_engine._nol_shield_pv uses
@@ -393,6 +402,104 @@ def _write_bridge(ws, bundle, singles, model, shield_row, claims):
             "terminal_value": 4, "pv_terminal": 5, "pv_explicit": 3}
 
 
+SNAPSHOT = ("A snapshot, not a formula: every cell is a full re-run of the model "
+            "at different assumptions, which Excel cannot do from a formula. "
+            "Change an Input and rebuild to refresh this sheet.")
+
+
+def _write_sensitivity(ws, bundle):
+    """WACC against terminal growth, the two the answer is most exposed to."""
+    ws["A1"] = "Sensitivity — value per share"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A2"] = SNAPSHOT
+    ws["A2"].font = Font(italic=True, size=9)
+    ws["A2"].alignment = Alignment(wrap_text=True)
+
+    waccs, growths = sensitivity_axes(bundle)
+    grid = sensitivity_grid(bundle, waccs, growths)
+    base_wacc = bundle["rates"]["wacc"]
+    base_growth = bundle["assumptions"]["sales_growth"]["terminal"]
+
+    header = 5
+    c = ws.cell(header, 1, "WACC \\ terminal growth")
+    c.font, c.fill = HEAD, HEAD_FILL
+    for j, growth in enumerate(growths):
+        c = ws.cell(header, 2 + j, growth)
+        c.font, c.fill, c.number_format = HEAD, HEAD_FILL, PCT
+
+    centre = None
+    for i, wacc in enumerate(waccs):
+        r = header + 1 + i
+        c = ws.cell(r, 1, wacc)
+        c.number_format = PCT
+        c.font = TOTAL
+        for j, growth in enumerate(growths):
+            cell = ws.cell(r, 2 + j, grid[i][j])
+            cell.number_format = SHARE
+            here = (abs(wacc - base_wacc) < 1e-12
+                    and abs(growth - base_growth) < 1e-12)
+            if here:
+                cell.font = TOTAL
+                cell.fill = PatternFill("solid", fgColor="EEF2F9")
+                centre = cell.coordinate
+
+    ws.column_dimensions["A"].width = 24
+    for j in range(2, 2 + len(growths)):
+        ws.column_dimensions[get_column_letter(j)].width = 13
+    return centre
+
+
+def _write_drivers(ws, bundle):
+    """Which drivers move the answer, and one-way tables for each."""
+    ws["A1"] = "Drivers — what actually moves the answer"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A2"] = SNAPSHOT
+    ws["A2"].font = Font(italic=True, size=9)
+    ws["A2"].alignment = Alignment(wrap_text=True)
+
+    ranking = driver_ranking(bundle)
+    base = ranking[0]["base"] if ranking else None
+
+    r = 5
+    ws.cell(r, 1, "Moved one notch each way, in every year at once").font = GROUP
+    r += 1
+    for j, label in enumerate(["Driver", "Notch", "Down", "Base", "Up", "Span"]):
+        c = ws.cell(r, 1 + j, label)
+        c.font, c.fill = HEAD, HEAD_FILL
+    r += 1
+    for row in ranking:
+        ws.cell(r, 1, row["driver"])
+        ws.cell(r, 2, row["shift"])
+        for j, key in enumerate(("low",)):
+            ws.cell(r, 3, row["low"]).number_format = SHARE
+        ws.cell(r, 4, base).number_format = SHARE
+        ws.cell(r, 5, row["high"]).number_format = SHARE
+        ws.cell(r, 6, row["span"]).number_format = SHARE
+        r += 1
+
+    r += 2
+    ws.cell(r, 1, "One-way tables, two notches each way").font = GROUP
+    r += 2
+    for name, key, label in driver_entries(bundle):
+        points = one_way_sensitivity(bundle, name, key)
+        ws.cell(r, 1, label).font = TOTAL
+        ws.cell(r + 1, 1, "terminal level")
+        ws.cell(r + 2, 1, "value per share")
+        for j, (shift, level, value) in enumerate(points):
+            ws.cell(r, 2 + j, "base" if shift == 0 else f"{shift * 100:+g}")
+            ws.cell(r, 2 + j).font = HEAD
+            ws.cell(r, 2 + j).fill = HEAD_FILL
+            lvl = ws.cell(r + 1, 2 + j, level)
+            lvl.number_format = MULT if name == "sales_to_net_ppe" else PCT
+            val = ws.cell(r + 2, 2 + j, value)
+            val.number_format = SHARE
+        r += 4
+
+    ws.column_dimensions["A"].width = 30
+    for j in "BCDEF":
+        ws.column_dimensions[j].width = 14
+
+
 def _write_historical(ws, bundle):
     ws["A1"] = "Historical driver ratios"
     ws["A1"].font = Font(bold=True, size=14)
@@ -429,7 +536,7 @@ def _write_historical(ws, bundle):
     ws.column_dimensions["A"].width = 38
 
 
-def _write_check(ws, bundle, result, model, bridge_rows):
+def _write_check(ws, bundle, result, model, bridge_rows, sensitivity_centre=None):
     """The workbook's own parity check against the Python engine."""
     ws["A1"] = "Does this workbook still agree with the engine that wrote it?"
     ws["A1"].font = Font(bold=True, size=14)
@@ -478,6 +585,15 @@ def _write_check(ws, bundle, result, model, bridge_rows):
                 f"=IF(ABS(Bridge!B{row}-({result[key]!r}))>{TOLERANCE},\"FAIL\",\"ok\")")
         r += 1
 
+    if sensitivity_centre and result["value_per_share"] is not None:
+        # The middle of the sensitivity grid is the base case by construction.
+        # If it is not, the snapshot was written from different inputs.
+        ws.cell(r, 1, "sensitivity grid centre = base case")
+        ws.cell(r, 2,
+                f"=IF(ABS(Sensitivity!{sensitivity_centre}-"
+                f"({result['value_per_share']!r}))>{TOLERANCE},\"FAIL\",\"ok\")")
+        r += 1
+
     last = r - 1
     body = f"B{header + 1}:{get_column_letter(1 + LAST_YEAR)}{last}"
     summary.value = f'=IF(COUNTIF({body},"FAIL")>0,"FAIL","ok")'
@@ -510,18 +626,35 @@ def build_workbook(bundle, out_path):
                                   singles, model)
     bridge_rows = _write_bridge(wb.create_sheet("Bridge"), bundle, singles,
                                 model, shield_row, claims)
+    centre = _write_sensitivity(wb.create_sheet("Sensitivity"), bundle)
+    _write_drivers(wb.create_sheet("Drivers"), bundle)
     _write_historical(wb.create_sheet("Historical"), bundle)
-    _write_check(wb.create_sheet("Check"), bundle, result, model, bridge_rows)
+    _write_check(wb.create_sheet("Check"), bundle, result, model, bridge_rows,
+                 sensitivity_centre=centre)
+
+    # Reading order: what you assume, what it produces, what it is worth, what
+    # it is sensitive to, what the history was, and finally the machinery.
+    order = ["Inputs", "Model", "Bridge", "Sensitivity", "Drivers", "Historical",
+             "NOL schedule", "Check"]
+    wb._sheets = [wb[name] for name in order]
 
     wb.save(out_path)
     return out_path
 
 
 if __name__ == "__main__":
+    import argparse
     import json
-    import sys
 
-    if len(sys.argv) != 3:
-        raise SystemExit("usage: build_workbook.py <bundle.json> <out.xlsx>")
-    with open(sys.argv[1], encoding="utf-8") as fh:
-        print(build_workbook(json.load(fh), sys.argv[2]))
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("bundle")
+    ap.add_argument("out")
+    ap.add_argument("--csv", help="assumptions CSV to overlay onto the bundle")
+    args = ap.parse_args()
+
+    with open(args.bundle, encoding="utf-8") as fh:
+        bundle = json.load(fh)
+    if args.csv:
+        from dcf_assumptions import apply_assumptions_csv
+        bundle = apply_assumptions_csv(bundle, args.csv)
+    print(build_workbook(bundle, args.out))
