@@ -19,7 +19,7 @@ openpyxl = pytest.importorskip("openpyxl")
 
 from build_workbook import build_workbook          # noqa: E402
 from dcf_engine import run_model                   # noqa: E402
-from test_parity import rich_bundle                # noqa: E402
+from test_report import rich_bundle                # noqa: E402
 
 SOFFICE = shutil.which("soffice") or shutil.which("libreoffice")
 

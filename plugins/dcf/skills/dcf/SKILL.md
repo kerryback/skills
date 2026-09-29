@@ -13,9 +13,9 @@ description: >-
   Classifies every reported balance-sheet line and gets that approved before
   forecasting, computes the historical ratios with a script, reads the MD&A,
   risk factors, transcripts and press releases for evidence on each driver,
-  proposes assumptions and discusses them, then writes an interactive one-page
-  HTML app and an Excel workbook with live formulas. Expects the statements and
-  text to be staged in a folder already — it fetches nothing.
+  proposes assumptions and discusses them, then writes a one-page HTML report
+  and an Excel workbook with live formulas that the user drives. Expects the
+  statements and text to be staged in a folder already — it fetches nothing.
 ---
 
 # Two-stage enterprise valuation
@@ -115,7 +115,8 @@ Show the user the evidence and wait, before you propose numbers from it.
 Write the assumption table: every driver, years 1 through 5 and terminal, each
 with a short rationale naming the history it came from and the text that
 supported or contradicted it. Put the rationale in the bundle's `rationale`
-fields — it travels into the app's notes panel.
+fields — they travel into the report's notes section and the
+workbook.
 
 Sanity rules worth stating out loud when you propose:
 
@@ -126,8 +127,9 @@ Sanity rules worth stating out loud when you propose:
 - Year 6 runs on the terminal assumptions and absorbs any gap between year 5's
   balance-sheet ratios and the terminal ones. A large gap makes year 6's capex
   lumpy; the engine warns when it exceeds ten percent.
-- The WACC is a single editable cell. Show the CAPM and cost-of-debt
-  derivation in `rates.wacc_derivation` so it travels with the file.
+- The WACC is a single number, editable on the workbook's Inputs sheet. Put
+  the CAPM and cost-of-debt derivation in `rates.wacc_derivation` so the
+  reasoning travels with both artifacts.
 
 Discuss, iterate, and only move on when the user is satisfied.
 
@@ -140,13 +142,20 @@ python build_app.py bundle.json <slug>-dcf.html
 python build_workbook.py bundle.json <slug>-dcf.xlsx
 ```
 
+The HTML is the readable record — assumptions beside history, the schedule, the
+bridge, a sensitivity grid, and every rationale, history note and classification
+reason. It holds no script and does no arithmetic. The workbook is the thing the
+user drives: every Model cell is a live formula over its Inputs sheet.
+
 Report the enterprise value, the bridge, the value per share, and every warning
 the engine returned. Warnings are not decoration — a negative implied capex or a
 non-positive terminal EBIT means the assumptions are describing a company that
 does not exist.
 
-Tell the user the app recomputes on every keystroke and the workbook's formulas
-are live, so both are theirs to push on.
+Point the user at the workbook for anything they want to change, and at the
+HTML for anything they want to send someone. If they ask for different
+assumptions, edit the bundle and rebuild both rather than hand-editing either
+artifact.
 
 ## What is in the folder
 
@@ -155,21 +164,23 @@ are live, so both are theirs to push on.
 | `dcf_engine.py` | the recursion, the terminal value, the NOL, the bridge. Pure. |
 | `dcf_load.py` | staged statements into a normalised dict |
 | `dcf_history.py` | the footing check, and the historical driver ratios |
-| `build_app.py` | the interactive one-page HTML app |
+| `build_app.py` | the one-page HTML report |
 | `build_workbook.py` | the Excel workbook with live formulas |
-| `app_template.html` | the app's shell and its JavaScript port of the engine |
+| `app_template.html` | the report's shell and styling |
 | `reference/model.md` | the arithmetic and the bundle schema |
 | `reference/classification.md` | the buckets, and the cases that are genuinely hard |
 | `reference/staging.md` | the folder layout expected |
 | `reference/reading-text.md` | what to look for in the filings, driver by driver |
 
-## Why the artifacts check themselves
+## Why the workbook checks itself
 
-The recursion exists three times: in Python, in the app's JavaScript, and in
-Excel formulas. The app and the workbook each carry the Python engine's
-base-case numbers and re-derive them on open. The app paints a red banner if it
-disagrees; the workbook's Check sheet turns red. If you ever see either, the
-numbers on that artifact are not to be trusted — say so plainly rather than
-working around it.
+The recursion exists twice: in Python, and in the workbook's Excel formulas. The
+HTML is not a third — it carries no script and renders numbers the engine
+already computed, so it cannot drift.
 
-Run `python -m pytest tests/` after changing any of the three.
+The workbook therefore carries the Python engine's base-case figures on a Check
+sheet, beside formulas that resolve to FAIL and turn red. If you ever see a
+FAIL, the numbers in that workbook are not to be trusted — say so plainly rather
+than working around it.
+
+Run `python -m pytest tests/` after changing either implementation.

@@ -112,7 +112,7 @@ them out of the sales ratios.
 ## Valuation date
 
 The end of fiscal year 0. Comparing that to a current market price is comparing
-across a gap, and the app says so on its face. There is no mid-year convention.
+across a gap, and the report says so on its face. There is no mid-year convention.
 
 ## The bundle
 
@@ -190,3 +190,13 @@ Warnings fire on: a carryforward surviving year 6, a carryforward not exhausted
 within the horizon, non-positive terminal EBIT, negative implied capex in any
 year, sales reaching zero, a year-5-to-terminal turnover gap above ten percent,
 and a units mismatch between the statements and the share count.
+
+## Where the arithmetic lives
+
+Twice: in this module, and in the workbook's Excel formulas. The HTML report
+renders figures the engine already computed and holds no script, so it is not a
+third implementation and cannot disagree with the engine.
+
+The workbook's Check sheet holds the engine's base-case figures beside formulas
+that resolve to FAIL and turn red when a cell disagrees. Excel evaluates them on
+open, so drift announces itself to whoever opens the file.

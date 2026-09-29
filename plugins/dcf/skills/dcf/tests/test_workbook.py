@@ -5,7 +5,7 @@ import pytest
 openpyxl = pytest.importorskip("openpyxl")
 
 from build_workbook import build_workbook          # noqa: E402
-from test_parity import rich_bundle                # noqa: E402
+from test_report import rich_bundle                # noqa: E402
 from test_schedule import bundle                   # noqa: E402
 
 

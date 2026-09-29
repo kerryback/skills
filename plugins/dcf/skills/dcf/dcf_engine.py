@@ -46,6 +46,8 @@ carryforward burning off is not a steady state; anything still alive after year
 Pure: no file I/O, no network, no printing, stdlib only.
 """
 
+import copy
+
 N_EXPLICIT = 5
 TRANSITION_YEAR = 6
 PERPETUITY_YEAR = 7
@@ -344,3 +346,35 @@ def run_model(bundle):
         "warnings": _warnings(bundle, rows, perpetuity_row, nol_at_six,
                               pv_nol, unexhausted),
     }
+
+
+def sensitivity_grid(bundle, waccs, growths, key="value_per_share"):
+    """``key`` at each (WACC, terminal growth) pair, as rows by column.
+
+    Lives here rather than in the artifacts so that every number they show
+    comes out of this module. A pair with no perpetuity -- growth at or above
+    the discount rate -- yields None rather than raising, because a grid is
+    expected to run off the edge of what can be valued.
+    """
+    rows = []
+    for wacc in waccs:
+        row = []
+        for growth in growths:
+            trial = copy.deepcopy(bundle)
+            trial["rates"]["wacc"] = wacc
+            trial["assumptions"]["sales_growth"]["terminal"] = growth
+            try:
+                row.append(run_model(trial)[key])
+            except ValueError:
+                row.append(None)
+        rows.append(row)
+    return rows
+
+
+def sensitivity_axes(bundle, wacc_steps=(-0.02, -0.01, 0.0, 0.01, 0.02),
+                     growth_steps=(-0.01, -0.005, 0.0, 0.005, 0.01)):
+    """The default axes: the base case, bracketed."""
+    wacc = bundle["rates"]["wacc"]
+    growth = bundle["assumptions"]["sales_growth"]["terminal"]
+    return ([wacc + d for d in wacc_steps],
+            [growth + d for d in growth_steps])

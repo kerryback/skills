@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Two-Stage Valuation</title>
+<title>__TITLE__</title>
 <style>
   :root {
     --ground: #ffffff;
@@ -13,11 +13,8 @@
     --rule: #dde2ea;
     --accent: #00205b;
     --accent-soft: #eef2f9;
-    --edit: #fffdf4;
     --flag: #8a5a00;
     --flag-soft: #fbf3e2;
-    --bad: #a11;
-    --bad-soft: #fdeceb;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -26,15 +23,13 @@
     :root:not([data-theme="light"]) {
       --ground: #13171d; --panel: #1a1f27; --ink: #e6eaf0; --muted: #a2adbd;
       --rule: #2b323c; --accent: #9db8ef; --accent-soft: #1b2332;
-      --edit: #1f2430; --flag: #e3b766; --flag-soft: #2a2416;
-      --bad: #f2837a; --bad-soft: #2d1a19;
+      --flag: #e3b766; --flag-soft: #2a2416;
     }
   }
   :root[data-theme="dark"] {
     --ground: #13171d; --panel: #1a1f27; --ink: #e6eaf0; --muted: #a2adbd;
     --rule: #2b323c; --accent: #9db8ef; --accent-soft: #1b2332;
-    --edit: #1f2430; --flag: #e3b766; --flag-soft: #2a2416;
-    --bad: #f2837a; --bad-soft: #2d1a19;
+    --flag: #e3b766; --flag-soft: #2a2416;
   }
   * { box-sizing: border-box; }
   body {
@@ -57,19 +52,11 @@
     margin: 2.4rem 0 .7rem; padding-bottom: .35rem; border-bottom: 1px solid var(--rule);
   }
 
-  .banner {
-    display: none; background: var(--bad-soft); border: 1px solid var(--bad);
-    color: var(--bad); border-radius: 6px; padding: .8rem 1rem; margin-bottom: 1.2rem;
-    font-family: var(--sans); font-size: .88rem;
-  }
-  .banner.show { display: block; }
-  .banner b { display: block; margin-bottom: .25rem; }
-
   .warnings { list-style: none; padding: 0; margin: 0 0 1.2rem; }
   .warnings li {
     background: var(--flag-soft); border-left: 3px solid var(--flag);
     padding: .55rem .8rem; margin-bottom: .4rem; font-size: .9rem;
-    font-family: var(--sans); color: var(--ink);
+    font-family: var(--sans);
   }
 
   .headline { display: flex; flex-wrap: wrap; gap: 1px; background: var(--rule);
@@ -98,44 +85,31 @@
   tr.group td {
     font-family: var(--sans); font-size: .72rem; letter-spacing: .1em;
     text-transform: uppercase; color: var(--muted); padding-top: .9rem;
-    border-bottom: 1px solid var(--rule);
   }
   td.hist { color: var(--muted); background: var(--panel); }
-  td.derived { color: var(--muted); }
+  td.fc { color: var(--ink); }
   tr.total td { border-top: 2px solid var(--rule); border-bottom: none; font-weight: 700; }
-  tr.total td:first-child { font-weight: 700; }
+  td.sens { background: var(--panel); }
+  td.sens.here { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  td.wrap { white-space: normal; text-align: left; font-family: var(--sans); font-size: .8rem; }
 
-  input[type=number] {
-    width: 5.6rem; padding: .18rem .3rem; text-align: right;
-    font-family: var(--mono); font-size: .82rem;
-    color: var(--ink); background: var(--edit);
-    border: 1px solid var(--rule); border-radius: 3px;
-  }
-  input[type=number]:focus { outline: 2px solid var(--accent); outline-offset: 0; }
-  .unit { color: var(--muted); font-size: .74rem; font-family: var(--sans); }
-
-  .singles { display: flex; flex-wrap: wrap; gap: 1.4rem; margin-top: 1rem; align-items: flex-end; }
-  .singles label { font-family: var(--sans); font-size: .8rem; color: var(--muted); display: block; }
-  .singles input { width: 7rem; }
-
-  button {
-    font-family: var(--sans); font-size: .82rem; padding: .4rem .9rem;
-    border: 1px solid var(--accent); border-radius: 4px;
-    background: transparent; color: var(--accent); cursor: pointer;
-  }
-  button:hover { background: var(--accent-soft); }
-
-  details { margin-top: 1rem; }
+  details { margin-top: .6rem; }
   summary {
     font-family: var(--sans); font-size: .82rem; color: var(--accent);
     cursor: pointer; padding: .3rem 0;
   }
-  .note { font-family: var(--sans); font-size: .87rem; color: var(--muted); margin: .4rem 0 0; }
+  .note { font-family: var(--sans); font-size: .87rem; color: var(--muted); margin: .5rem 0 0; }
   .note.body { color: var(--ink); }
-  .rationale { font-family: var(--sans); font-size: .85rem; margin: .5rem 0 0; }
+  .rationale { font-family: var(--sans); font-size: .85rem; margin: .6rem 0 0; }
   .rationale b { font-weight: 600; }
-  td.sens { background: var(--panel); }
-  td.sens.here { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  .rates { font-family: var(--sans); font-size: .87rem; margin: .9rem 0 0; color: var(--muted); }
+  .rates b { color: var(--ink); font-family: var(--mono); font-weight: 400; }
+  .drive {
+    background: var(--accent-soft); border-left: 3px solid var(--accent);
+    padding: .7rem .9rem; font-family: var(--sans); font-size: .88rem;
+    margin: 1.1rem 0 0; color: var(--ink);
+  }
+  .drive code { font-family: var(--mono); font-size: .92em; }
 </style>
 </head>
 <body>
@@ -143,48 +117,55 @@
 
 <header>
   <p class="eyebrow">Two-stage enterprise valuation</p>
-  <h1 id="company">—</h1>
-  <p class="sub" id="subtitle">—</p>
+  <h1>__COMPANY__</h1>
+  <p class="sub">__SUBTITLE__</p>
 </header>
 
-<div class="banner" id="banner"></div>
-<ul class="warnings" id="warnings"></ul>
+__WARNINGS__
 
 <div class="headline">
-  <div><span class="lab">Enterprise value</span><span class="val" id="hl-ev">—</span></div>
-  <div><span class="lab">Equity value</span><span class="val" id="hl-eq">—</span></div>
-  <div><span class="lab">Value per share</span><span class="val big" id="hl-ps">—</span></div>
+  <div><span class="lab">Enterprise value</span><span class="val">__EV__</span></div>
+  <div><span class="lab">Equity value</span><span class="val">__EQUITY__</span></div>
+  <div><span class="lab">Value per share</span><span class="val big">__PER_SHARE__</span></div>
 </div>
 
 <h2>Assumptions</h2>
-<div class="scroller"><table id="inputs"></table></div>
-<div class="singles" id="singles"></div>
-<p style="margin-top:1rem"><button id="reset">Reset to the proposed assumptions</button></p>
+<div class="scroller">__INPUTS__</div>
+__RATES__
+
+<p class="drive">This page records one set of assumptions; it is not a
+calculator. To change them, open the workbook beside it — every cell on its
+Model sheet is a live formula over its Inputs sheet — or edit the bundle and
+rebuild.</p>
 
 <h2>Forecast</h2>
-<div class="scroller"><table id="schedule"></table></div>
-<p class="note">Year 6 runs on the terminal assumptions and absorbs the balance-sheet
-transition. The perpetuity sits on year 7, which is why year 7 is shown but not
-discounted into the explicit sum.</p>
+<div class="scroller">__SCHEDULE__</div>
+<p class="note">Year 6 runs on the terminal assumptions and absorbs the
+balance-sheet transition. The perpetuity sits on year 7, which is why year 7 is
+shown but not discounted into the explicit sum.</p>
 
 <h2>From enterprise value to the shareholders</h2>
-<div class="scroller"><table id="bridge"></table></div>
+<div class="scroller">__BRIDGE__</div>
 
 <h2>Sensitivity — value per share</h2>
-<div class="scroller"><table id="sensitivity"></table></div>
+<div class="scroller">__SENSITIVITY__</div>
 
 <h2>Notes</h2>
 <details open>
   <summary>Cost of capital</summary>
-  <p class="note body" id="wacc-note">—</p>
+  <p class="note body">__WACC_NOTE__</p>
 </details>
 <details>
   <summary>How each assumption was chosen</summary>
-  <div id="rationales"></div>
+  __RATIONALES__
+</details>
+<details>
+  <summary>What the history showed</summary>
+  __HISTORY_NOTES__
 </details>
 <details>
   <summary>Classification of every reported balance-sheet line</summary>
-  <div class="scroller"><table id="classification"></table></div>
+  <div class="scroller">__CLASSIFICATION__</div>
 </details>
 <details>
   <summary>The model</summary>
@@ -203,623 +184,9 @@ discounted into the explicit sum.</p>
   </p>
 </details>
 
+<p class="note">Every figure on this page came out of <code>dcf_engine.py</code>.
+There is no script in this file.</p>
+
 </main>
-
-<script>
-// --- engine start ---
-// A line-for-line port of dcf_engine.py. It is checked against that module's
-// output on load: if this drifts, the banner at the top of the page says so.
-var N_EXPLICIT = 5, TRANSITION_YEAR = 6, PERPETUITY_YEAR = 7, LAST_YEAR = 7;
-
-var SCALAR_DRIVERS = ["sales_growth", "ebitda_margin", "sales_to_net_ppe",
-                      "depreciation_rate", "cash_tax_rate"];
-
-function driver(spec, t) {
-  if (t < 1) throw new Error("forecast year must be >= 1, got " + t);
-  return t <= N_EXPLICIT ? spec.explicit[t - 1] : spec.terminal;
-}
-
-function checkSpec(spec, name) {
-  if (!spec || !("explicit" in spec) || !("terminal" in spec)) {
-    throw new Error(name + ": needs both 'explicit' and 'terminal'");
-  }
-  if (spec.explicit.length !== N_EXPLICIT) {
-    throw new Error(name + ": 'explicit' must hold exactly " + N_EXPLICIT +
-                    " values, got " + spec.explicit.length);
-  }
-}
-
-function validateBundle(bundle) {
-  var a = bundle.assumptions, base = bundle.base, i, side, key;
-  for (i = 0; i < SCALAR_DRIVERS.length; i++) {
-    if (!(SCALAR_DRIVERS[i] in a)) {
-      throw new Error("assumptions is missing '" + SCALAR_DRIVERS[i] + "'");
-    }
-    checkSpec(a[SCALAR_DRIVERS[i]], SCALAR_DRIVERS[i]);
-  }
-  var sides = ["operating_assets", "operating_liabilities"];
-  for (i = 0; i < sides.length; i++) {
-    side = sides[i];
-    var baseKeys = Object.keys(base[side] || {}).sort();
-    var specKeys = Object.keys(a[side] || {}).sort();
-    if (baseKeys.join("|") !== specKeys.join("|")) {
-      throw new Error(side + ": base names [" + baseKeys + "] but assumptions " +
-                      "names [" + specKeys + "]; they must name the same lines");
-    }
-    for (key in (a[side] || {})) checkSpec(a[side][key], side + "." + key);
-  }
-  var overlap = Object.keys(base.operating_assets || {}).filter(function (k) {
-    return k in (base.operating_liabilities || {});
-  });
-  if (overlap.length) {
-    throw new Error("these keys sit on both sides of working capital: [" + overlap + "]");
-  }
-  if (bundle.rates.wacc <= a.sales_growth.terminal) {
-    throw new Error("wacc (" + bundle.rates.wacc.toFixed(4) + ") must exceed " +
-                    "terminal growth (" + a.sales_growth.terminal.toFixed(4) +
-                    "); the perpetuity does not exist");
-  }
-}
-
-function salesPath(baseSales, growth, through) {
-  var s = [baseSales];
-  for (var t = 1; t <= through; t++) s.push(s[s.length - 1] * (1 + driver(growth, t)));
-  return s;
-}
-
-function ratioSum(specs, t) {
-  var total = 0;
-  for (var k in specs) total += driver(specs[k], t);
-  return total;
-}
-
-function valueSum(values) {
-  var total = 0;
-  for (var k in (values || {})) total += values[k];
-  return total;
-}
-
-function buildSchedule(bundle) {
-  validateBundle(bundle);
-  var a = bundle.assumptions, base = bundle.base;
-  var s = salesPath(base.sales, a.sales_growth, LAST_YEAR + 1);
-
-  var nppePrev = base.net_ppe;
-  var nwcPrev = valueSum(base.operating_assets) - valueSum(base.operating_liabilities);
-
-  var rows = [];
-  for (var t = 1; t <= LAST_YEAR; t++) {
-    var sales = s[t], nextSales = s[t + 1];
-    var nppe = nextSales / driver(a.sales_to_net_ppe, t);
-    var dep = driver(a.depreciation_rate, t) * nppePrev;
-    var capex = nppe - nppePrev + dep;
-    var nwc = (ratioSum(a.operating_assets, t) - ratioSum(a.operating_liabilities, t)) * nextSales;
-    var ebitda = driver(a.ebitda_margin, t) * sales;
-    rows.push({
-      year: t, sales: sales, next_sales: nextSales, ebitda: ebitda,
-      net_ppe: nppe, depreciation: dep, capex: capex,
-      nwc: nwc, delta_nwc: nwc - nwcPrev, ebit: ebitda - dep
-    });
-    nppePrev = nppe;
-    nwcPrev = nwc;
-  }
-  return rows;
-}
-
-function applyTaxes(rows, bundle) {
-  var a = bundle.assumptions;
-  var limitation = bundle.rates.nol_limitation === undefined ? 0.80 : bundle.rates.nol_limitation;
-  var nol = Number(bundle.base.nol) || 0.0;
-
-  for (var i = 0; i < rows.length; i++) {
-    var row = rows[i], t = row.year, ebit = row.ebit;
-    var rate = driver(a.cash_tax_rate, t);
-    var used, taxable, tax;
-    row.nol_open = nol;
-
-    if (t >= PERPETUITY_YEAR) {
-      used = 0.0; taxable = ebit; tax = rate * ebit;
-    } else if (ebit <= 0.0) {
-      used = 0.0; taxable = 0.0; tax = 0.0;
-      nol -= ebit;
-    } else {
-      used = Math.min(limitation * ebit, nol);
-      taxable = ebit - used;
-      tax = rate * taxable;
-      nol -= used;
-    }
-
-    row.nol_used = used;
-    row.nol_close = nol;
-    row.taxable_income = taxable;
-    row.tax = tax;
-    row.effective_tax_rate = ebit ? tax / ebit : 0.0;
-    row.fcf = row.ebitda - tax - row.capex - row.delta_nwc;
-  }
-  return rows;
-}
-
-function nolShieldPv(nol, ebit7, growth, rate, wacc, limitation, maxYears) {
-  maxYears = maxYears || 200;
-  if (nol <= 0.0) return { pv: 0.0, unexhausted: false };
-  if (ebit7 <= 0.0) return { pv: 0.0, unexhausted: true };
-  var pv = 0.0, ebit = ebit7, s = PERPETUITY_YEAR;
-  while (nol > 0.0 && s < PERPETUITY_YEAR + maxYears) {
-    var used = Math.min(limitation * ebit, nol);
-    pv += rate * used / Math.pow(1 + wacc, s);
-    nol -= used;
-    ebit *= 1 + growth;
-    s += 1;
-  }
-  return { pv: pv, unexhausted: nol > 0.0 };
-}
-
-function num(x, dp) {
-  return x.toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
-}
-
-function humanLabel(key) {
-  var text = String(key).replace(/_/g, " ").trim();
-  return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
-}
-
-function warningsFor(bundle, rows, perpetuityRow, nolAtSix, pvNol, unexhausted) {
-  var a = bundle.assumptions, base = bundle.base, out = [], i;
-
-  if (nolAtSix > 0.0) {
-    out.push("A carryforward of " + num(nolAtSix, 1) + " survives year 6. Its " +
-             "shield is valued separately at " + num(pvNol, 1) + " and shown in " +
-             "the bridge, so the perpetuity is taxed at the full rate.");
-  }
-  if (unexhausted) {
-    out.push("The carryforward is not exhausted within 200 years of steady " +
-             "state; the shield above is a lower bound.");
-  }
-  if (perpetuityRow.ebit <= 0.0) {
-    out.push("Terminal EBIT is not positive, so the perpetuity is negative. " +
-             "The model cannot value this company as a going concern on these " +
-             "assumptions.");
-  }
-  var negative = [];
-  for (i = 0; i < rows.length; i++) if (rows[i].capex < 0.0) negative.push(rows[i].year);
-  if (negative.length) {
-    out.push("Implied capex is negative in year(s) [" + negative.join(", ") + "]: " +
-             "the sales-to-PP&E turnover is shrinking the asset base faster than " +
-             "it depreciates.");
-  }
-  for (i = 0; i < rows.length; i++) {
-    if (rows[i].sales <= 0.0) { out.push("Sales reach zero or below inside the forecast."); break; }
-  }
-  var k5 = driver(a.sales_to_net_ppe, N_EXPLICIT), kt = a.sales_to_net_ppe.terminal;
-  if (kt && Math.abs(k5 - kt) / Math.abs(kt) > 0.10) {
-    out.push("Year 5's sales-to-PP&E turnover (" + k5.toFixed(2) + ") is more " +
-             "than 10 percent from terminal (" + kt.toFixed(2) + "), so year 6 " +
-             "absorbs the whole adjustment.");
-  }
-  var units = String(bundle.meta.units || "").toLowerCase();
-  if (units.indexOf("million") >= 0 && base.sales > 1e7) {
-    out.push("meta.units says millions but base sales is " + num(base.sales, 0) +
-             ". If the statements are in dollars and the share count is in " +
-             "millions, value per share is wrong by a factor of a million.");
-  }
-  return out;
-}
-
-function runModel(bundle) {
-  var rows = applyTaxes(buildSchedule(bundle), bundle);
-  var a = bundle.assumptions, base = bundle.base;
-  var wacc = bundle.rates.wacc, g = a.sales_growth.terminal;
-  var limitation = bundle.rates.nol_limitation === undefined ? 0.80 : bundle.rates.nol_limitation;
-  var i, k;
-
-  for (i = 0; i < rows.length; i++) {
-    rows[i].discount_factor = 1.0 / Math.pow(1 + wacc, rows[i].year);
-    rows[i].pv_fcf = rows[i].fcf * rows[i].discount_factor;
-  }
-
-  var perpetuityRow = rows[PERPETUITY_YEAR - 1];
-  var pvExplicit = 0.0;
-  for (i = 0; i < TRANSITION_YEAR; i++) pvExplicit += rows[i].pv_fcf;
-  var terminalValue = perpetuityRow.fcf / (wacc - g);
-  var pvTerminal = terminalValue / Math.pow(1 + wacc, TRANSITION_YEAR);
-  var evOps = pvExplicit + pvTerminal;
-
-  var nolAtSix = rows[TRANSITION_YEAR - 1].nol_close;
-  var shield = nolShieldPv(nolAtSix, perpetuityRow.ebit, g,
-                           driver(a.cash_tax_rate, PERPETUITY_YEAR),
-                           wacc, limitation);
-
-  var bridge = [{ label: "Enterprise value of operations", amount: evOps }];
-  if (shield.pv) bridge.push({ label: "PV of remaining NOL carryforward", amount: shield.pv });
-  for (k in (base.nonoperating_assets || {})) bridge.push({ label: "Plus " + humanLabel(k).toLowerCase(), amount: base.nonoperating_assets[k] });
-  for (k in (base.debt_claims || {})) bridge.push({ label: "Less " + humanLabel(k).toLowerCase(), amount: -base.debt_claims[k] });
-  for (k in (base.equity_claims || {})) bridge.push({ label: "Less " + humanLabel(k).toLowerCase(), amount: -base.equity_claims[k] });
-
-  var equityValue = 0.0;
-  for (i = 0; i < bridge.length; i++) equityValue += bridge[i].amount;
-  var shares = bundle.meta.diluted_shares || 0.0;
-
-  return {
-    schedule: rows, ev_ops: evOps,
-    pv_explicit: pvExplicit, pv_terminal: pvTerminal,
-    terminal_value: terminalValue, pv_nol: shield.pv,
-    bridge: bridge, equity_value: equityValue,
-    value_per_share: shares ? equityValue / shares : null,
-    warnings: warningsFor(bundle, rows, perpetuityRow, nolAtSix, shield.pv, shield.unexhausted)
-  };
-}
-
-if (typeof module !== "undefined" && module.exports) {
-  module.exports = { runModel: runModel, buildSchedule: buildSchedule,
-                     applyTaxes: applyTaxes, nolShieldPv: nolShieldPv,
-                     driver: driver, salesPath: salesPath };
-}
-// --- engine end ---
-
-var BUNDLE = /*__BUNDLE__*/ null;
-var BASELINE = /*__BASELINE__*/ null;
-
-// ---------------------------------------------------------------------------
-// the self-check
-// ---------------------------------------------------------------------------
-
-var PARITY_KEYS = ["sales", "ebitda", "net_ppe", "depreciation", "capex", "nwc",
-                   "delta_nwc", "ebit", "tax", "nol_used", "nol_close", "fcf",
-                   "pv_fcf"];
-
-function close(a, b) {
-  if (a === b) return true;
-  var scale = Math.max(Math.abs(a), Math.abs(b), 1e-9);
-  return Math.abs(a - b) / scale < 1e-9;
-}
-
-function selfCheck(result) {
-  if (!BASELINE) return null;
-  var i, j, key;
-  for (i = 0; i < BASELINE.schedule.length; i++) {
-    for (j = 0; j < PARITY_KEYS.length; j++) {
-      key = PARITY_KEYS[j];
-      if (!close(result.schedule[i][key], BASELINE.schedule[i][key])) {
-        return "year " + BASELINE.schedule[i].year + ", " + key +
-               ": this page computes " + result.schedule[i][key] +
-               " where the Python engine computed " + BASELINE.schedule[i][key];
-      }
-    }
-  }
-  var headline = ["ev_ops", "pv_explicit", "pv_terminal", "terminal_value",
-                  "pv_nol", "equity_value"];
-  for (i = 0; i < headline.length; i++) {
-    if (!close(result[headline[i]], BASELINE[headline[i]])) {
-      return headline[i] + ": this page computes " + result[headline[i]] +
-             " where the Python engine computed " + BASELINE[headline[i]];
-    }
-  }
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// the page
-// ---------------------------------------------------------------------------
-
-var state = JSON.parse(JSON.stringify(BUNDLE));
-
-function clone(x) { return JSON.parse(JSON.stringify(x)); }
-function el(id) { return document.getElementById(id); }
-
-function money(x) {
-  if (x === null || x === undefined || !isFinite(x)) return "—";
-  return num(x, Math.abs(x) < 100 ? 1 : 0);
-}
-function pct(x) {
-  if (x === null || x === undefined || !isFinite(x)) return "—";
-  return (x * 100).toFixed(1) + "%";
-}
-function mult(x) {
-  if (x === null || x === undefined || !isFinite(x)) return "—";
-  return x.toFixed(2) + "×";
-}
-
-/* Each input row knows where its values live in `state` and how to show them. */
-function inputRows() {
-  var rows = [
-    { group: "Growth and margin" },
-    { key: "sales_growth", label: "Sales growth", kind: "pct" },
-    { key: "ebitda_margin", label: "EBITDA margin", kind: "pct" },
-    { group: "Property, plant and equipment" },
-    { key: "sales_to_net_ppe", label: "Next-year sales / net PP&E", kind: "mult" },
-    { key: "depreciation_rate", label: "Depreciation / prior net PP&E", kind: "pct" },
-    { group: "Operating assets, as a share of next-year sales" }
-  ];
-  var k;
-  for (k in state.assumptions.operating_assets) {
-    rows.push({ side: "operating_assets", key: k, label: labelFor(k), kind: "pct" });
-  }
-  rows.push({ group: "Operating liabilities, as a share of next-year sales" });
-  for (k in state.assumptions.operating_liabilities) {
-    rows.push({ side: "operating_liabilities", key: k, label: labelFor(k), kind: "pct" });
-  }
-  rows.push({ group: "Taxes" });
-  rows.push({ key: "cash_tax_rate", label: "Cash tax rate on taxable income", kind: "pct" });
-  return rows;
-}
-
-function labelFor(key) {
-  var entries = BUNDLE.classification || [];
-  for (var i = 0; i < entries.length; i++) {
-    if (entries[i].key === key) return entries[i].line;
-  }
-  return key;
-}
-
-function specOf(row, source) {
-  var a = (source || state).assumptions;
-  return row.side ? a[row.side][row.key] : a[row.key];
-}
-
-function show(kind, v) {
-  if (v === null || v === undefined) return "";
-  return kind === "mult" ? v.toFixed(2) : (v * 100).toFixed(1);
-}
-function parse(kind, text) {
-  var v = parseFloat(text);
-  if (!isFinite(v)) return null;
-  return kind === "mult" ? v : v / 100;
-}
-
-function historyFor(row) {
-  var h = (BUNDLE.history && BUNDLE.history.ratios) || {};
-  if (row.side) return (h[row.side] || {})[row.key] || {};
-  return h[row.key] || {};
-}
-
-function historicalYears() {
-  var h = (BUNDLE.history && BUNDLE.history.years) || [];
-  return h.slice(-5);
-}
-
-function renderInputs() {
-  var years = historicalYears();
-  var html = "<thead><tr><th>Assumption</th>";
-  years.forEach(function (y) { html += "<th>" + y + "</th>"; });
-  for (var t = 1; t <= N_EXPLICIT; t++) html += "<th class='fc'>Year " + t + "</th>";
-  html += "<th class='fc'>Terminal</th></tr></thead><tbody>";
-
-  inputRows().forEach(function (row, idx) {
-    if (row.group) {
-      html += "<tr class='group'><td colspan='" + (years.length + 7) + "'>" +
-              row.group + "</td></tr>";
-      return;
-    }
-    var hist = historyFor(row);
-    html += "<tr><td>" + row.label + "</td>";
-    years.forEach(function (y) {
-      var v = hist[y];
-      html += "<td class='hist'>" +
-              (v === undefined ? "—" : (row.kind === "mult" ? mult(v) : pct(v))) +
-              "</td>";
-    });
-    var spec = specOf(row);
-    for (var t = 0; t < N_EXPLICIT; t++) {
-      html += "<td><input type='number' step='any' data-row='" + idx +
-              "' data-slot='" + t + "' value='" + show(row.kind, spec.explicit[t]) + "'></td>";
-    }
-    html += "<td><input type='number' step='any' data-row='" + idx +
-            "' data-slot='terminal' value='" + show(row.kind, spec.terminal) + "'></td></tr>";
-  });
-
-  el("inputs").innerHTML = html + "</tbody>";
-
-  el("inputs").querySelectorAll("input").forEach(function (input) {
-    input.addEventListener("input", function () {
-      var row = inputRows()[Number(input.dataset.row)];
-      var value = parse(row.kind, input.value);
-      if (value === null) return;
-      var spec = specOf(row);
-      if (input.dataset.slot === "terminal") spec.terminal = value;
-      else spec.explicit[Number(input.dataset.slot)] = value;
-      render();
-    });
-  });
-}
-
-var SINGLES = [
-  { path: ["rates", "wacc"], label: "WACC", kind: "pct" },
-  { path: ["rates", "nol_limitation"], label: "NOL limitation", kind: "pct" },
-  { path: ["base", "nol"], label: "Opening NOL", kind: "raw" },
-  { path: ["meta", "diluted_shares"], label: "Diluted shares", kind: "raw" }
-];
-
-function renderSingles() {
-  var html = "";
-  SINGLES.forEach(function (s, i) {
-    var v = state[s.path[0]][s.path[1]];
-    var shown = s.kind === "pct" ? (v * 100).toFixed(2) : v;
-    html += "<div><label for='single" + i + "'>" + s.label +
-            (s.kind === "pct" ? " (%)" : "") + "</label>" +
-            "<input id='single" + i + "' type='number' step='any' data-single='" +
-            i + "' value='" + shown + "'></div>";
-  });
-  el("singles").innerHTML = html;
-  el("singles").querySelectorAll("input").forEach(function (input) {
-    input.addEventListener("input", function () {
-      var s = SINGLES[Number(input.dataset.single)];
-      var v = parseFloat(input.value);
-      if (!isFinite(v)) return;
-      state[s.path[0]][s.path[1]] = s.kind === "pct" ? v / 100 : v;
-      render();
-    });
-  });
-}
-
-var SCHEDULE_ROWS = [
-  ["sales", "Sales", money],
-  ["ebitda", "EBITDA", money],
-  ["depreciation", "Depreciation", money],
-  ["ebit", "EBIT", money],
-  ["nol_open", "NOL carryforward, opening", money],
-  ["nol_used", "NOL used", money],
-  ["taxable_income", "Taxable income", money],
-  ["tax", "Cash taxes", money],
-  ["effective_tax_rate", "Effective tax rate", pct],
-  ["net_ppe", "Net PP&E, closing", money],
-  ["capex", "Capital expenditure", money],
-  ["nwc", "Net working capital, closing", money],
-  ["delta_nwc", "Investment in working capital", money],
-  ["fcf", "Free cash flow", money],
-  ["discount_factor", "Discount factor", function (x) { return x.toFixed(4); }],
-  ["pv_fcf", "PV of free cash flow", money]
-];
-
-function renderSchedule(result) {
-  var html = "<thead><tr><th>Forecast</th>";
-  result.schedule.forEach(function (r) {
-    html += "<th class='fc'>Year " + r.year +
-            (r.year === TRANSITION_YEAR ? " · transition" : "") +
-            (r.year === PERPETUITY_YEAR ? " · perpetuity" : "") + "</th>";
-  });
-  html += "</tr></thead><tbody>";
-  SCHEDULE_ROWS.forEach(function (spec) {
-    html += "<tr" + (spec[0] === "fcf" ? " class='total'" : "") + "><td>" + spec[1] + "</td>";
-    result.schedule.forEach(function (r) { html += "<td>" + spec[2](r[spec[0]]) + "</td>"; });
-    html += "</tr>";
-  });
-  el("schedule").innerHTML = html + "</tbody>";
-}
-
-function renderBridge(result) {
-  var html = "<tbody>";
-  html += "<tr><td>PV of free cash flow, years 1 to 6</td><td>" +
-          money(result.pv_explicit) + "</td></tr>";
-  html += "<tr><td>Terminal value at the end of year 6</td><td class='derived'>" +
-          money(result.terminal_value) + "</td></tr>";
-  html += "<tr><td>PV of the terminal value</td><td>" + money(result.pv_terminal) + "</td></tr>";
-  result.bridge.forEach(function (item, i) {
-    html += "<tr" + (i === 0 ? " class='total'" : "") + "><td>" + item.label +
-            "</td><td>" + money(item.amount) + "</td></tr>";
-  });
-  html += "<tr class='total'><td>Equity value</td><td>" + money(result.equity_value) + "</td></tr>";
-  html += "<tr><td>Diluted shares</td><td class='derived'>" +
-          money(state.meta.diluted_shares) + "</td></tr>";
-  html += "<tr class='total'><td>Value per share</td><td>" +
-          (result.value_per_share === null ? "—" : num(result.value_per_share, 2)) +
-          "</td></tr>";
-  el("bridge").innerHTML = html + "</tbody>";
-}
-
-function renderSensitivity() {
-  var baseWacc = state.rates.wacc, baseG = state.assumptions.sales_growth.terminal;
-  var waccs = [-0.02, -0.01, 0, 0.01, 0.02].map(function (d) { return baseWacc + d; });
-  var growths = [-0.01, -0.005, 0, 0.005, 0.01].map(function (d) { return baseG + d; });
-
-  var html = "<thead><tr><th>WACC \\ terminal growth</th>";
-  growths.forEach(function (g) { html += "<th>" + (g * 100).toFixed(1) + "%</th>"; });
-  html += "</tr></thead><tbody>";
-
-  waccs.forEach(function (w) {
-    html += "<tr><td>" + (w * 100).toFixed(1) + "%</td>";
-    growths.forEach(function (g) {
-      var trial = clone(state);
-      trial.rates.wacc = w;
-      trial.assumptions.sales_growth.terminal = g;
-      var here = Math.abs(w - baseWacc) < 1e-12 && Math.abs(g - baseG) < 1e-12;
-      var cell;
-      try {
-        var r = runModel(trial);
-        cell = r.value_per_share === null ? "—" : num(r.value_per_share, 2);
-      } catch (e) {
-        cell = "—";
-      }
-      html += "<td class='sens" + (here ? " here" : "") + "'>" + cell + "</td>";
-    });
-    html += "</tr>";
-  });
-  el("sensitivity").innerHTML = html + "</tbody>";
-}
-
-function renderNotes() {
-  el("wacc-note").textContent =
-    (BUNDLE.rates && BUNDLE.rates.wacc_derivation) ||
-    "No derivation was recorded for the discount rate.";
-
-  var html = "";
-  inputRows().forEach(function (row) {
-    if (row.group) return;
-    var spec = specOf(row, BUNDLE);
-    if (spec && spec.rationale) {
-      html += "<p class='rationale'><b>" + row.label + ".</b> " + spec.rationale + "</p>";
-    }
-  });
-  el("rationales").innerHTML = html ||
-    "<p class='note'>No rationales were recorded with these assumptions.</p>";
-
-  var rows = BUNDLE.classification || [];
-  var table = "<thead><tr><th>Reported line</th><th>Bucket</th><th>Why</th></tr></thead><tbody>";
-  rows.forEach(function (c) {
-    table += "<tr><td>" + c.line + "</td><td style='text-align:left'>" +
-             c.bucket + "</td><td style='text-align:left;white-space:normal'>" +
-             (c.note || "") + "</td></tr>";
-  });
-  el("classification").innerHTML = table + "</tbody>";
-}
-
-function render() {
-  var result;
-  try {
-    result = runModel(state);
-  } catch (e) {
-    el("banner").className = "banner show";
-    el("banner").innerHTML = "<b>The model cannot be solved on these inputs.</b>" +
-                             String(e.message || e);
-    return;
-  }
-
-  var drift = selfCheck(runModel(BUNDLE));
-  if (drift) {
-    el("banner").className = "banner show";
-    el("banner").innerHTML = "<b>This page disagrees with the engine that built it.</b>" +
-      "Do not trust these numbers. First disagreement: " + drift;
-  } else {
-    el("banner").className = "banner";
-  }
-
-  el("hl-ev").textContent = money(result.ev_ops);
-  el("hl-eq").textContent = money(result.equity_value);
-  el("hl-ps").textContent =
-    result.value_per_share === null ? "—" : num(result.value_per_share, 2);
-
-  el("warnings").innerHTML = result.warnings.map(function (w) {
-    return "<li>" + w + "</li>";
-  }).join("");
-
-  renderSchedule(result);
-  renderBridge(result);
-  renderSensitivity();
-}
-
-function boot() {
-  var m = BUNDLE.meta;
-  document.title = m.company + " — two-stage valuation";
-  el("company").textContent = m.company + (m.ticker ? " (" + m.ticker + ")" : "");
-  el("subtitle").textContent =
-    "Valued as of the end of fiscal " + m.fiscal_year_0 +
-    (m.fiscal_year_end ? " (" + m.fiscal_year_end + ")" : "") +
-    ". All figures in " + (m.units || "the units of the statements") +
-    ". A comparison with today's market price is a comparison across that gap.";
-
-  renderInputs();
-  renderSingles();
-  renderNotes();
-  render();
-
-  el("reset").addEventListener("click", function () {
-    state = clone(BUNDLE);
-    renderInputs();
-    renderSingles();
-    render();
-  });
-}
-
-if (typeof document !== "undefined" && BUNDLE) boot();
-</script>
 </body>
 </html>
