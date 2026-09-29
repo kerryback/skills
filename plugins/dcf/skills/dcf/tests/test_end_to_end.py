@@ -140,22 +140,44 @@ def ebitda_series(income):
     return out
 
 
-def test_every_reported_line_is_classified_and_foots(statements):
-    lines = statements["balance"]["lines"]
-    reported = {line: lines[line].get(FY) or 0.0
-                for line, *_ in CLASSIFICATION}
-    assert set(reported) == set(lines), \
-        f"unclassified: {sorted(set(lines) - set(reported))}"
-    # Nothing is dropped: the classification names every line on the statement.
-    check_footing(classification(), reported, reported_total=sum(reported.values()))
+# The lines that actually compose total assets. The rest of the balance sheet is
+# subtotals, the liability and equity side, and the workbook's own check row.
+ASSET_COMPONENTS = [
+    "Cash and cash equivalents", "Accounts receivable, net",
+    "Accounts receivable - related party, net", "Inventories",
+    "Prepaid expenses and other current assets", "Property, plant, and equipment",
+    "Operating lease right-of-use assets, net", "Goodwill", "Intangible assets, net",
+    "Investments", "Deferred tax assets", "Other assets",
+]
 
 
-def test_footing_catches_a_line_left_out(statements):
+def test_every_reported_line_is_classified(statements):
     lines = statements["balance"]["lines"]
-    reported = {line: lines[line].get(FY) or 0.0 for line, *_ in CLASSIFICATION}
-    short = [c for c in classification() if c["line"] != "Tax receivable agreement liability"]
-    with pytest.raises(ValueError, match="Tax receivable agreement"):
-        check_footing(short, reported, reported_total=sum(reported.values()))
+    named = {line for line, *_ in CLASSIFICATION}
+    assert named == set(lines), \
+        f"unclassified: {sorted(set(lines) - named)}; " \
+        f"named but absent: {sorted(named - set(lines))}"
+
+
+def test_the_asset_components_foot_to_reported_total_assets(statements):
+    """A real footing, against ProFrac's own total rather than against itself."""
+    lines = statements["balance"]["lines"]
+    components = {line: lines[line].get(FY) or 0.0 for line in ASSET_COMPONENTS}
+    check_footing([{"line": line, "bucket": "x"} for line in ASSET_COMPONENTS],
+                  components,
+                  reported_total=lines["Total assets"][FY])
+
+
+def test_the_footing_check_catches_a_dropped_asset(statements):
+    lines = statements["balance"]["lines"]
+    components = {line: lines[line].get(FY) or 0.0 for line in ASSET_COMPONENTS}
+    short = [{"line": line, "bucket": "x"} for line in ASSET_COMPONENTS
+             if line != "Inventories"]
+    with pytest.raises(ValueError, match="Inventories"):
+        check_footing(short, components, reported_total=lines["Total assets"][FY])
+
+
+
 
 
 def acdc_bundle(statements):
